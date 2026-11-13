@@ -1,0 +1,20 @@
+{
+  "_note": "Dark-mode values for DESIGN.md v4 'Ink' (Colors > Dark mode paragraph). Keep in sync with DESIGN.md; npm run tokens merges this with the YAML light values.",
+  "primary": "#eeeeee",
+  "bg-page": "#111111", "bg-surface": "#191919", "bg-sunken": "#191919", "bg-tonal": "#222222", "bg-tonal-hover": "#2a2a2a",
+  "bg-selected": "#313131", "bg-pressed": "#3a3a3a", "bg-inverted": "#eeeeee",
+  "overlay-hover": "#ffffff12", "overlay-pressed": "#ffffff22",
+  "text-primary": "#eeeeee", "text-secondary": "#b4b4b4", "text-disabled": "#6e6e6e", "text-inverted": "#111111", "text-inverted-secondary": "#606060",
+  "border": "#313131", "border-emphasized": "#6e6e6e", "border-strong": "#eeeeee",
+  "accent": "#eeeeee", "accent-hover": "#b4b4b4", "on-accent": "#111111",
+  "ai": "#6e56cf", "ai-muted": "#291f43", "text-ai": "#baa7ff", "border-ai": "#56468b", "skeleton-ai": "#33255b",
+  "success": "#30a46c", "success-muted": "#132d21", "text-success": "#3dd68c",
+  "warning": "#ffc53d", "warning-muted": "#302008", "text-warning": "#ffca16",
+  "error": "#e5484d", "error-muted": "#3b1219", "text-error": "#ff9592",
+  "info": "#0090ff", "info-muted": "#0d2847", "text-info": "#70b8ff",
+  "data-up": "#e5484d", "data-down": "#0090ff", "text-up": "#ff9592", "text-down": "#70b8ff",
+  "data-1": "#eeeeee", "data-2": "#7b7b7b", "data-3": "#484848", "data-track": "#2a2a2a",
+  "graph-canvas": "#191919", "graph-job": "#eeeeee", "graph-saved": "#eeeeee", "graph-node": "#7b7b7b", "graph-node-dim": "#3a3a3a",
+  "graph-edge": "#606060", "graph-orbit": "#3a3a3a", "graph-division": "#b4b4b4",
+  "skeleton": "#222222"
+}
