@@ -269,9 +269,10 @@ export function JobMap(p: Props) {
 function CompanyNode({ n, c, saved, selected, dim, onPick }: { n: NodePos; c: Company; saved: boolean; selected: boolean; dim: boolean; onPick: () => void }) {
   const noData = c.revenue == null;
   const half = n.size / 2;
-  const lx = n.side === "l" ? n.x - half - 8 : n.side === "r" ? n.x + half + 8 : n.x;
-  const ly = n.side === "t" ? n.y - half - 10 : n.side === "b" ? n.y + half + 16 : n.y + 4;
-  const anchor = n.side === "l" ? "end" : n.side === "r" ? "start" : "middle";
+  const side = selected ? "t" : n.side; // branches fan out to the sides of a selected company, so its label moves above
+  const lx = side === "l" ? n.x - half - 8 : side === "r" ? n.x + half + 8 : n.x;
+  const ly = side === "t" ? n.y - half - 24 : side === "b" ? n.y + half + 16 : n.y + 4;
+  const anchor = side === "l" ? "end" : side === "r" ? "start" : "middle";
   return (
     <g
       role="button"

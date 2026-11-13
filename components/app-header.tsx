@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { MainNav, MainNavFallback } from "@/components/main-nav";
 import { AuthButton } from "@/components/auth-button";
-import { EnvVarWarning } from "@/components/env-var-warning";
 import { hasEnvVars } from "@/lib/utils";
 
 function Logo() {
@@ -18,6 +17,15 @@ function Logo() {
   );
 }
 
+/** Shown instead of the login buttons while Supabase keys are not set (demo data only). */
+function DemoModeNotice() {
+  return (
+    <span className="inline-flex h-8 items-center rounded-element border border-dashed border-border-emphasized px-3 text-caption text-text-secondary" title="Supabase 키를 넣으면 로그인과 내 데이터 저장이 켜져요.">
+      데모 모드 · 로그인 준비 중
+    </span>
+  );
+}
+
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-page">
@@ -28,7 +36,7 @@ export function AppHeader() {
         </Suspense>
         <div className="flex-1" />
         {!hasEnvVars ? (
-          <EnvVarWarning />
+          <DemoModeNotice />
         ) : (
           <Suspense>
             <AuthButton />
