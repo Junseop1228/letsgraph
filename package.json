@@ -7,7 +7,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "tokens": "node scripts/design-tokens.mjs"
+    "tokens": "node scripts/design-tokens.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.107",

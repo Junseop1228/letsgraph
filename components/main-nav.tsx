@@ -30,3 +30,16 @@ export function MainNav() {
     </nav>
   );
 }
+
+/** Same links without the active state; rendered while the pathname is not known yet (Suspense fallback). */
+export function MainNavFallback() {
+  return (
+    <nav aria-label="main" className="flex items-center gap-1">
+      {MAIN_NAV.map((item) => (
+        <Link key={item.id} href={item.href} className="h-9 rounded-element px-3.5 inline-flex items-center text-label-strong text-text-secondary">
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { MainNav } from "@/components/main-nav";
+import { MainNav, MainNavFallback } from "@/components/main-nav";
 import { AuthButton } from "@/components/auth-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { hasEnvVars } from "@/lib/utils";
@@ -23,7 +23,9 @@ export function AppHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-bg-page">
       <div className="mx-auto flex h-header-height max-w-content-max items-center gap-6 px-5">
         <Logo />
-        <MainNav />
+        <Suspense fallback={<MainNavFallback />}>
+          <MainNav />
+        </Suspense>
         <div className="flex-1" />
         {!hasEnvVars ? (
           <EnvVarWarning />
