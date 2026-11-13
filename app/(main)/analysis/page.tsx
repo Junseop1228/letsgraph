@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight } from "lucide-react";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "분석 · LetsGraph" };
 
 async function AnalysisContent() {
+  await connection(); // request-time render: uses today's date and the user's data
   const { repo, demo } = await userData();
   const postings = await repo.postings();
   return (

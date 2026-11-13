@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -12,6 +13,7 @@ type Props = { params: Promise<{ id: string }> };
 
 // 공고 정리 화면 (specs/posting FR-POST-01)
 async function PostingContent({ params }: Props) {
+  await connection(); // request-time render: uses today's date and the user's data
   const { id } = await params;
   const { repo: user } = await userData();
   const posting = await user.posting(id);
