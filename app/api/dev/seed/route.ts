@@ -37,6 +37,24 @@ export async function POST(req: Request) {
     ["segment_details", () => db.from("segment_details").upsert(SEGMENT_DETAILS.map((d) => ({ segment_id: d.segmentId, flow: d.flow, flow_source: d.flowSource, trend: d.trend, trend_source: d.trendSource, job_notes: d.jobNotes, example_posting_id: d.examplePostingId ?? null, news_query: d.newsQuery })))],
     ["company_details", () => db.from("company_details").upsert(COMPANY_DETAILS.map((d) => ({ company_id: d.companyId, trend: d.trend, trend_source: d.trendSource, news_query: d.newsQuery })))],
     ["job_links", () => db.from("job_links").upsert(JOB_LINKS.map((l) => ({ job_role_id: l.jobRoleId, company_id: l.companyId, basis: l.basis })))],
+    [
+      "company_updates",
+      async () => {
+        // identity ids: replace the demo companies' rows instead of upserting
+        const ids = COMPANY_DETAILS.map((d) => d.companyId);
+        const del = await db.from("company_updates").delete().in("company_id", ids);
+        if (del.error) return del;
+        const segRows = SEGMENT_DETAILS.flatMap((d) => {
+          const companyId = SEGMENTS.find((s) => s.id === d.segmentId)?.companyId ?? "";
+          return d.updates.map((u) => ({ company_id: companyId, segment_id: d.segmentId, tag: u.tag, title: u.title, date: u.date, kind: u.kind, source_label: u.sourceLabel }));
+        });
+        const seen = new Set(segRows.map((r) => `${r.company_id}|${r.title}`));
+        const coRows = COMPANY_DETAILS.flatMap((d) =>
+          d.updates.filter((u) => !seen.has(`${d.companyId}|${u.title}`)).map((u) => ({ company_id: d.companyId, segment_id: null, tag: u.tag, title: u.title, date: u.date, kind: u.kind, source_label: u.sourceLabel })),
+        );
+        return db.from("company_updates").insert([...segRows, ...coRows]);
+      },
+    ],
   ];
   const done: string[] = [];
   for (const [name, run] of steps) {

@@ -6,28 +6,26 @@
 
 - 기능 영역(capability)마다 `specs/<영역>/spec.md` 하나가 **지금의 기준**이에요. 동작을 바꾸는 코드는 같은 커밋에서 이 파일도 고쳐요.
 - 요구사항은 `### Requirement: <ID> <이름>` 으로 쓰고, 시스템이 해야 하는 일을 "~해야 한다(SHALL)"로 적어요.
-- 요구사항마다 시나리오를 하나 이상 둬요: `#### Scenario: <이름>` 아래 **WHEN** (상황·행동) / **THEN** (결과). 시험(Playwright)은 시나리오 이름을 그대로 써요.
+- 요구사항마다 시나리오를 하나 이상 둬요: `#### Scenario: <이름>` 아래 **WHEN** (상황·행동) / **THEN** (결과). 시험(Vitest, Playwright)은 시나리오 이름을 그대로 써요.
 - ID는 SRS(Software Requirements Specification, 소프트웨어 요구사항 명세) v1.0의 FR ID를 이어 써요. 지운 ID는 다시 쓰지 않아요. 새 요구사항은 영역 접두어에 다음 번호를 붙여요.
 - 데이터 형식, 상태 값, 금액 같은 정확해야 하는 건 코드 계약 파일 경로로 가리키고, 여기에 복사하지 않아요.
-- 아직 정하지 않은 것은 `> OPEN:` 으로, Claude가 임시로 정한 것은 `> PROPOSED:` 로 표시해요. 결정 기록은 프로젝트 폴더의 `context/decisions.md`예요.
+- 아직 정하지 않은 것은 `> OPEN:` 으로, Claude가 임시로 정한 것은 `> PROPOSED:` 로, 아직 만들지 않은 것은 `> 아직 구현 전` 으로 표시해요. 결정 기록은 프로젝트 폴더의 `context/decisions.md`예요.
 - 용어는 용어집의 한국어 이름과 영어 식별자를 그대로 써요(예: 관심 기업 `WatchedCompany`).
 
-## 영역 목록
+## 영역 목록 (2026-11-14 기준)
 
 | 영역 | 폴더 | 이어받은 SRS ID | 상태 |
 |---|---|---|---|
-| 계정 | `account/` | FR-ACCT-01, FR-ACCT-05 | 작성됨 |
-| 이용 등급·결제 | `billing/` | FR-ACCT-03, FR-ACCT-04, 쿼터 | 작성됨 |
-| 데이터 수집·미리 분석 | `data-pipeline/` | FR-OPS-02, FR-OPS-03, FR-OPS-01 | 작성됨 (DART 중심) |
-| 탐색 | `explore/` | FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 | 뼈대 |
-| 기업 | `company/` | FR-CORP-01~04 | 뼈대 |
-| 공고 | `posting/` | FR-POST-01 | 뼈대 |
-| 경험(포트폴리오) | `portfolio/` | FR-PREM-01 | 뼈대 |
-| 연결 | `connection/` | FR-PREM-02 | 뼈대 |
-| Prompt Kit | `prompt-kit/` | FR-PREM-03 | 뼈대 |
+| 계정 | `account/` | FR-ACCT-01, FR-ACCT-05 | 작성됨 · 로그인·동의 구현, 탈퇴 구현 전 |
+| 이용 등급·결제 | `billing/` | FR-ACCT-03, FR-ACCT-04, BILL-01 | 작성됨 · 구현 (테스트 모드, 키 필요) |
+| 데이터 수집·미리 분석 | `data-pipeline/` | FR-OPS-02, FR-OPS-03, FR-OPS-01 | 작성됨 · DART 접속·해석 구현, 예약 실행 구현 전 |
+| 탐색 | `explore/` | FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 | 작성됨 · 알림함 구현 전 |
+| 기업 | `company/` | FR-CORP-01~04, CORP-05 | 작성됨 · 용어 팁·검색창 구현 전 |
+| 공고 | `posting/` | FR-POST-01, POST-02 | 작성됨 · 구현 |
+| 경험(포트폴리오) | `portfolio/` | FR-PREM-01, PORT-02 | 작성됨 · 경험 대화 구현 전 |
+| 연결 | `connection/` | FR-PREM-02 | 작성됨 · 구현 |
+| Prompt Kit | `prompt-kit/` | FR-PREM-03 | 작성됨 · 구현 |
 | 측정 | `measurement/` | FR-OPS-04 | 뼈대 |
-
-"뼈대"는 요구사항 이름과 근거만 있고, 그 기능을 만들 때 시나리오를 채워요.
 
 ## SRS v1.0 이후 바뀐 것 (요약)
 

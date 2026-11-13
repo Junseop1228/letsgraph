@@ -9,6 +9,7 @@ import { FREE_MONTHLY_QUOTA } from "@/lib/contracts/billing";
 import { DemoBadge, Kicker, btn } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { WatchedList } from "@/components/manage/watched-list";
+import { ExperienceChat } from "@/components/manage/experience-chat";
 import { PdfUpload } from "@/components/analysis/pdf-upload";
 import { extractExperiencesAction } from "@/app/(main)/analysis/actions";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const TABS = [
   { id: "watched", label: "관심 기업" },
   { id: "calendar", label: "마감 달력" },
   { id: "cards", label: "경험 카드" },
+  { id: "chat", label: "\uACBD\uD5D8 \uB300\uD654" },
   { id: "usage", label: "이용 현황" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -178,6 +180,7 @@ async function ManageContent({ searchParams }: { searchParams: Promise<{ tab?: s
       {tab === "watched" && <div className="max-w-reading-max py-6"><WatchedList companies={await cat.companies()} initial={await repo.watchedCompanyIds()} /></div>}
       {tab === "calendar" && <Calendar postings={await repo.postings()} />}
       {tab === "cards" && <Cards experiences={await repo.experiences()} />}
+      {tab === "chat" && <ExperienceChat />}
       {tab === "usage" && <Usage demo={demo} />}
     </div>
   );
