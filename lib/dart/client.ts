@@ -1,0 +1,128 @@
+// OpenDART client (server only). Retries transient failures, validates every response with Zod,
+// and stops at 90% of the daily limit (specs/data-pipeline FR-OPS-02 E1-E3).
+import "server-only";
+import type { z } from "zod";
+import {
+  DART_BASE,
+  DART_DAILY_LIMIT,
+  DART_RETRYABLE,
+  DART_STATUS,
+  DART_STOP_RATIO,
+  DartAccountList,
+  DartCompany,
+  DartFilingList,
+  REPRT_ANNUAL,
+} from "@/lib/contracts/dart";
+import { annualFromAccounts, parseCorpCodeXml, unzipCorpCode } from "@/lib/dart/parse";
+
+export class DartError extends Error {
+  constructor(message: string, readonly code: "no_key" | "budget" | "status" | "http" | "schema", readonly status?: string) {
+    super(message);
+  }
+}
+
+/** Tracks calls made today; the collector persists `used` between runs. */
+export interface CallBudget {
+  used: number;
+  limit: number;
+}
+
+type Fetch = typeof fetch;
+
+export class DartClient {
+  constructor(
+    private readonly key: string,
+    private readonly budget: CallBudget = { used: 0, limit: DART_DAILY_LIMIT },
+    private readonly fetchImpl: Fetch = fetch,
+    private readonly retries = 2,
+  ) {}
+
+  static fromEnv(budget?: CallBudget): DartClient {
+    const key = process.env.DART_API_KEY;
+    if (!key) throw new DartError("DART_API_KEY is not set", "no_key");
+    return new DartClient(key, budget);
+  }
+
+  get callsUsed() {
+    return this.budget.used;
+  }
+
+  private checkBudget() {
+    if (this.budget.used >= Math.floor(this.budget.limit * DART_STOP_RATIO)) {
+      throw new DartError("daily call budget reached, defer to next run", "budget");
+    }
+  }
+
+  private async raw(path: string, params: Record<string, string>): Promise<Response> {
+    this.checkBudget();
+    const url = new URL(`${DART_BASE}/${path}`);
+    url.searchParams.set("crtfc_key", this.key);
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    let last: unknown;
+    for (let attempt = 0; attempt <= this.retries; attempt++) {
+      this.budget.used++;
+      try {
+        const res = await this.fetchImpl(url, { cache: "no-store" });
+        if (res.ok) return res;
+        last = new DartError(`HTTP ${res.status}`, "http");
+      } catch (e) {
+        last = e;
+      }
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+    throw last instanceof Error ? last : new DartError("request failed", "http");
+  }
+
+  private async json<T extends z.ZodTypeAny>(path: string, params: Record<string, string>, schema: T): Promise<z.infer<T> | null> {
+    for (let attempt = 0; attempt <= this.retries; attempt++) {
+      const res = await this.raw(path, params);
+      const body = await res.json();
+      const status = String((body as { status?: string }).status ?? "");
+      if (status === DART_STATUS.noData) return null;
+      if (DART_RETRYABLE.has(status) && attempt < this.retries) {
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        continue;
+      }
+      if (status !== DART_STATUS.ok) throw new DartError(String((body as { message?: string }).message ?? "DART error"), "status", status);
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) throw new DartError(parsed.error.message, "schema");
+      return parsed.data;
+    }
+    return null;
+  }
+
+  /** 기업개황 */
+  company(corpCode: string) {
+    return this.json("company.json", { corp_code: corpCode }, DartCompany);
+  }
+
+  /** 사업보고서 filings of one company between two dates (YYYYMMDD) */
+  annualReports(corpCode: string, bgnDe: string, endDe: string) {
+    return this.json(
+      "list.json",
+      { corp_code: corpCode, bgn_de: bgnDe, end_de: endDe, pblntf_ty: "A", pblntf_detail_ty: "A001", page_count: "100" },
+      DartFilingList,
+    );
+  }
+
+  /** Revenue and operating income for one fiscal year (연결 first, 별도 if no consolidated statements) */
+  async annualFigures(corpCode: string, year: number) {
+    for (const fsDiv of ["CFS", "OFS"] as const) {
+      const list = await this.json(
+        "fnlttSinglAcntAll.json",
+        { corp_code: corpCode, bsns_year: String(year), reprt_code: REPRT_ANNUAL, fs_div: fsDiv },
+        DartAccountList,
+      );
+      const fig = list ? annualFromAccounts(list.list, corpCode, year, fsDiv) : null;
+      if (fig) return fig;
+    }
+    return null;
+  }
+
+  /** Full company list (corpCode.xml zip) */
+  async corpCodes() {
+    const res = await this.raw("corpCode.xml", {});
+    const buf = new Uint8Array(await res.arrayBuffer());
+    return parseCorpCodeXml(unzipCorpCode(buf));
+  }
+}
