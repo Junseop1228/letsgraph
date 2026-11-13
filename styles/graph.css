@@ -1,0 +1,39 @@
+/* 나의 취업 그래프 (components/explore/job-graph.tsx). Colours only from DESIGN.md tokens (graph-*). */
+.job-graph .g-bg { fill: var(--color-graph-canvas); }
+
+.job-graph .gl { stroke: var(--color-graph-edge); stroke-linecap: round; transition: opacity 150ms ease-out; }
+.job-graph .gl.job-ind { stroke: var(--color-graph-division); }
+.job-graph .gl.ind-co-est { stroke-dasharray: 4 4; }
+
+.job-graph .bridge { fill: none; stroke: var(--color-border-strong); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: 0; transition: opacity 150ms ease-out; pointer-events: none; }
+.job-graph .bridge.lit, .job-graph .bridge.on { opacity: 0.7; }
+
+.job-graph .gn { cursor: pointer; outline: none; transition: opacity 150ms ease-out; }
+.job-graph .gn .halo { fill: none; stroke: none; }
+.job-graph .gn .lbl { font-size: 12px; font-weight: 600; text-anchor: middle; fill: var(--color-text-primary); paint-order: stroke; stroke: var(--color-graph-canvas); stroke-width: 4px; pointer-events: none; }
+.job-graph .gn .badge { fill: var(--color-bg-inverted); }
+.job-graph .gn .badge-n { font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; fill: var(--color-text-inverted); pointer-events: none; font-variant-numeric: tabular-nums; }
+
+/* centre = my job (ink) */
+.job-graph .t-center .shape { fill: var(--color-graph-job); }
+.job-graph .t-center .lbl { font-size: 18px; font-weight: 700; }
+
+/* industry = gray-9 plane; several of my jobs hire here -> ink ring + count badge */
+.job-graph .t-ind .shape { fill: var(--color-graph-node); stroke: var(--color-graph-canvas); stroke-width: 2; }
+.job-graph .t-ind.shared .shape { stroke: var(--color-border-strong); stroke-width: 2; }
+.job-graph .t-ind.expanded .halo { stroke: var(--color-border-strong); stroke-width: 1.5; stroke-dasharray: 2 3; }
+
+/* company: open circle; saved = ink; estimated link or no figures = dashed */
+.job-graph .t-co .shape { fill: var(--color-bg-surface); stroke: var(--color-graph-node); stroke-width: 1.5; }
+.job-graph .t-co.saved .shape { fill: var(--color-graph-saved); stroke: var(--color-graph-saved); }
+.job-graph .t-co.est .shape, .job-graph .t-co.nodata .shape { stroke-dasharray: 3 2; }
+.job-graph .t-co .lbl { font-weight: 500; }
+
+/* hover / focus: dim everything else (motion only as feedback) */
+.job-graph .viewport.hovering .gn:not(.lit) { opacity: 0.25; }
+.job-graph .viewport.hovering .gl:not(.lit) { opacity: 0.15; }
+.job-graph .gn.sel .halo, .job-graph .gn:focus-visible .halo { stroke: var(--color-border-strong); stroke-width: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .job-graph .gl, .job-graph .bridge, .job-graph .gn { transition: none; }
+}
