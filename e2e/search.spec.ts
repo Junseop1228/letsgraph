@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("FR-CORP-04 기업 검색으로 기업 상세 열기", async ({ page }) => {
-  await page.goto("/analysis");
+  await page.goto("/postings");
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("Control+K");
   const input = page.getByPlaceholder("직무나 기업 이름");

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { UserRound } from "lucide-react";
 import { MainNav, MainNavFallback } from "@/components/main-nav";
 import { AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
 import { HeaderSearch } from "@/components/search/header-search";
+import { HeaderNotifications } from "@/components/header/header-notifications";
 
 function Logo() {
   return (
@@ -21,12 +23,13 @@ function Logo() {
 /** Shown instead of the login buttons while Supabase keys are not set (demo data only). */
 function DemoModeNotice() {
   return (
-    <span className="inline-flex h-8 items-center rounded-element border border-dashed border-border-emphasized px-3 text-caption text-text-secondary" title="Supabase 키를 넣으면 로그인과 내 데이터 저장이 켜져요.">
-      데모 모드 · 로그인 준비 중
+    <span className="hidden h-8 items-center rounded-element border border-dashed border-border-emphasized px-3 text-caption text-text-secondary lg:inline-flex" title="Supabase 키를 넣으면 로그인과 내 데이터 저장이 켜져요.">
+      데모 모드
     </span>
   );
 }
 
+// Header per the teammate spec: logo, 4 tabs, search, notification bell, profile.
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-page">
@@ -39,6 +42,14 @@ export function AppHeader() {
         <Suspense>
           <HeaderSearch />
         </Suspense>
+        <div className="flex items-center gap-1">
+          <Suspense>
+            <HeaderNotifications />
+          </Suspense>
+          <Link href="/account" aria-label="내 계정" className="flex size-10 items-center justify-center rounded-element hover:bg-overlay-hover">
+            <UserRound className="size-5" aria-hidden />
+          </Link>
+        </div>
         {!hasEnvVars ? (
           <DemoModeNotice />
         ) : (

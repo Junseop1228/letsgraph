@@ -53,7 +53,7 @@ test.describe("company", () => {
 
 test.describe("analysis", () => {
   test("FR-POST-01 공고 정리 보기", async ({ page }) => {
-    await page.goto("/analysis/posting/demo-cj-quality");
+    await page.goto("/postings/demo-cj-quality");
     await expect(page.getByRole("heading", { name: "품질관리 신입" })).toBeVisible();
     await expect(page.getByText("작성 주의사항")).toBeVisible();
     await expect(page.getByText("공고 명시")).toBeVisible();
@@ -61,20 +61,20 @@ test.describe("analysis", () => {
   });
 
   test("FR-POST-01 데모 공고 (업로드는 연결 전)", async ({ page }) => {
-    await page.goto("/analysis");
+    await page.goto("/postings");
     await page.locator("input[type=file]").setInputFiles({ name: "posting.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 demo") });
     await page.getByRole("button", { name: "공고 정리하기" }).click();
     await expect(page.locator("form p[role=alert]")).toContainText("연결되지 않았어요");
   });
 
   test("FR-PREM-02 연결 결과 / 빈 역량", async ({ page }) => {
-    await page.goto("/analysis/posting/demo-cj-quality/connection");
+    await page.goto("/connect/demo-cj-quality");
     await expect(page.getByText("연결 근거")).toBeVisible();
     await expect(page.getByText("빈 역량: 도전")).toBeVisible();
   });
 
   test("FR-PREM-03 Kit 열기", async ({ page }) => {
-    await page.goto("/analysis/posting/demo-cj-quality/kit");
+    await page.goto("/connect/demo-cj-quality/kit");
     await expect(page.getByRole("heading", { name: "Prompt Kit 완성" })).toBeVisible();
     await expect(page.locator("pre")).toContainText("<공고 출처=\"데모용 예시 공고\">");
     await expect(page.getByRole("button", { name: /복사/ })).toBeVisible();
@@ -83,7 +83,7 @@ test.describe("analysis", () => {
 
 test.describe("manage", () => {
   test("POST-02 이번 달 달력", async ({ page }) => {
-    await page.goto("/manage?tab=calendar");
+    await page.goto("/postings");
     await expect(page.getByText("상태 요약")).toBeVisible();
   });
 

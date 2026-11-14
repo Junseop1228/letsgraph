@@ -11,7 +11,7 @@ export async function AuthButton() {
 
   return user ? (
     <div className="flex items-center gap-3">
-      <Link href="/manage?tab=usage" className="text-label text-text-secondary hover:text-text-primary">{String(user.email ?? "내 계정")}</Link>
+      <Link href="/account" className="text-label text-text-secondary hover:text-text-primary">{String(user.email ?? "내 계정")}</Link>
       <LogoutButton />
     </div>
   ) : (

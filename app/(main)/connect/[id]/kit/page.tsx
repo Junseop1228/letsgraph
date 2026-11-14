@@ -44,7 +44,7 @@ async function KitContent({ params }: Props) {
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
       <div className="print:hidden">
-        <Crumbs items={[{ href: "/analysis", label: "분석" }, { href: `/analysis/posting/${id}`, label: `${posting.companyName} · ${posting.title}` }, { href: `/analysis/posting/${id}/connection`, label: "연결" }, { label: "Prompt Kit" }]} />
+        <Crumbs items={[{ href: "/connect", label: "연결" }, { href: `/postings/${id}`, label: `${posting.companyName} · ${posting.title}` }, { href: `/connect/${id}`, label: "매칭" }, { label: "Prompt Kit" }]} />
       </div>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
         <div>

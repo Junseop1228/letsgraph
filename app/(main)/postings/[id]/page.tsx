@@ -30,7 +30,7 @@ async function PostingContent({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
-      <Crumbs items={[{ href: "/analysis", label: "분석" }, { label: `${posting.companyName} · ${posting.title}` }]} />
+      <Crumbs items={[{ href: "/postings", label: "공고" }, { label: `${posting.companyName} · ${posting.title}` }]} />
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
         <div>
           <p className="flex items-center gap-2 text-caption text-text-secondary">
@@ -46,7 +46,7 @@ async function PostingContent({ params }: Props) {
         </div>
         <div className="flex gap-2">
           {job && <Link href={`/explore/map?job=${job.id}`} className={btn.secondary}>직무 맵에서 보기</Link>}
-          <Link href={`/analysis/posting/${posting.id}/connection`} className={btn.primary}>
+          <Link href={`/connect/${posting.id}`} className={btn.primary}>
             내 경험과 연결 보기 <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>

@@ -2,7 +2,7 @@
 // PDF upload form for server actions (공고 정리, 경험 카드). Tells the user the file goes to an AI before upload (NFR-EXT-05).
 import { useActionState } from "react";
 import { FileUp } from "lucide-react";
-import type { ActionState } from "@/app/(main)/analysis/actions";
+import type { ActionState } from "@/app/(main)/postings/actions";
 import { btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 

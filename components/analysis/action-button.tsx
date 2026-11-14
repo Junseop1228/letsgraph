@@ -1,6 +1,6 @@
 "use client";
 import { useActionState } from "react";
-import type { ActionState } from "@/app/(main)/analysis/actions";
+import type { ActionState } from "@/app/(main)/postings/actions";
 import { btn } from "@/components/lg/ui";
 
 /** Runs a server action bound to its arguments and shows the result line. */

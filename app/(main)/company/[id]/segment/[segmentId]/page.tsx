@@ -105,7 +105,7 @@ async function SegmentPageContent({
                 </ul>
               )}
               {detail.examplePostingId && job?.id === "quality" && (
-                <Link href={`/analysis/posting/${detail.examplePostingId}`} className="flex items-center justify-between rounded-element border border-border px-4 py-3 hover:bg-overlay-hover">
+                <Link href={`/postings/${detail.examplePostingId}`} className="flex items-center justify-between rounded-element border border-border px-4 py-3 hover:bg-overlay-hover">
                   <span>
                     <span className="block text-label-strong">{c.name} · {job.name} 신입</span>
                     <span className="block text-caption text-text-secondary">2026.11.24 마감 · 데모용 예시 공고</span>

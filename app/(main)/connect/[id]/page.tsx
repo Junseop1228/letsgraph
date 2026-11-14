@@ -8,7 +8,7 @@ import { EXPERIENCE_KIND_LABEL } from "@/lib/contracts/activity";
 import { Crumbs, DemoBadge, Kicker, TrustLabel, btn } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { ActionButton } from "@/components/analysis/action-button";
-import { connectAction } from "../../../connection-actions";
+import { connectAction } from "@/app/(main)/connect/actions";
 import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ id: string }> };
@@ -33,7 +33,7 @@ async function ConnectionContent({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
-      <Crumbs items={[{ href: "/analysis", label: "분석" }, { href: `/analysis/posting/${id}`, label: `${posting.companyName} · ${posting.title}` }, { label: "연결" }]} />
+      <Crumbs items={[{ href: "/connect", label: "연결" }, { href: `/postings/${id}`, label: `${posting.companyName} · ${posting.title}` }, { label: "매칭" }]} />
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
         <div>
           <p className="flex items-center gap-2 text-caption text-text-secondary">공고 {posting.source === "demo" && <DemoBadge>데모용 예시 공고</DemoBadge>}</p>
@@ -41,7 +41,7 @@ async function ConnectionContent({ params }: Props) {
           {demo && <p className="mt-1 text-caption text-text-secondary">데모에서는 패스가 있을 때의 화면을 보여줘요.</p>}
         </div>
         {connection && premium && (
-          <Link href={`/analysis/posting/${id}/kit`} className={btn.primary}>
+          <Link href={`/connect/${id}/kit`} className={btn.primary}>
             Prompt Kit 만들기 <ArrowRight className="size-4" aria-hidden />
           </Link>
         )}

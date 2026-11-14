@@ -12,7 +12,7 @@ export function MainNav() {
   return (
     <nav aria-label="주 메뉴" className="flex items-center gap-1">
       {MAIN_NAV.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/") || (item.id === "explore" && pathname.startsWith("/company"));
+        const active = item.match.some((m) => pathname === m || pathname.startsWith(m + "/"));
         return (
           <Link
             key={item.id}

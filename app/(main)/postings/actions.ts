@@ -26,7 +26,7 @@ async function gate(feature: QuotaFeature) {
   const db = await createClient();
   const { data: claims } = await db.auth.getClaims();
   const uid = claims?.claims?.sub as string | undefined;
-  if (!uid) redirect(`/auth/login?next=/analysis`); // EX-01
+  if (!uid) redirect(`/auth/login?next=/postings`); // EX-01
   const monthStart = new Date();
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
@@ -62,7 +62,7 @@ export async function analyzePostingAction(_prev: ActionState, form: FormData): 
   // posting_analyses is written with the server key (users have read-only access to AI results)
   const { createAdminClient } = await import("@/lib/supabase/admin");
   await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
-  redirect(`/analysis/posting/${posting.id}`);
+  redirect(`/postings/${posting.id}`);
 }
 
 export async function extractExperiencesAction(_prev: ActionState, form: FormData): Promise<ActionState> {

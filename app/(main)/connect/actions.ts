@@ -5,7 +5,7 @@ import { supabaseEnabled } from "@/lib/data";
 import { aiEnabled, AiUnavailable, connect } from "@/lib/ai/tasks";
 import { PostingAnalysisOutput, Experience } from "@/lib/contracts/activity";
 import { currentPlan } from "@/lib/billing/server";
-import type { ActionState } from "./actions";
+import type { ActionState } from "@/app/(main)/postings/actions";
 
 export async function connectAction(postingId: string, _prev: ActionState): Promise<ActionState> {
   if (!supabaseEnabled() || !aiEnabled()) return { error: "아직 AI와 계정 저장소가 연결되지 않았어요. 데모 공고에서 결과를 볼 수 있어요." };
@@ -42,6 +42,6 @@ export async function connectAction(postingId: string, _prev: ActionState): Prom
   } catch (e) {
     return { error: e instanceof AiUnavailable ? e.message : "연결 결과를 만들지 못했어요. 잠시 뒤 다시 시도해 주세요." }; // EX-03
   }
-  revalidatePath(`/analysis/posting/${postingId}/connection`);
+  revalidatePath(`/connect/${postingId}`);
   return { ok: "연결 결과를 만들었어요." };
 }

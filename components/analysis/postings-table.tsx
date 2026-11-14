@@ -28,7 +28,7 @@ export function PostingsTable({ postings }: { postings: JobPosting[] }) {
         id: "posting",
         header: "공고",
         cell: (c) => (
-          <Link href={`/analysis/posting/${c.row.original.id}`} className="block rounded-inner hover:underline">
+          <Link href={`/postings/${c.row.original.id}`} className="block rounded-inner hover:underline">
             <span className="block text-label-strong">{c.row.original.companyName} · {c.row.original.title}</span>
             <span className="block text-caption text-text-secondary">{c.row.original.source === "demo" ? "데모용 예시 공고" : "내가 올린 공고"}</span>
           </Link>
