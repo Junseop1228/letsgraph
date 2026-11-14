@@ -76,7 +76,7 @@ async function KitContent({ params }: Props) {
         </section>
         <section className="space-y-3 bg-bg-page py-6 lg:pl-6">
           <Kicker right={<TrustLabel p={{ kind: "ai", text: "AI 정리 · 공시 근거 포함" }} />}>키트 미리보기</Kicker>
-          <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-container border border-border bg-bg-sunken p-5 text-label [overflow-wrap:anywhere] print:max-h-none print:border-0 print:bg-transparent">{text}</pre>
+          <pre tabIndex={0} aria-label={"\uD0A4\uD2B8 \uBBF8\uB9AC\uBCF4\uAE30"} className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-container border border-border bg-bg-sunken p-5 text-label [overflow-wrap:anywhere] print:max-h-none print:border-0 print:bg-transparent">{text}</pre>
           <p className="text-caption text-text-secondary print:hidden">이 키트를 쓰는 AI에 붙여넣고, 코칭을 받으며 직접 써 보세요.</p>
         </section>
       </div>

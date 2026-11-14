@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect, react-hooks/use-memo -- this v1.3 port is replaced by the graph-engine switch (decisions 2026-11-14) */
 // 나의 취업 그래프 view (force-directed, Obsidian-like: drag nodes, wheel/pinch zoom, hover lights related nodes).
 // Ported from prototype v1.3 graph.jsx to TypeScript + d3 modules (d3-force, d3-drag, d3-zoom, d3-selection: ISC).
 // Colours come from DESIGN.md tokens via styles/graph.css.

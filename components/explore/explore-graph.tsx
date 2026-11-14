@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect, react-hooks/use-memo -- this v1.3 port is replaced by the graph-engine switch (decisions 2026-11-14) */
 // 탐색 > 나의 취업 그래프 (specs/explore FR-MAP-03). Stars = my liked jobs (max 5, toggled in the header).
 // Panels follow prototype v1.3: job panel (industries), industry panel (companies), company card.
 import Link from "next/link";

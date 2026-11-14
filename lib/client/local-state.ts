@@ -25,6 +25,8 @@ function write(key: string, v: unknown) {
 
 export function useWatched(initial: string[]) {
   const [ids, setIds] = useState<string[]>(initial);
+  // Sync from browser storage after hydration (server HTML uses `initial`, so this cannot be a lazy initial state).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setIds(read(KEY_WATCHED, initial)), [initial]);
   const toggle = useCallback((id: string) => {
     setIds((cur) => {
