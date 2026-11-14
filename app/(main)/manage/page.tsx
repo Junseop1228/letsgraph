@@ -10,6 +10,7 @@ import { DemoBadge, Kicker, btn } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { WatchedList } from "@/components/manage/watched-list";
 import { ExperienceChat } from "@/components/manage/experience-chat";
+import { DeleteAccount } from "@/components/manage/delete-account";
 import { PdfUpload } from "@/components/analysis/pdf-upload";
 import { extractExperiencesAction } from "@/app/(main)/analysis/actions";
 import { cn } from "@/lib/utils";
@@ -154,6 +155,7 @@ async function Usage({ demo }: { demo: boolean }) {
       <p className="text-body text-text-secondary">쿼터는 공고 정리, 경험 카드 만들기, 연결 결과, Prompt Kit처럼 AI를 쓰는 기능에만 써요. 실패한 요청은 세지 않아요.</p>
       <Link href="/billing" className={btn.primary}>패스로 쿼터 늘리기</Link>
       {demo && <p className="text-caption text-text-secondary">데모 수치예요. 로그인하면 내 이용 현황이 보여요.</p>}
+      {!demo && <DeleteAccount />}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { buildGraph, type GNode } from "@/lib/explore/graph";
 import { formatEokShort } from "@/lib/format";
 import { readLikedJobs, useWatched } from "@/lib/client/local-state";
 import { JobGraph } from "@/components/explore/job-graph";
+import { track } from "@/lib/client/analytics";
 import { Kicker, SourceLine, TrustLabel, btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ export function ExploreGraph(p: Props) {
     if (n.type === "center") setSel({ kind: "job", job: n.job });
     else if (n.type === "ind") {
       const key = `${n.job}|${n.ref}`;
+      track("graph_industry_open", { industry: n.ref });
       setExpanded((cur) => (cur === key ? null : key));
       setSel({ kind: "ind", job: n.job, ind: n.ref });
     } else setSel({ kind: "co", job: n.job, co: n.ref });

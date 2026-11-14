@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { MainNav, MainNavFallback } from "@/components/main-nav";
 import { AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
+import { HeaderSearch } from "@/components/search/header-search";
 
 function Logo() {
   return (
@@ -35,6 +36,9 @@ export function AppHeader() {
           <MainNav />
         </Suspense>
         <div className="flex-1" />
+        <Suspense>
+          <HeaderSearch />
+        </Suspense>
         {!hasEnvVars ? (
           <DemoModeNotice />
         ) : (

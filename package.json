@@ -8,7 +8,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "tokens": "node scripts/design-tokens.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "licenses": "node scripts/licenses.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.107",
@@ -46,6 +48,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "1.64.1",
     "@shadcn/lint": "0.2.3",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/d3-drag": "3.0.7",

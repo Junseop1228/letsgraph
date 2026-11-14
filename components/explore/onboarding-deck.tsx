@@ -1,11 +1,12 @@
 "use client";
 // 직무 카드 온보딩 (specs/explore FR-DISC-01). Drag right = 관심 있어요, left = 관심 없어요; buttons and arrow keys do the same.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { Check, X } from "lucide-react";
 import type { JobRole } from "@/lib/contracts/domain";
 import { savePrimaryJob } from "@/lib/client/local-state";
+import { track } from "@/lib/client/analytics";
 import { btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 
@@ -15,17 +16,20 @@ export function OnboardingDeck({ jobs }: Props) {
   const router = useRouter();
   const [i, setI] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
+  const busy = useRef(false);
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-240, 240], [-8, 8]);
   const done = i >= jobs.length;
 
   function decide(like: boolean) {
-    if (done) return;
+    if (done || busy.current) return; // ignore clicks while the card is flying out
+    busy.current = true;
     const job = jobs[i];
     animate(x, like ? 480 : -480, { duration: 0.2, ease: "easeOut" }).then(() => {
       x.set(0);
       setLiked((l) => (like ? [...l, job.id] : l));
       setI((n) => n + 1);
+      busy.current = false;
     });
   }
 
@@ -40,6 +44,7 @@ export function OnboardingDeck({ jobs }: Props) {
 
   function goMap(jobId: string) {
     savePrimaryJob(jobId, liked);
+    track("onboarding_done", { job: jobId, liked: liked.length });
     router.push(`/explore/map?job=${encodeURIComponent(jobId)}`);
   }
 

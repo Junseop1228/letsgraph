@@ -8,6 +8,7 @@ import { formatEok, formatEokShort, share } from "@/lib/format";
 import { Crumbs, EmptyState, Kicker, SourceLine, TrustLabel, btn } from "@/components/lg/ui";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { WatchButton } from "@/components/explore/watch-button";
+import { TermTip } from "@/components/lg/term-tip";
 import { UpdatesList } from "@/components/explore/updates-list";
 
 
@@ -77,7 +78,7 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
                 { label: "영업이익", get: (s: (typeof segments)[number]) => s.operatingIncome, tot: opTotal },
               ].map((m) => (
                 <div key={m.label} className="space-y-2">
-                  <p className="text-caption text-text-secondary">{m.label}</p>
+                  <p className="flex items-center gap-1 text-caption text-text-secondary">{m.label}<TermTip term={m.label} /></p>
                   {segments.map((s, k) => {
                     const v = m.get(s) ?? 0;
                     return (

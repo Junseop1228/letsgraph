@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import { AnalyticsInit } from "@/lib/client/analytics";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -36,6 +37,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <AnalyticsInit />
           {children}
           <Toaster position="bottom-center" toastOptions={{ style: { background: "var(--color-bg-inverted)", color: "var(--color-text-inverted)", border: 0, borderRadius: "var(--radius-element)" } }} />
         </ThemeProvider>

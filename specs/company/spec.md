@@ -1,6 +1,6 @@
 # 기업 (company)
 
-근거: SRS v1.0 FR-CORP-01~04, NFR-PROD-06, NFR-DOM-01, NFR-EXT-01 · 2026-11-13 팀원 화면 구성 (기업 상세, 사업부 상세) · 계약: `lib/contracts/domain.ts` · 화면: `app/(main)/company/`
+근거: SRS v1.0 FR-CORP-01~04, NFR-PROD-06, NFR-DOM-01, NFR-EXT-01 · 2026-11-13 팀원 화면 구성 (기업 상세, 사업부 상세) · 계약: `lib/contracts/domain.ts` · 화면: `app/(main)/company/`, 검색 `components/search/`, 용어 팁 `components/lg/term-tip.tsx` + `lib/terms.ts`
 
 ## Requirements
 
@@ -38,9 +38,23 @@
 ### Requirement: FR-CORP-03 용어 팁
 시스템은 낯선 재무 용어 옆에서 쉬운 설명(`TermTip`)을 바로 보여줘야 한다(SHALL).
 
-> 아직 구현 전.
+#### Scenario: 용어 팁 열고 닫기
+- **WHEN** 사용자가 기업 상세의 "영업이익" 옆 물음표를 누르면
+- **THEN** 한 줄 설명이 뜨고, Esc를 누르거나 바깥을 누르면 닫힌다
+
+> 지금 설명이 있는 용어: 매출, 영업이익, 연결, 별도, 잠정실적, 사업부문, 전년 대비 (`lib/terms.ts`). 화면에는 기업 상세의 매출·영업이익에 붙어 있다.
 
 ### Requirement: FR-CORP-04 기업 검색
-시스템은 기업 이름으로 기업을 찾아 기업 상세로 이동하게 해야 한다(SHALL).
+시스템은 기업 이름이나 직무 이름으로 찾아 기업 상세나 그래프로 이동하게 해야 한다(SHALL).
 
-> 저장소의 `searchCompanies`까지 구현. 검색창 화면은 아직 전.
+#### Scenario: 기업 검색으로 기업 상세 열기
+- **WHEN** 사용자가 Ctrl/⌘+K나 위쪽 검색 버튼을 누르고 "CJ제일"을 입력한 뒤 Enter를 누르면
+- **THEN** CJ제일제당 기업 상세로 이동한다
+
+#### Scenario: 직무 검색으로 그래프 열기
+- **WHEN** 사용자가 검색에서 직무 이름을 고르면
+- **THEN** 그 직무 기준의 그래프가 열린다
+
+#### Scenario: 결과 없음
+- **WHEN** 맞는 직무나 기업이 없으면
+- **THEN** "찾는 직무나 기업이 없어요."를 보여준다
