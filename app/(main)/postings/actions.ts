@@ -2,10 +2,10 @@
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
-import { aiEnabled, AiUnavailable, analyzePosting, extractExperiences, type PostingSource } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable, analyzePosting, extractExperiences, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
 import { canSpend, planFromPasses } from "@/lib/billing/state";
 import type { QuotaFeature } from "@/lib/contracts/billing";
-import { PostingUrlInput } from "@/lib/contracts/activity";
+import { PostingTextInput, PostingUrlInput } from "@/lib/contracts/activity";
 import { checkPostingUrl } from "@/lib/posting/url";
 import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
@@ -14,6 +14,12 @@ export type ActionState = { error?: string; ok?: string } | undefined;
 type Db = Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>;
 
 const MAX_BYTES = 10 * 1024 * 1024;
+
+/** Server log line for a failed AI call: error type and message only, no user content or keys. */
+function logAiFailure(task: string, e: unknown) {
+  const err = e as { name?: string; message?: string; statusCode?: number };
+  console.error(`[ai:${task}] ${err?.name ?? "Error"}${err?.statusCode ? ` ${err.statusCode}` : ""}: ${String(err?.message ?? e).slice(0, 300)}`);
+}
 
 async function readPdf(form: FormData): Promise<Uint8Array | string> {
   const f = form.get("file");
@@ -44,12 +50,21 @@ async function gate(feature: QuotaFeature) {
   return { db, uid, feature };
 }
 
+/** What to tell the user when the input had no posting body (nothing is stored or charged). */
+function notFoundMessage(src: PostingSource, fromUrl: boolean): string {
+  if (fromUrl) return "이 페이지에서 공고 본문을 찾지 못했어요. 공고를 자바스크립트로 불러오는 사이트일 수 있어요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.";
+  if (src.kind === "text") return "붙여넣은 내용에서 공고 본문을 찾지 못했어요. 맡을 업무와 자격 요건이 들어간 부분까지 붙여넣어 주세요.";
+  return "올린 파일에서 공고 본문을 찾지 못했어요. 채용공고 내용이 담긴 파일인지 확인해 주세요.";
+}
+
 /** Runs the AI on one posting, stores posting + analysis, charges quota only on success (EX-03), then opens the result. */
 async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl?: string): Promise<ActionState> {
   let out;
   try {
     out = await analyzePosting(src);
   } catch (e) {
+    if (e instanceof PostingNotFound) return { error: notFoundMessage(src, !!sourceUrl) };
+    logAiFailure("posting_analysis", e);
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const { data: posting, error } = await db
@@ -68,7 +83,7 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
   await db.from("quota_usage").insert({ user_id: uid, feature: "posting_analysis" });
   // posting_analyses is written with the server key (users have read-only access to AI results)
   const { createAdminClient } = await import("@/lib/supabase/admin");
-  await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+  await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: AI_MODEL });
   redirect(`/postings/${posting.id}`);
 }
 
@@ -98,6 +113,15 @@ export async function analyzePostingUrlAction(_prev: ActionState, form: FormData
   return analyzeAndSave(g.db, g.uid, src, src.url);
 }
 
+/** POST-04: 공고 내용 붙여넣기, for pages that load the posting with JavaScript or need a login. Stored as source "upload". */
+export async function analyzePostingTextAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const input = PostingTextInput.safeParse(form.get("text"));
+  if (!input.success) return { error: input.error.issues[0]?.message ?? "공고 내용을 붙여넣어 주세요." };
+  const g = await gate("posting_analysis");
+  if ("error" in g) return { error: g.error };
+  return analyzeAndSave(g.db, g.uid, { kind: "text", text: input.data });
+}
+
 export async function extractExperiencesAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const pdf = await readPdf(form);
   if (typeof pdf === "string") return { error: pdf };
@@ -108,6 +132,7 @@ export async function extractExperiencesAction(_prev: ActionState, form: FormDat
   try {
     out = await extractExperiences(pdf);
   } catch (e) {
+    logAiFailure("experience_extraction", e);
     return { error: e instanceof AiUnavailable ? e.message : "경험을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const label = (form.get("file") as File).name;

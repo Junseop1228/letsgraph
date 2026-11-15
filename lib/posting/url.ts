@@ -10,6 +10,15 @@ export type UrlCheck = { ok: true; url: URL } | { ok: false; error: string };
 const NOT_PUBLIC = "공개된 웹 페이지 주소만 넣을 수 있어요.";
 const BLOCKED_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".corp", ".intranet"];
 
+/** "7479:1f6f" or "116.121.31.111" (the tail of a 64:ff9b:: address) -> "116.121.31.111"; anything else -> null. */
+function nat64ToIpv4(tail: string): string | null {
+  if (isIP(tail) === 4) return tail;
+  const groups = tail.split(":");
+  if (groups.length > 2 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+  const [hi, lo] = groups.length === 2 ? groups.map((g) => parseInt(g, 16)) : [0, parseInt(groups[0], 16)];
+  return [hi >> 8, hi & 255, lo >> 8, lo & 255].join(".");
+}
+
 /** Is this IP address private, loopback, link-local or otherwise not on the public internet? */
 export function isPrivateIp(ip: string): boolean {
   const v = isIP(ip);
@@ -30,6 +39,12 @@ export function isPrivateIp(ip: string): boolean {
     const mapped = x.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
     if (mapped) return isPrivateIp(mapped[1]);
     if (x.startsWith("::ffff:")) return true; // hex-form IPv4-mapped: refuse rather than decode
+    // NAT64 (64:ff9b::/96): IPv6-only networks such as phone hotspots return every IPv4 site in this form.
+    // Judge the IPv4 address embedded in it instead of refusing the whole prefix.
+    if (x.startsWith("64:ff9b::")) {
+      const v4 = nat64ToIpv4(x.slice("64:ff9b::".length));
+      return v4 ? isPrivateIp(v4) : true;
+    }
     return /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || x.startsWith("ff") || x.startsWith("64:ff9b");
   }
   return true; // not an IP literal: callers resolve the name first

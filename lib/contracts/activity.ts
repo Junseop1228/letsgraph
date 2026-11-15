@@ -23,7 +23,7 @@ export const JobPosting = z.object({
   deadline: z.string().nullable(), // ISO date, null = 상시/채용 시 마감
   deadlineNote: z.string().optional(),
   status: PostingStatus,
-  source: z.enum(["upload", "url", "demo"]), // url = 사용자가 넣은 공고 주소에서 가져옴 (specs/posting POST-03)
+  source: z.enum(["upload", "url", "demo"]), // upload = 사용자가 올린 PDF·붙여넣은 내용, url = 사용자가 넣은 공고 주소에서 가져옴 (specs/posting POST-03)
   sourceUrl: z.string().optional(),
 });
 export type JobPosting = z.infer<typeof JobPosting>;
@@ -53,6 +53,25 @@ export const PostingAnalysisOutput = z.object({
 });
 export type PostingAnalysisOutput = z.infer<typeof PostingAnalysisOutput>;
 export type Competency = z.infer<typeof Competency>;
+
+/**
+ * What the AI returns for 공고 정리: the analysis plus whether the input really contained a posting body.
+ * Pages that load the posting with JavaScript give only menus and site-wide notices (specs/posting FR-POST-01 본문 없음).
+ * Lists may be empty here; lib/posting/analysis.ts turns this into a PostingAnalysisOutput or "no posting".
+ */
+export const PostingAnalysisAiOutput = PostingAnalysisOutput.extend({
+  postingFound: z.boolean(),
+  duties: z.array(z.string()).max(8),
+  competencies: z.array(Competency).max(8),
+});
+export type PostingAnalysisAiOutput = z.infer<typeof PostingAnalysisAiOutput>;
+
+/** 공고 내용 붙여넣기 (specs/posting POST-04) */
+export const PostingTextInput = z
+  .string({ error: "공고 내용을 붙여넣어 주세요." })
+  .trim()
+  .min(100, "공고 내용이 너무 짧아요. 업무와 자격 요건이 들어간 부분까지 붙여넣어 주세요.")
+  .max(20_000, "2만 자까지 붙여넣을 수 있어요. 공고 본문만 남겨 주세요.");
 
 /** 경험 Experience (경험 카드) — AI output when extracted from an upload */
 export const ExperienceKind = z.enum(["contest", "club", "parttime", "course", "intern", "project", "other"]);
