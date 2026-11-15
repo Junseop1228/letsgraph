@@ -23,9 +23,17 @@ export const JobPosting = z.object({
   deadline: z.string().nullable(), // ISO date, null = 상시/채용 시 마감
   deadlineNote: z.string().optional(),
   status: PostingStatus,
-  source: z.enum(["upload", "demo"]),
+  source: z.enum(["upload", "url", "demo"]), // url = 사용자가 넣은 공고 주소에서 가져옴 (specs/posting POST-03)
+  sourceUrl: z.string().optional(),
 });
 export type JobPosting = z.infer<typeof JobPosting>;
+
+/** 공고 주소 입력 (specs/posting POST-03). Safety checks (public http/https only) run in lib/posting/url.ts. */
+export const PostingUrlInput = z
+  .string({ error: "공고 주소를 넣어 주세요." })
+  .trim()
+  .min(1, "공고 주소를 넣어 주세요.")
+  .max(2048, "주소가 너무 길어요.");
 
 /** 공고 정리 PostingAnalysis — AI output */
 export const Competency = z.object({

@@ -6,9 +6,10 @@ import { userData } from "@/lib/data";
 import { DemoBadge, Kicker } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { PdfUpload } from "@/components/analysis/pdf-upload";
+import { PostingUrlForm } from "@/components/analysis/posting-url-form";
 import { PostingsTable } from "@/components/analysis/postings-table";
 import { DeadlineCalendar } from "@/components/postings/deadline-calendar";
-import { analyzePostingAction } from "./actions";
+import { analyzePostingAction, analyzePostingUrlAction } from "./actions";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "공고 · LetsGraph" };
@@ -27,14 +28,18 @@ async function PostingsContent({ searchParams }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-heading-1">공고</h1>
-          <p className="mt-1 text-body-lg text-text-secondary">공고를 올리면 정리해 드리고, 마감일 순서로 모아 보여드려요.</p>
+          <p className="mt-1 text-body-lg text-text-secondary">공고 주소나 PDF를 넣으면 정리해 드리고, 마감일 순서로 모아 보여드려요.</p>
         </div>
         {demo && <DemoBadge />}
       </div>
 
-      <section className="mt-6 space-y-3 rounded-container bg-bg-sunken p-5">
+      <section className="mt-6 space-y-4 rounded-container bg-bg-sunken p-5">
         <Kicker>공고 추가</Kicker>
-        <PdfUpload action={analyzePostingAction} label="채용공고 PDF" hint="공고 페이지를 PDF로 저장해서 올려요. 10MB까지." submit="공고 정리하기" />
+        <PostingUrlForm action={analyzePostingUrlAction} />
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-label text-text-secondary">주소로 안 읽히는 공고는 PDF로 올려요</p>
+          <PdfUpload action={analyzePostingAction} label="채용공고 PDF" hint="공고 페이지를 PDF로 저장해서 올려요. 10MB까지." submit="공고 정리하기" />
+        </div>
       </section>
 
       <div className="mt-6 flex items-center justify-between border-b border-border pb-2">

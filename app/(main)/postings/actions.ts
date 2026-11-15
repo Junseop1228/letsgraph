@@ -2,11 +2,16 @@
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
-import { aiEnabled, AiUnavailable, analyzePosting, extractExperiences } from "@/lib/ai/tasks";
+import { aiEnabled, AiUnavailable, analyzePosting, extractExperiences, type PostingSource } from "@/lib/ai/tasks";
 import { canSpend, planFromPasses } from "@/lib/billing/state";
 import type { QuotaFeature } from "@/lib/contracts/billing";
+import { PostingUrlInput } from "@/lib/contracts/activity";
+import { checkPostingUrl } from "@/lib/posting/url";
+import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
 export type ActionState = { error?: string; ok?: string } | undefined;
+
+type Db = Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>;
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -39,22 +44,24 @@ async function gate(feature: QuotaFeature) {
   return { db, uid, feature };
 }
 
-export async function analyzePostingAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  const pdf = await readPdf(form);
-  if (typeof pdf === "string") return { error: pdf };
-  const g = await gate("posting_analysis");
-  if ("error" in g) return { error: g.error };
-  const { db, uid } = g;
+/** Runs the AI on one posting, stores posting + analysis, charges quota only on success (EX-03), then opens the result. */
+async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl?: string): Promise<ActionState> {
   let out;
   try {
-    out = await analyzePosting(pdf);
+    out = await analyzePosting(src);
   } catch (e) {
-    // EX-03: failure is shown, quota is not charged
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const { data: posting, error } = await db
     .from("job_postings")
-    .insert({ user_id: uid, company_name: out.companyName, title: out.title, deadline: out.deadline, source: "upload" })
+    .insert({
+      user_id: uid,
+      company_name: out.companyName,
+      title: out.title,
+      deadline: out.deadline,
+      source: sourceUrl ? "url" : "upload",
+      ...(sourceUrl ? { source_url: sourceUrl } : {}),
+    })
     .select("id")
     .single();
   if (error || !posting) return { error: "공고를 저장하지 못했어요." };
@@ -63,6 +70,32 @@ export async function analyzePostingAction(_prev: ActionState, form: FormData): 
   const { createAdminClient } = await import("@/lib/supabase/admin");
   await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
   redirect(`/postings/${posting.id}`);
+}
+
+/** FR-POST-01: 공고 PDF 올리기 */
+export async function analyzePostingAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const pdf = await readPdf(form);
+  if (typeof pdf === "string") return { error: pdf };
+  const g = await gate("posting_analysis");
+  if ("error" in g) return { error: g.error };
+  return analyzeAndSave(g.db, g.uid, { kind: "pdf", data: pdf });
+}
+
+/** POST-03: 공고 주소로 정리하기. Fetches only the submitted page; a failed fetch is not charged. */
+export async function analyzePostingUrlAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const input = PostingUrlInput.safeParse(form.get("url"));
+  if (!input.success) return { error: input.error.issues[0]?.message ?? "공고 주소를 넣어 주세요." };
+  const checked = checkPostingUrl(input.data);
+  if (!checked.ok) return { error: checked.error };
+  const g = await gate("posting_analysis");
+  if ("error" in g) return { error: g.error };
+  let src: FetchedPosting;
+  try {
+    src = await fetchPostingFromUrl(checked.url.toString());
+  } catch (e) {
+    return { error: e instanceof PostingFetchError ? e.message : "페이지를 가져오지 못했어요. PDF로 올려 주세요." };
+  }
+  return analyzeAndSave(g.db, g.uid, src, src.url);
 }
 
 export async function extractExperiencesAction(_prev: ActionState, form: FormData): Promise<ActionState> {
