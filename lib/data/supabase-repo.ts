@@ -151,6 +151,7 @@ export const supabaseUser: UserRepo = {
         deadlineNote: p.deadline_note ?? undefined,
         status: p.status,
         source: p.source,
+        sourceUrl: p.source_url ?? undefined,
       }),
     );
   },
