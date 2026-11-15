@@ -27,7 +27,11 @@ import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type ForceX,
 import { BubbleSets, rect } from "bubblesets-js";
 import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
+import { BriefcaseBusiness, Car, Cpu, Factory, FlaskConical, SprayCan, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Industry pictograms (decisions 2026-11-15 23:3x: icon nodes; the name stays under the circle, icons never alone).
+const INDUSTRY_ICON: Record<string, LucideIcon> = { food: UtensilsCrossed, "bio-pharma": FlaskConical, cosmetics: SprayCan, auto: Car, semi: Cpu, logistics: Truck };
 
 // ---- types -------------------------------------------------------------------------------------
 type VData = { g: GNode; aria: string };
@@ -107,6 +111,10 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       onBlur={() => ctx.hover(null)}
     >
       <span className={cn("gv-label", g.type === "center" ? "text-body font-bold" : g.type === "ind" ? "text-label-strong" : cn("text-caption", g.saved ? "font-semibold" : "font-medium"))}>{g.label}</span>
+      {g.type !== "co" && (() => {
+        const Icon = g.type === "center" ? BriefcaseBusiness : (INDUSTRY_ICON[g.ref] ?? Factory);
+        return <Icon aria-hidden className="gv-icon" strokeWidth={1.75} style={{ width: d * 0.5, height: d * 0.5 }} />;
+      })()}
       {shared && <span className="gv-badge figures" aria-hidden>{g.shared}</span>}
       {/* React Flow only draws edges between nodes that have handles; ours are invisible (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
