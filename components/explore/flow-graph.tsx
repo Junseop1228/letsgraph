@@ -18,6 +18,7 @@ import {
   type Edge,
   type EdgeProps,
   type EdgeTypes,
+  type FitViewOptions,
   type Node,
   type NodeChange,
   type NodeProps,
@@ -27,11 +28,9 @@ import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type ForceX,
 import { BubbleSets, rect } from "bubblesets-js";
 import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
-import { BriefcaseBusiness, Car, Cpu, Factory, FlaskConical, SprayCan, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { BriefcaseBusiness } from "lucide-react";
+import { IndustryIcon } from "@/components/explore/industry-icon";
 import { cn } from "@/lib/utils";
-
-// Industry pictograms (decisions 2026-11-15 23:3x: icon nodes; the name stays under the circle, icons never alone).
-const INDUSTRY_ICON: Record<string, LucideIcon> = { food: UtensilsCrossed, "bio-pharma": FlaskConical, cosmetics: SprayCan, auto: Car, semi: Cpu, logistics: Truck };
 
 // ---- types -------------------------------------------------------------------------------------
 type VData = { g: GNode; aria: string };
@@ -52,6 +51,8 @@ type Props = {
   onBackground: () => void;
   companyIndustry: Record<string, string>;
   label: (n: GNode) => string; // accessible description
+  fitPadding?: NonNullable<FitViewOptions["padding"]>; // keep the graph clear of floating panels (e.g. the detail card)
+  controlsClassName?: string; // where the zoom controls float
 };
 
 // Vertex radius = graph.ts r x 1.2 (job 26, industry ~13-20 by linked companies, company ~7-17 by revenue).
@@ -111,10 +112,8 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       onBlur={() => ctx.hover(null)}
     >
       <span className={cn("gv-label", g.type === "center" ? "text-body font-bold" : g.type === "ind" ? "text-label-strong" : cn("text-caption", g.saved ? "font-semibold" : "font-medium"))}>{g.label}</span>
-      {g.type !== "co" && (() => {
-        const Icon = g.type === "center" ? BriefcaseBusiness : (INDUSTRY_ICON[g.ref] ?? Factory);
-        return <Icon aria-hidden className="gv-icon" strokeWidth={1.75} style={{ width: d * 0.5, height: d * 0.5 }} />;
-      })()}
+      {g.type === "center" && <BriefcaseBusiness aria-hidden className="gv-icon" strokeWidth={1.75} style={{ width: d * 0.5, height: d * 0.5 }} />}
+      {g.type === "ind" && <IndustryIcon id={g.ref} className="gv-icon" style={{ width: d * 0.5, height: d * 0.5 }} />}
       {shared && <span className="gv-badge figures" aria-hidden>{g.shared}</span>}
       {/* React Flow only draws edges between nodes that have handles; ours are invisible (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
@@ -138,7 +137,7 @@ const nodeTypes = { vertex: Vertex } satisfies NodeTypes;
 const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
-function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label }: Props) {
+function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, controlsClassName }: Props) {
   const rf = useReactFlow<VNode, GEdge>();
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const byIdRef = useRef(new Map<string, SimNode>());
@@ -154,6 +153,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
   const forceYRef = useRef<ForceY<SimNode> | null>(null);
   const cbRef = useRef({ onSelect, onBackground, label, companyIndustry });
   cbRef.current = { onSelect, onBackground, label, companyIndustry };
+  const padRef = useRef(fitPadding ?? 0.16);
+  padRef.current = fitPadding ?? 0.16;
 
   const [nodes, setNodes] = useState<VNode[]>([]);
   const [frame, setFrame] = useState(0);
@@ -276,7 +277,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     if (key !== fitKeyRef.current) {
       const first = fitKeyRef.current === "";
       fitKeyRef.current = key;
-      const t = setTimeout(() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
+      const t = setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
       return () => clearTimeout(t);
     }
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -302,7 +303,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     reanchor();
     simRef.current?.alpha(0.5).restart();
     setMoved(false);
-    setTimeout(() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 }), reduced ? 60 : 700);
+    setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 }), reduced ? 60 : 700);
   };
 
   const ctx = useMemo<Ctx>(
@@ -393,16 +394,16 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         minZoom={0.3}
         maxZoom={2.5}
         fitView
-        fitViewOptions={{ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
+        fitViewOptions={{ padding: fitPadding ?? 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
         attributionPosition="bottom-left"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
       </ReactFlow>
-      <div className="absolute bottom-3 right-3 z-10 flex gap-1" role="group" aria-label="확대와 축소">
-        {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">배치 되돌리기</button>}
-        <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">+</button>
-        <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">−</button>
-        <button type="button" onClick={() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">전체 보기</button>
+      <div className={cn("lg-glass absolute z-10 flex items-center gap-0.5 rounded-full p-1", controlsClassName ?? "bottom-3 right-3")} role="group" aria-label="확대와 축소">
+        {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">배치 되돌리기</button>}
+        <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-full text-label hover:bg-overlay-hover">+</button>
+        <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-full text-label hover:bg-overlay-hover">−</button>
+        <button type="button" onClick={() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">전체 보기</button>
       </div>
     </GraphCtx.Provider>
   );

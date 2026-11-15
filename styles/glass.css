@@ -1,0 +1,68 @@
+/* Liquid-glass material for floating layers over the 탐색 graph (decisions 2026-11-15: "토스랑 애플 UX ... 리퀴드 글라스").
+   Apple HIG Materials: glass = a functional layer floating above content, "regular" (frosted) variant, no stacked glass,
+   fall back when people reduce transparency or increase contrast. DESIGN.md: built only from existing tokens (color-mix),
+   floating layers may carry a shadow, one edge language per surface (inner highlight + soft shadow, no hairline border). */
+/* In the components layer so Tailwind utilities (absolute, inset, rounded...) on the same element win. */
+@layer components {
+.lg-glass {
+  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 62%, transparent);
+  --glass-hi: color-mix(in srgb, var(--color-bg-surface) 92%, transparent);
+  --glass-rim: color-mix(in srgb, var(--color-bg-surface) 55%, transparent);
+  --glass-shade: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(22px) saturate(1.7);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    inset 0 0 0 1px var(--glass-rim),
+    0 12px 32px -10px var(--glass-shade),
+    0 2px 8px -2px var(--glass-shade);
+}
+/* specular rim: light catches the top-left edge and fades out, like the edge of a lens */
+.lg-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, var(--glass-hi), transparent 38%, transparent 70%, var(--glass-rim));
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.dark .lg-glass {
+  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 58%, transparent);
+  --glass-hi: color-mix(in srgb, var(--color-text-primary) 20%, transparent);
+  --glass-rim: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  --glass-shade: color-mix(in srgb, var(--color-text-inverted) 70%, transparent);
+}
+
+/* raised segment inside a glass bar (selected job / view), like an iOS segmented control */
+.lg-seg-on {
+  background: var(--color-bg-surface);
+  box-shadow: 0 1px 3px var(--glass-shade, transparent), 0 0 0 0.5px var(--glass-rim, transparent);
+}
+
+/* card content entering: short and only when the selection changes (motion = feedback) */
+.lg-card-in { animation: lg-card-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* fallbacks: solid surfaces when glass would cost legibility */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-glass { background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more), (forced-colors: active) {
+  .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--color-border-strong); }
+  .lg-glass::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-card-in { animation: none; }
+}
+}
+@keyframes lg-card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

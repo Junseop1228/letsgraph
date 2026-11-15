@@ -3,6 +3,7 @@
 @import "../styles/tokens.css";
 @import "../styles/graph.css";
 @import "../styles/flow-graph.css";
+@import "../styles/glass.css";
 
 @custom-variant dark (&:is(.dark *));
 
