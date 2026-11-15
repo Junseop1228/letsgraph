@@ -23,7 +23,7 @@ import {
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
-import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationNodeDatum } from "d3-force";
+import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type ForceX, type ForceY, type Simulation, type SimulationNodeDatum } from "d3-force";
 import { BubbleSets, rect } from "bubblesets-js";
 import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
@@ -38,7 +38,7 @@ type LineEdge = Edge<LineData, "line">;
 type BridgeEdge = Edge<PathData, "bridge">;
 type PlaneEdge = Edge<PathData, "plane">;
 type GEdge = LineEdge | BridgeEdge | PlaneEdge;
-type SimNode = GNode & SimulationNodeDatum;
+type SimNode = GNode & SimulationNodeDatum & { bx?: number; by?: number }; // bx/by = layout anchor before user moves
 type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"] };
 
 type Props = {
@@ -140,15 +140,42 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
   const planeRef = useRef<string | null>(null);
   const draggedRef = useRef(false);
   const fitKeyRef = useRef("");
+  const simNodesRef = useRef<SimNode[]>([]);
+  const offsetRef = useRef(new Map<string, { x: number; y: number }>()); // user moves per vertex (option 가)
+  const forceXRef = useRef<ForceX<SimNode> | null>(null);
+  const forceYRef = useRef<ForceY<SimNode> | null>(null);
   const cbRef = useRef({ onSelect, onBackground, label, companyIndustry });
   cbRef.current = { onSelect, onBackground, label, companyIndustry };
 
   const [nodes, setNodes] = useState<VNode[]>([]);
   const [frame, setFrame] = useState(0);
   const [lit, setLit] = useState<Set<string> | null>(null);
+  const [moved, setMoved] = useState(false);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const topLeft = (s: SimNode) => ({ x: (s.x ?? 0) - radius(s), y: (s.y ?? 0) - radius(s) });
+
+  // A vertex's home = layout anchor + its own move + the moves of what it hangs on (its job star, its industry).
+  const offsetOf = (n: GNode) => {
+    const om = offsetRef.current;
+    const ci = cbRef.current.companyIndustry;
+    const keys = n.type === "center" ? [n.id] : n.type === "ind" ? [`job:${n.job}`, n.id] : [`job:${n.job}`, `ind:${n.job}:${ci[n.ref]}`, n.id];
+    let x = 0, y = 0;
+    for (const key of keys) {
+      const v = om.get(key);
+      if (v) { x += v.x; y += v.y; }
+    }
+    return { x, y };
+  };
+  const reanchor = () => {
+    for (const s of simNodesRef.current) {
+      const o = offsetOf(s);
+      s.tx = (s.bx ?? s.tx) + o.x;
+      s.ty = (s.by ?? s.ty) + o.y;
+    }
+    forceXRef.current?.x((d) => d.tx); // d3 forceX/forceY cache targets: re-setting the accessor re-reads them
+    forceYRef.current?.y((d) => d.ty);
+  };
 
   // (re)build the simulation whenever the graph data changes (stars toggled, industry opened, company saved)
   useEffect(() => {
@@ -156,18 +183,21 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     const sn: SimNode[] = data.nodes.map((n) => {
       const c = centre.get(n.job);
       const k = SCALE[n.type];
-      const tx = c ? c.tx + (n.tx - c.tx) * k : n.tx;
-      const ty = c ? c.ty + (n.ty - c.ty) * k : n.ty;
+      const bx = c ? c.tx + (n.tx - c.tx) * k : n.tx;
+      const by = c ? c.ty + (n.ty - c.ty) * k : n.ty;
+      const o = offsetOf(n);
+      const tx = bx + o.x, ty = by + o.y;
       const old = posRef.current.get(n.id);
-      if (old) return { ...n, tx, ty, ...old };
+      if (old) return { ...n, tx, ty, bx, by, ...old };
       if (n.type === "co") {
         const parent = posRef.current.get(`ind:${n.job}:${cbRef.current.companyIndustry[n.ref]}`);
-        return { ...n, tx, ty, x: parent?.x ?? tx, y: parent?.y ?? ty };
+        return { ...n, tx, ty, bx, by, x: parent?.x ?? tx, y: parent?.y ?? ty };
       }
-      return { ...n, tx, ty, x: tx, y: ty };
+      return { ...n, tx, ty, bx, by, x: tx, y: ty };
     });
     const byId = new Map(sn.map((n) => [n.id, n]));
     byIdRef.current = byId;
+    simNodesRef.current = sn;
     const links: SimLink[] = data.links.flatMap((l) => {
       const s = byId.get(l.source), t = byId.get(l.target);
       return s && t ? [{ source: s, target: t, kind: l.kind }] : [];
@@ -204,8 +234,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       .force("link", forceLink<SimNode, SimLink>(links).distance((l) => DIST[l.kind]).strength((l) => STR[l.kind]))
       .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -80)).distanceMax(220))
       .force("collide", forceRectCollide<SimNode>(footprint, 6, 0.6))
-      .force("x", forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28)))
-      .force("y", forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28)));
+      .force("x", (forceXRef.current = forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))))
+      .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))));
     sim.alphaDecay(reduced ? 0.12 : 0.03);
     sim.on("tick", () => {
       for (const n of sn) posRef.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, vx: n.vx ?? 0, vy: n.vy ?? 0 });
@@ -247,12 +277,24 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
   const onNodesChange = useCallback((changes: NodeChange<VNode>[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
 
-  // while dragging, the dragged vertex is pinned where the pointer is (fx/fy) and the rest of the star reacts
+  // Option 가 (decisions 2026-11-15 23:1x): the dragged vertex is pinned under the pointer and its home moves with it,
+  // so it stays where it is dropped; a dragged job carries its whole star, a dragged industry its companies.
   const pin = (n: VNode) => {
     const s = byIdRef.current.get(n.id);
     if (!s) return;
-    s.fx = n.position.x + radius(s);
-    s.fy = n.position.y + radius(s);
+    const px = n.position.x + radius(s), py = n.position.y + radius(s);
+    const cur = offsetRef.current.get(s.id) ?? { x: 0, y: 0 };
+    offsetRef.current.set(s.id, { x: cur.x + px - s.tx, y: cur.y + py - s.ty });
+    reanchor();
+    s.fx = px;
+    s.fy = py;
+  };
+  const resetLayout = () => {
+    offsetRef.current.clear();
+    reanchor();
+    simRef.current?.alpha(0.5).restart();
+    setMoved(false);
+    setTimeout(() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 }), reduced ? 60 : 700);
   };
 
   const ctx = useMemo<Ctx>(
@@ -330,6 +372,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
           simRef.current?.alphaTarget(0);
           const s = byIdRef.current.get(n.id);
           if (s) { s.fx = null; s.fy = null; }
+          setMoved(true);
           setTimeout(() => { draggedRef.current = false; }, 0);
         }}
         onPaneClick={() => cbRef.current.onBackground()}
@@ -348,6 +391,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
       </ReactFlow>
       <div className="absolute bottom-3 right-3 z-10 flex gap-1" role="group" aria-label="확대와 축소">
+        {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">배치 되돌리기</button>}
         <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">+</button>
         <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">−</button>
         <button type="button" onClick={() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">전체 보기</button>
