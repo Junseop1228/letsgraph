@@ -1,10 +1,11 @@
 "use client";
 /* eslint-disable react-hooks/refs -- the d3-force simulation lives outside React and pushes positions into React Flow state on each tick (engine spike, decisions 2026-11-15 20:56) */
-// 나의 취업 그래프 on React Flow (spike, decisions D 2026-11-15 20:56; research-graph-engine.md option 가).
-// Rendering + pan/zoom/drag = @xyflow/react (MIT). Layout = our d3-force simulation (ISC) with the same
-// star targets as lib/explore/graph.ts, plus a rectangle collision force for pill nodes.
-// Group plane behind an opened industry = bubblesets-js (MIT). Colours only from DESIGN.md tokens (styles/flow-graph.css).
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+// 나의 취업 그래프 on React Flow (spike, decisions D 2026-11-15 20:56 / 22:5x; research-graph-engine.md option 가).
+// Rendering + pan/zoom/drag = @xyflow/react (MIT). Layout = our d3-force simulation (ISC) with the star targets of
+// lib/explore/graph.ts. Vertices are circles sized by data (job fixed, industry by linked companies, company by revenue:
+// GNode.r from graph.ts), labels sit under the circle. Group plane behind an opened industry = bubblesets-js (MIT).
+// Colours only from DESIGN.md tokens (styles/flow-graph.css).
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import {
   Handle,
   Position,
@@ -26,14 +27,11 @@ import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulat
 import { BubbleSets, rect } from "bubblesets-js";
 import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
-import { formatEokShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // ---- types -------------------------------------------------------------------------------------
-// tier = company size step by revenue (DESIGN JobMap: companies sized by revenue); 0 for job/industry nodes
-type Tier = 0 | 1 | 2 | 3 | 4;
-type PillData = { g: GNode; aria: string; rev: string | null; tier: Tier };
-type PillNode = Node<PillData, "pill">;
+type VData = { g: GNode; aria: string };
+type VNode = Node<VData, "vertex">;
 type LineData = { kind: GLink["kind"]; width: number; x1: number; y1: number; x2: number; y2: number };
 type PathData = { d: string };
 type LineEdge = Edge<LineData, "line">;
@@ -49,35 +47,27 @@ type Props = {
   onSelect: (n: GNode) => void;
   onBackground: () => void;
   companyIndustry: Record<string, string>;
-  label: (n: GNode) => string; // accessible name
-  revenueOf?: (companyId: string) => number | null | undefined;
-  maxRevenue?: number; // largest revenue in the catalogue, so a company keeps its size whichever stars are on
+  label: (n: GNode) => string; // accessible description
 };
 
-/** 4 size steps by sqrt(revenue / max): area-like scaling, readable steps instead of a continuous font size. */
-export function tierOf(revenue: number | null | undefined, max: number): Exclude<Tier, 0> {
-  if (revenue == null || max <= 0) return 1;
-  const t = Math.sqrt(Math.max(revenue, 0) / max);
-  return t >= 0.7 ? 4 : t >= 0.4 ? 3 : t >= 0.2 ? 2 : 1;
-}
-const CO_FONT = { 1: 13, 2: 14, 3: 14, 4: 16 } as const;
-const CO_H = { 1: 26, 2: 29, 3: 33, 4: 38 } as const;
-const CO_PAD = { 1: 8, 2: 10, 3: 12, 4: 14 } as const;
-const CO_NAME = { 1: "text-caption font-medium", 2: "text-label", 3: "text-label-strong", 4: "text-body font-semibold" } as const;
-
-// Pills sit further out than the v1.3 dots so names fit (targets scaled around each star centre).
-const SCALE: Record<GNode["type"], number> = { center: 1, ind: 1.18, co: 1.4 };
-const DIST: Record<GLink["kind"], number> = { "job-ind": RING * 1.18, "ind-co": 128, "ind-co-est": 128 };
+// Vertex radius = graph.ts r x 1.2 (job 26, industry ~13-20 by linked companies, company ~7-17 by revenue).
+const VSCALE = 1.2;
+const radius = (g: GNode) => g.r * VSCALE;
+// Label type role per vertex kind (px must match the classes in Vertex).
+const LABEL_PX: Record<GNode["type"], number> = { center: 16, ind: 14, co: 13 };
+// Stars spread a little wider than graph.ts targets so labels fit (targets scaled around each star centre).
+const SCALE: Record<GNode["type"], number> = { center: 1, ind: 1.12, co: 1.3 };
+const DIST: Record<GLink["kind"], number> = { "job-ind": RING * 1.12, "ind-co": 118, "ind-co-est": 118 };
 const STR: Record<GLink["kind"], number> = { "job-ind": 0.25, "ind-co": 0.45, "ind-co-est": 0.45 };
-// Fit never zooms below this, so 13px captions stay >= 12px on screen (DESIGN: labels never below 12px); pinch/wheel can still go further.
+// Fit never zooms below this, so 13px labels stay >= 12px on screen (DESIGN: labels never below 12px); pinch/wheel can still go further.
 const FIT_MIN_ZOOM = 0.92;
 
-/** Size estimate until React Flow reports the measured size (same type roles as the Pill below). */
-function estimate(g: GNode, rev: string | null, tier: Tier): Box {
-  if (g.type === "center") return { w: textWidth(g.label, 18) + 36, h: 40 };
-  if (g.type === "ind") return { w: textWidth(g.label, 14) + 6 + textWidth(`${g.count ?? 0}곳`, 13) + 24, h: 32 };
-  const k = (tier || 1) as Exclude<Tier, 0>;
-  return { w: textWidth(g.label, CO_FONT[k]) + (rev ? 6 + textWidth(rev, k === 4 ? 14 : 13) : 0) + CO_PAD[k] * 2 + 2, h: CO_H[k] };
+/** Space a vertex needs: the circle plus its label underneath (kept symmetric so the box stays centred on the circle). */
+function footprint(g: GNode): Box {
+  const r = radius(g);
+  const lw = textWidth(g.label, LABEL_PX[g.type]) + 8;
+  const lh = LABEL_PX[g.type] * 1.4 + 4;
+  return { w: Math.max(2 * r, lw), h: 2 * r + 2 * lh };
 }
 
 function bridgePath(s: SimNode, t: SimNode, sign: 1 | -1): string {
@@ -90,22 +80,23 @@ function bridgePath(s: SimNode, t: SimNode, sign: 1 | -1): string {
   return `M${sx},${sy} Q${mx + px * off},${my + py * off} ${tx},${ty}`;
 }
 
-// ---- node + edge renderers ---------------------------------------------------------------------
+// ---- vertex + edge renderers -------------------------------------------------------------------
 type Ctx = { select: (id: string) => void; hover: (id: string | null) => void; dragged: RefObject<boolean> };
 const GraphCtx = createContext<Ctx | null>(null);
 
-const Pill = memo(function Pill({ id, data }: NodeProps<PillNode>) {
+const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
   const ctx = useContext(GraphCtx)!;
   const g = data.g;
+  const d = radius(g) * 2;
   const shared = g.type === "ind" && (g.shared ?? 0) > 1;
   return (
     <button
       type="button"
       data-gn={g.type}
-      data-size={g.type === "co" ? data.tier : undefined}
-      aria-description={data.aria} // name = the visible text (WCAG 2.5.3 label in name); details go in the description
+      aria-description={data.aria} // name = the visible label (WCAG 2.5.3 label in name); details go in the description
       aria-expanded={g.type === "ind" ? !!g.expanded : undefined}
-      className={cn("gpill", `gp-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", shared && "is-shared", g.expanded && "is-expanded")}
+      style={{ width: d, height: d } as CSSProperties}
+      className={cn("gv", `gv-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", shared && "is-shared", g.expanded && "is-expanded")}
       onClick={() => {
         if (ctx.dragged.current) return; // the pointer-up that ends a drag is not a click
         ctx.select(id);
@@ -115,11 +106,9 @@ const Pill = memo(function Pill({ id, data }: NodeProps<PillNode>) {
       onFocus={() => ctx.hover(id)}
       onBlur={() => ctx.hover(null)}
     >
-      <span className={g.type === "center" ? "text-heading-3" : g.type === "ind" ? "text-label-strong" : CO_NAME[(data.tier || 1) as Exclude<Tier, 0>]}>{g.label}</span>{" "}
-      {g.type === "ind" && <span className="gp-meta figures text-caption">{g.count}곳</span>}
-      {g.type === "co" && data.rev && <span className={cn("gp-meta figures", data.tier === 4 ? "text-label" : "text-caption")}>{data.rev}</span>}
-      {shared && <span className="gp-badge figures" aria-hidden>{g.shared}</span>}
-      {/* React Flow only draws edges between nodes that have handles; ours are invisible and centred (edges use simulated centres) */}
+      <span className={cn("gv-label", g.type === "center" ? "text-body font-bold" : g.type === "ind" ? "text-label-strong" : cn("text-caption", g.saved ? "font-semibold" : "font-medium"))}>{g.label}</span>
+      {shared && <span className="gv-badge figures" aria-hidden>{g.shared}</span>}
+      {/* React Flow only draws edges between nodes that have handles; ours are invisible (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
       <Handle type="source" position={Position.Bottom} isConnectable={false} className="ghandle" />
     </button>
@@ -137,39 +126,32 @@ const PlaneEdgeView = memo(function PlaneEdgeView({ data }: EdgeProps<PlaneEdge>
   return <path className="gplane" d={data!.d} />;
 });
 
-const nodeTypes = { pill: Pill } satisfies NodeTypes;
+const nodeTypes = { vertex: Vertex } satisfies NodeTypes;
 const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
-function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, revenueOf, maxRevenue }: Props) {
-  const rf = useReactFlow<PillNode, GEdge>();
+function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label }: Props) {
+  const rf = useReactFlow<VNode, GEdge>();
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const byIdRef = useRef(new Map<string, SimNode>());
   const linksRef = useRef<SimLink[]>([]);
   const linkWRef = useRef(new Map<string, number>()); // link weight by "source>target", built once per data change
   const posRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>());
-  const sizeRef = useRef(new Map<string, Box>());
-  const revRef = useRef(new Map<string, string | null>());
-  const tierRef = useRef(new Map<string, Tier>());
   const planeRef = useRef<string | null>(null);
   const draggedRef = useRef(false);
   const fitKeyRef = useRef("");
-  const cbRef = useRef({ onSelect, onBackground, label, revenueOf, companyIndustry, maxRevenue });
-  cbRef.current = { onSelect, onBackground, label, revenueOf, companyIndustry, maxRevenue };
+  const cbRef = useRef({ onSelect, onBackground, label, companyIndustry });
+  cbRef.current = { onSelect, onBackground, label, companyIndustry };
 
-  const [nodes, setNodes] = useState<PillNode[]>([]);
+  const [nodes, setNodes] = useState<VNode[]>([]);
   const [frame, setFrame] = useState(0);
   const [lit, setLit] = useState<Set<string> | null>(null);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const sizeOf = (n: SimNode): Box => sizeRef.current.get(n.id) ?? estimate(n, revRef.current.get(n.id) ?? null, tierRef.current.get(n.id) ?? 0);
+  const topLeft = (s: SimNode) => ({ x: (s.x ?? 0) - radius(s), y: (s.y ?? 0) - radius(s) });
 
   // (re)build the simulation whenever the graph data changes (stars toggled, industry opened, company saved)
   useEffect(() => {
-    const rev = cbRef.current.revenueOf;
-    revRef.current = new Map(data.nodes.map((n) => [n.id, n.type === "co" && rev ? (rev(n.ref) == null ? null : formatEokShort(rev(n.ref))) : null]));
-    const maxRev = cbRef.current.maxRevenue ?? Math.max(0, ...data.nodes.filter((n) => n.type === "co").map((n) => rev?.(n.ref) ?? 0));
-    tierRef.current = new Map(data.nodes.map((n) => [n.id, n.type === "co" ? tierOf(rev?.(n.ref), maxRev) : 0] as const));
     const centre = new Map(data.nodes.filter((n) => n.type === "center").map((n) => [n.job, n]));
     const sn: SimNode[] = data.nodes.map((n) => {
       const c = centre.get(n.job);
@@ -204,9 +186,12 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       if (!expandedInd) { planeRef.current = null; return; }
       const ci = cbRef.current.companyIndustry;
       const isMember = (n: SimNode) => n.id === expandedInd.id || (n.type === "co" && n.job === expandedInd.job && ci[n.ref] === expandedInd.ref);
+      // circle + label underneath
       const box = (n: SimNode, pad: number) => {
-        const b = sizeOf(n);
-        return rect((n.x ?? 0) - b.w / 2 - pad, (n.y ?? 0) - b.h / 2 - pad, b.w + pad * 2, b.h + pad * 2);
+        const r = radius(n);
+        const half = Math.max(r, (textWidth(n.label, LABEL_PX[n.type]) + 4) / 2);
+        const h = 2 * r + LABEL_PX[n.type] * 1.4 + 4;
+        return rect((n.x ?? 0) - half - pad, (n.y ?? 0) - r - pad, half * 2 + pad * 2, h + pad * 2);
       };
       const bs = new BubbleSets();
       bs.pushMember(...sn.filter(isMember).map((n) => box(n, 10)));
@@ -218,7 +203,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       .nodes(sn)
       .force("link", forceLink<SimNode, SimLink>(links).distance((l) => DIST[l.kind]).strength((l) => STR[l.kind]))
       .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -80)).distanceMax(220))
-      .force("collide", forceRectCollide<SimNode>(sizeOf, 8, 0.6))
+      .force("collide", forceRectCollide<SimNode>(footprint, 6, 0.6))
       .force("x", forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28)))
       .force("y", forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28)));
     sim.alphaDecay(reduced ? 0.12 : 0.03);
@@ -228,9 +213,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       setNodes((cur) =>
         cur.map((nd) => {
           const s = byId.get(nd.id);
-          if (!s) return nd;
-          const b = sizeOf(s);
-          return { ...nd, position: { x: (s.x ?? 0) - b.w / 2, y: (s.y ?? 0) - b.h / 2 } };
+          return s ? { ...nd, position: topLeft(s) } : nd;
         }),
       );
       setFrame((f) => f + 1);
@@ -239,18 +222,15 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     updatePlane();
     setNodes((cur) => {
       const old = new Map(cur.map((n) => [n.id, n]));
-      return sn.map((s, i) => {
-        const b = sizeOf(s);
-        return {
-          id: s.id,
-          type: "pill" as const,
-          position: { x: (s.x ?? 0) - b.w / 2, y: (s.y ?? 0) - b.h / 2 },
-          data: { g: data.nodes[i], aria: cbRef.current.label(data.nodes[i]), rev: revRef.current.get(s.id) ?? null, tier: tierRef.current.get(s.id) ?? 0 },
-          measured: old.get(s.id)?.measured,
-          selectable: false,
-          zIndex: s.type === "center" ? 3 : s.type === "ind" ? 2 : 1,
-        };
-      });
+      return sn.map((s, i) => ({
+        id: s.id,
+        type: "vertex" as const,
+        position: topLeft(s),
+        data: { g: data.nodes[i], aria: cbRef.current.label(data.nodes[i]) },
+        measured: old.get(s.id)?.measured,
+        selectable: false,
+        zIndex: s.type === "center" ? 3 : s.type === "ind" ? 2 : 1,
+      }));
     });
     sim.alpha(reduced ? 0.3 : 0.6).restart();
 
@@ -258,24 +238,21 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     if (key !== fitKeyRef.current) {
       const first = fitKeyRef.current === "";
       fitKeyRef.current = key;
-      const t = setTimeout(() => void rf.fitView({ padding: 0.14, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
+      const t = setTimeout(() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
       return () => clearTimeout(t);
     }
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => void simRef.current?.stop(), []);
 
-  const onNodesChange = useCallback((changes: NodeChange<PillNode>[]) => {
-    for (const c of changes) if (c.type === "dimensions" && c.dimensions) sizeRef.current.set(c.id, { w: c.dimensions.width, h: c.dimensions.height });
-    setNodes((nds) => applyNodeChanges(changes, nds));
-  }, []);
+  const onNodesChange = useCallback((changes: NodeChange<VNode>[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
 
-  const pin = (n: PillNode) => {
+  // while dragging, the dragged vertex is pinned where the pointer is (fx/fy) and the rest of the star reacts
+  const pin = (n: VNode) => {
     const s = byIdRef.current.get(n.id);
     if (!s) return;
-    const b = sizeOf(s);
-    s.fx = n.position.x + b.w / 2;
-    s.fy = n.position.y + b.h / 2;
+    s.fx = n.position.x + radius(s);
+    s.fy = n.position.y + radius(s);
   };
 
   const ctx = useMemo<Ctx>(
@@ -299,7 +276,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     [nodes, lit, selectedId],
   );
 
-  const hoveredRef = lit ? [...lit][0] : null;
+  const hoveredId = lit ? [...lit][0] : null; // groupOf puts the hovered node first
   const edges = useMemo<GEdge[]>(() => {
     const byId = byIdRef.current;
     const out: GEdge[] = [];
@@ -319,7 +296,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         focusable: false,
       });
     }
-    const hovered = hoveredRef ? byId.get(hoveredRef) : null;
+    const hovered = hoveredId ? byId.get(hoveredId) : null;
     const litRef = hovered ? (hovered.type === "co" ? `co:${hovered.ref}` : hovered.ref) : null;
     const selRef = !selectedId ? null : selectedId.startsWith("ind:") ? selectedId.split(":")[2] : selectedId.startsWith("co:") ? `co:${selectedId.split(":")[2]}` : null;
     for (const b of data.bridges) {
@@ -327,7 +304,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       if (!s || !t) continue;
       const on = b.ref === litRef || b.ref === selRef;
       if (!on) continue; // hidden bridges are not rendered at all (they were most of the edges in big graphs)
-      out.push({ id: `b:${b.source}~${b.target}`, source: b.source, target: b.target, type: "bridge", className: on ? "on" : undefined, data: { d: bridgePath(s, t, b.sign) }, selectable: false, focusable: false });
+      out.push({ id: `b:${b.source}~${b.target}`, source: b.source, target: b.target, type: "bridge", className: "on", data: { d: bridgePath(s, t, b.sign) }, selectable: false, focusable: false });
     }
     return out;
   }, [frame, data, lit, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -336,7 +313,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
   return (
     <GraphCtx.Provider value={ctx}>
-      <ReactFlow<PillNode, GEdge>
+      <ReactFlow<VNode, GEdge>
         className={cn("lg-flow", lit && "hovering")}
         nodes={shown}
         edges={edges}
@@ -365,15 +342,15 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         minZoom={0.3}
         maxZoom={2.5}
         fitView
-        fitViewOptions={{ padding: 0.14, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
+        fitViewOptions={{ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
         attributionPosition="bottom-left"
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1.4} />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
       </ReactFlow>
       <div className="absolute bottom-3 right-3 z-10 flex gap-1" role="group" aria-label="확대와 축소">
         <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">+</button>
         <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">−</button>
-        <button type="button" onClick={() => void rf.fitView({ padding: 0.14, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">전체 보기</button>
+        <button type="button" onClick={() => void rf.fitView({ padding: 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-element bg-bg-surface px-3 text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">전체 보기</button>
       </div>
     </GraphCtx.Provider>
   );
