@@ -7,9 +7,10 @@ import { DemoBadge, Kicker } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { PdfUpload } from "@/components/analysis/pdf-upload";
 import { PostingUrlForm } from "@/components/analysis/posting-url-form";
+import { PostingTextForm } from "@/components/analysis/posting-text-form";
 import { PostingsTable } from "@/components/analysis/postings-table";
 import { DeadlineCalendar } from "@/components/postings/deadline-calendar";
-import { analyzePostingAction, analyzePostingUrlAction } from "./actions";
+import { analyzePostingAction, analyzePostingTextAction, analyzePostingUrlAction } from "./actions";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "공고 · LetsGraph" };
@@ -37,7 +38,8 @@ async function PostingsContent({ searchParams }: Props) {
         <Kicker>공고 추가</Kicker>
         <PostingUrlForm action={analyzePostingUrlAction} />
         <div className="space-y-3 border-t border-border pt-4">
-          <p className="text-label text-text-secondary">주소로 안 읽히는 공고는 PDF로 올려요</p>
+          <p className="text-label text-text-secondary">주소로 안 읽히는 공고는 내용을 붙여넣거나 PDF로 올려요</p>
+          <PostingTextForm action={analyzePostingTextAction} />
           <PdfUpload action={analyzePostingAction} label="채용공고 PDF" hint="공고 페이지를 PDF로 저장해서 올려요. 10MB까지." submit="공고 정리하기" />
         </div>
       </section>

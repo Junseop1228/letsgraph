@@ -2,10 +2,10 @@
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
-import { AI_MODEL, aiEnabled, AiUnavailable, analyzePosting, extractExperiences, type PostingSource } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable, analyzePosting, extractExperiences, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
 import { canSpend, planFromPasses } from "@/lib/billing/state";
 import type { QuotaFeature } from "@/lib/contracts/billing";
-import { PostingUrlInput } from "@/lib/contracts/activity";
+import { PostingTextInput, PostingUrlInput } from "@/lib/contracts/activity";
 import { checkPostingUrl } from "@/lib/posting/url";
 import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
@@ -50,12 +50,20 @@ async function gate(feature: QuotaFeature) {
   return { db, uid, feature };
 }
 
+/** What to tell the user when the input had no posting body (nothing is stored or charged). */
+function notFoundMessage(src: PostingSource, fromUrl: boolean): string {
+  if (fromUrl) return "이 페이지에서 공고 본문을 찾지 못했어요. 공고를 자바스크립트로 불러오는 사이트일 수 있어요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.";
+  if (src.kind === "text") return "붙여넣은 내용에서 공고 본문을 찾지 못했어요. 맡을 업무와 자격 요건이 들어간 부분까지 붙여넣어 주세요.";
+  return "올린 파일에서 공고 본문을 찾지 못했어요. 채용공고 내용이 담긴 파일인지 확인해 주세요.";
+}
+
 /** Runs the AI on one posting, stores posting + analysis, charges quota only on success (EX-03), then opens the result. */
 async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl?: string): Promise<ActionState> {
   let out;
   try {
     out = await analyzePosting(src);
   } catch (e) {
+    if (e instanceof PostingNotFound) return { error: notFoundMessage(src, !!sourceUrl) };
     logAiFailure("posting_analysis", e);
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
@@ -103,6 +111,15 @@ export async function analyzePostingUrlAction(_prev: ActionState, form: FormData
     return { error: e instanceof PostingFetchError ? e.message : "페이지를 가져오지 못했어요. PDF로 올려 주세요." };
   }
   return analyzeAndSave(g.db, g.uid, src, src.url);
+}
+
+/** POST-04: 공고 내용 붙여넣기, for pages that load the posting with JavaScript or need a login. Stored as source "upload". */
+export async function analyzePostingTextAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const input = PostingTextInput.safeParse(form.get("text"));
+  if (!input.success) return { error: input.error.issues[0]?.message ?? "공고 내용을 붙여넣어 주세요." };
+  const g = await gate("posting_analysis");
+  if ("error" in g) return { error: g.error };
+  return analyzeAndSave(g.db, g.uid, { kind: "text", text: input.data });
 }
 
 export async function extractExperiencesAction(_prev: ActionState, form: FormData): Promise<ActionState> {

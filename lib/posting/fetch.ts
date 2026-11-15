@@ -31,7 +31,7 @@ export type FetchedPosting =
 /** A failure whose message can be shown to the user as is. */
 export class PostingFetchError extends Error {}
 
-const TOO_BIG = "페이지가 너무 커요. 공고를 PDF로 저장해서 올려 주세요.";
+const TOO_BIG = "페이지가 너무 커요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.";
 const FAILED = "페이지를 가져오지 못했어요. 잠시 뒤 다시 시도하거나 PDF로 올려 주세요.";
 
 async function assertPublicHost(url: URL) {
@@ -97,7 +97,7 @@ async function get(start: URL): Promise<{ type: string; contentType: string | nu
     }
     if (res.status === 401 || res.status === 403) {
       await res.body?.cancel();
-      throw new PostingFetchError("로그인이 필요하거나 접근이 막힌 페이지예요. 공고를 PDF로 저장해서 올려 주세요.");
+      throw new PostingFetchError("로그인이 필요하거나 접근이 막힌 페이지예요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.");
     }
     if (!res.ok) {
       await res.body?.cancel();
@@ -140,7 +140,7 @@ export async function fetchPostingFromUrl(raw: string): Promise<FetchedPosting> 
       }
     }
     if (text.length < MIN_TEXT_CHARS) {
-      throw new PostingFetchError("페이지에서 공고 본문을 읽지 못했어요. 이미지로만 된 공고이거나 로그인이 필요한 페이지일 수 있어요. 공고를 PDF로 저장해서 올려 주세요.");
+      throw new PostingFetchError("페이지에서 공고 본문을 읽지 못했어요. 이미지로만 된 공고이거나 로그인이 필요한 페이지일 수 있어요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.");
     }
     const title = pageTitle(html);
     return { kind: "text", text: [title ? `페이지 제목: ${title}` : "", text].filter(Boolean).join("\n\n").slice(0, MAX_TEXT_CHARS), url };

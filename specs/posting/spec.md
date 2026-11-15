@@ -1,6 +1,6 @@
 # 공고 (posting)
 
-근거: SRS v1.0 FR-POST-01 · 결정 2026-11-10 (공고 PDF 업로드), 2026-11-09 (공고는 외부에서 가져와 서비스 안에서 가공), 2026-11-14 (내비 4개: 공고 탭 = 공고 달력 + 공고 분석 결과), NFR-EXT-02 (채용 플랫폼 크롤링 금지), 2026-11-15 (공고 주소로 정리하기 추가) · 계약: `lib/contracts/activity.ts` (`JobPosting`, `PostingAnalysisOutput`, `PostingUrlInput`), `supabase/migrations/20261115000000_posting_url_source.sql` · AI: `lib/ai/tasks.ts` · 주소 가져오기: `lib/posting/url.ts`, `lib/posting/fetch.ts` · 화면: `app/(main)/postings/` (`/postings`, `/postings/[id]`)
+근거: SRS v1.0 FR-POST-01 · 결정 2026-11-10 (공고 PDF 업로드), 2026-11-09 (공고는 외부에서 가져와 서비스 안에서 가공), 2026-11-14 (내비 4개: 공고 탭 = 공고 달력 + 공고 분석 결과), NFR-EXT-02 (채용 플랫폼 크롤링 금지), 2026-11-15 (공고 주소로 정리하기 추가) · 계약: `lib/contracts/activity.ts` (`JobPosting`, `PostingAnalysisOutput`, `PostingAnalysisAiOutput`, `PostingUrlInput`, `PostingTextInput`), `supabase/migrations/20261115000000_posting_url_source.sql` · AI: `lib/ai/tasks.ts` · 주소 가져오기: `lib/posting/url.ts`, `lib/posting/fetch.ts` · 본문 판정: `lib/posting/analysis.ts` · 화면: `app/(main)/postings/` (`/postings`, `/postings/[id]`)
 
 > OPEN: 공고 자동 수집 경로 (개인 이용 가능한 민간 공고 API 없음, 2026-11-10). 사용자가 넣은 주소 1건 가져오기(POST-03)는 자동 수집이 아니다.
 > 아직 구현 전: 이미지 파일 직접 올리기 (주소가 이미지를 가리키면 POST-03으로 정리된다).
@@ -25,6 +25,10 @@
 #### Scenario: AI 실패 (EX-03)
 - **WHEN** AI 응답이 30초를 넘기거나 형식 검증에 실패하면
 - **THEN** 실패를 알리고 쿼터는 차감하지 않는다
+
+#### Scenario: 공고 본문 없음
+- **WHEN** AI가 입력에 실제 공고 본문(맡을 업무, 자격 요건)이 없고 사이트 메뉴나 공통 안내 문구뿐이라고 판단하거나, 정리 결과에 업무나 역량이 하나도 없으면
+- **THEN** 공고를 저장하지 않고 쿼터도 쓰지 않으며, 입력 경로에 맞는 다음 방법(주소면 붙여넣기나 PDF, 붙여넣기면 업무·자격 요건까지 붙여넣기, 파일이면 공고 파일인지 확인)을 한 문장으로 알린다
 
 #### Scenario: 공고 정리 보기
 - **WHEN** 사용자가 공고 분석 결과 화면(`/postings/[id]`)을 열면
@@ -51,7 +55,26 @@
 
 #### Scenario: 본문을 읽지 못함
 - **WHEN** 페이지가 로그인을 요구하거나(401/403), 10초 안에 응답하지 않거나, 5MB를 넘거나, 읽을 수 있는 본문이 200자보다 짧으면
-- **THEN** 정리하지 않고 쿼터도 쓰지 않으며, 공고를 PDF로 올리라고 안내한다
+- **THEN** 정리하지 않고 쿼터도 쓰지 않으며, 공고 내용을 붙여넣거나 PDF로 올리라고 안내한다
+
+#### Scenario: 자바스크립트로 공고를 불러오는 페이지
+- **WHEN** 가져온 페이지에 사이트 메뉴와 공통 안내 문구만 있고 공고 본문은 자바스크립트가 나중에 불러오면 (예: 일부 기업 채용 사이트)
+- **THEN** FR-POST-01 "공고 본문 없음"에 따라 저장하지 않고, 사이트 내부 API를 따로 호출하지 않는다
+
+### Requirement: POST-04 공고 내용 붙여넣기
+시스템은 주소로 읽히지 않는 공고(자바스크립트로 불러오는 페이지, 로그인이 필요한 페이지)를 위해 사용자가 공고 페이지에서 복사한 글을 붙여넣으면 FR-POST-01과 같은 정리를 해야 한다(SHALL). 붙여넣은 글은 데이터로만 다루고, 공고는 `source` = `upload`로 저장한다. 쿼터가 적용된다.
+
+#### Scenario: 붙여넣기
+- **WHEN** 로그인한 사용자가 "공고 내용 붙여넣기" 칸에 공고 글을 붙여넣고 "붙여넣은 내용으로 정리하기"를 누르면
+- **THEN** AI로 정리하고 형식 검증한 뒤 저장하고, 쿼터 1회를 쓰고, 공고 분석 결과 화면으로 이동한다
+
+#### Scenario: 너무 짧거나 긴 글
+- **WHEN** 붙여넣은 글이 100자보다 짧거나 2만 자보다 길면
+- **THEN** 정리하지 않고 이유를 한 문장으로 알린다
+
+#### Scenario: 붙여넣기 전 안내
+- **WHEN** 사용자가 붙여넣기 칸을 보면
+- **THEN** 전체 선택 후 복사해 붙여넣는 방법, 메뉴가 섞여도 된다는 것, 내용을 생성형 AI로 보낸다는 안내가 보인다
 
 ### Requirement: POST-02 공고 달력
 시스템은 공고 탭의 첫 화면에서 저장한 공고를 마감일 기준 달력과 상태(관심, 지원, 면접, 합격, 불합격)로 보여주고, 목록 보기에서는 마감·상태로 정렬하고 상태로 거를 수 있게 해야 한다(SHALL). D-day는 서울 시간 기준이다.
