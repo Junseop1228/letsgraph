@@ -17,7 +17,7 @@ test.describe("explore", () => {
   test("FR-MAP-03 그래프 열기 / 산업 열기 / 기업 고르기", async ({ page }) => {
     await page.goto("/explore/map?job=quality");
     await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
-    await expect(page.locator("svg[aria-label='나의 취업 그래프'] g.gn")).not.toHaveCount(0);
+    await expect(page.locator("[aria-label='나의 취업 그래프'] [data-gn]")).not.toHaveCount(0);
     await page.getByRole("button", { name: /^식품/ }).first().click();
     await expect(page.getByRole("heading", { name: "식품" })).toBeVisible();
     await page.getByRole("button", { name: /CJ제일제당/ }).first().click();

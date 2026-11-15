@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "../styles/tokens.css";
 @import "../styles/graph.css";
+@import "../styles/flow-graph.css";
 
 @custom-variant dark (&:is(.dark *));
 

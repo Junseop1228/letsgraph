@@ -11,6 +11,8 @@ import { buildGraph, type GNode } from "@/lib/explore/graph";
 import { formatEokShort } from "@/lib/format";
 import { readLikedJobs, useWatched } from "@/lib/client/local-state";
 import { JobGraph } from "@/components/explore/job-graph";
+import { FlowGraph } from "@/components/explore/flow-graph";
+import { stressGraph } from "@/lib/explore/stress";
 import { track } from "@/lib/client/analytics";
 import { Kicker, SourceLine, TrustLabel, btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
@@ -40,12 +42,17 @@ export function ExploreGraph(p: Props) {
   const [sel, setSel] = useState<Sel>(null);
   const [view, setView] = useState<"graph" | "list">("graph");
   const [vertical, setVertical] = useState(false);
+  const [engine, setEngine] = useState<"flow" | "d3">("flow"); // engine spike: ?engine=d3 shows the old d3/SVG graph
+  const [stress, setStress] = useState(0); // engine spike: ?stress=150 draws a synthetic worst-case graph
 
   useEffect(() => {
     const liked = readLikedJobs().filter((j) => roleById.has(j) && linkedJobs.has(j));
     const list = [p.initialJob, ...liked.filter((j) => j !== p.initialJob)].slice(0, 5);
     setMyJobs(list);
     setOn(list);
+    const q = new URLSearchParams(window.location.search);
+    setEngine(q.get("engine") === "d3" ? "d3" : "flow");
+    setStress(Math.min(Number(q.get("stress")) || 0, 400));
     const mq = window.matchMedia("(max-width: 767px)");
     const upd = () => setVertical(mq.matches);
     upd();
@@ -55,9 +62,9 @@ export function ExploreGraph(p: Props) {
 
   const stars = on.map((j) => roleById.get(j)).filter((r): r is JobRole => !!r);
   const data = useMemo(
-    () => buildGraph({ jobs: stars, industries: p.industries, companies: p.companies, links: p.links, saved: watched.ids, expanded, vertical }),
+    () => (stress ? stressGraph(stress, vertical) : buildGraph({ jobs: stars, industries: p.industries, companies: p.companies, links: p.links, saved: watched.ids, expanded, vertical })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [on.join(","), watched.ids.join(","), expanded, vertical, p.links],
+    [on.join(","), watched.ids.join(","), expanded, vertical, p.links, stress],
   );
 
   const indName = (id: string) => p.industries.find((i) => i.id === id)?.name ?? id;
@@ -117,7 +124,11 @@ export function ExploreGraph(p: Props) {
         <section className="relative min-h-[520px] border-r border-border">
           {view === "graph" ? (
             <>
-              <JobGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} />
+              {engine === "d3" ? (
+                <JobGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} />
+              ) : (
+                <FlowGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} revenueOf={(id) => coById.get(id)?.revenue} />
+              )}
               <div className="pointer-events-none absolute left-4 top-4 space-y-2 rounded-element bg-bg-surface/90 p-3 shadow-[0_0_0_1px_var(--color-border)]">
                 <p className="text-label-strong">나의 취업 그래프</p>
                 <ul className="space-y-1 text-caption text-text-secondary">
