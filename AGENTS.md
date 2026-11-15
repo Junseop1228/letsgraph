@@ -3,7 +3,7 @@
 Entry point for any coding agent working in this repo. Project-level context (contest, team, decisions) lives one folder up in the project workspace (`../AGENTS.md`, `../context/`); this file covers the app only.
 
 ## Stack (confirmed 2026-10-22, see ../context/decisions.md)
-Next.js (App Router) + TypeScript, Supabase (PostgreSQL, Auth, pgvector), shadcn/ui on Radix + Tailwind CSS v4, Vercel AI SDK + Zod (provider: Gemini), collector = Supabase pg_cron + pgmq + Edge Functions, charts = ECharts + Recharts, graph = React Flow + dagre (force layout: d3-force candidate), swipe = own component on Motion, tests = Vitest + Playwright, measurement = PostHog, LLM trace = Langfuse (metadata only). Hosting: Vercel + Supabase Cloud.
+Next.js (App Router) + TypeScript, Supabase (PostgreSQL, Auth, pgvector), shadcn/ui on Radix + Tailwind CSS v4, Vercel AI SDK + Zod (provider: Gemini), collector = Supabase pg_cron + pgmq + Edge Functions, charts = ECharts + Recharts, graph = React Flow (`@xyflow/react`) + d3-force layout + bubblesets-js group planes (탐색 graph, see `specs/explore`), swipe = own component on Motion, tests = Vitest + Playwright, measurement = PostHog, LLM trace = Langfuse (metadata only). Hosting: Vercel + Supabase Cloud.
 
 ## Three sources of truth
 1. **Behaviour -> `specs/`** (OpenSpec format, chosen 2026-11-13). One `specs/<capability>/spec.md` per capability = the current truth. Requirements use SHALL; every requirement has at least one Scenario (WHEN / THEN). If code changes behaviour, update the spec in the same commit. Requirement IDs keep the SRS FR IDs (never reuse a removed ID).
