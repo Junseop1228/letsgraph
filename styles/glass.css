@@ -1,25 +1,43 @@
 /* Liquid-glass material for floating layers over the 탐색 graph (decisions 2026-11-15: "토스랑 애플 UX ... 리퀴드 글라스").
-   Apple HIG Materials: glass = a functional layer floating above content, "regular" (frosted) variant, no stacked glass,
-   fall back when people reduce transparency or increase contrast. DESIGN.md: built only from existing tokens (color-mix),
-   floating layers may carry a shadow, one edge language per surface (inner highlight + soft shadow, no hairline border). */
-/* In the components layer so Tailwind utilities (absolute, inset, rounded...) on the same element win. */
+   Apple HIG Materials: glass = a functional layer floating above content; fall back when people reduce transparency or
+   increase contrast. DESIGN.md: only existing tokens (color-mix), floating layers may carry a shadow.
+   Glass reads as glass only when you can see what is behind it bend: so the fill is thin, the blur is light, and on
+   Chromium the backdrop is warped by an SVG displacement filter (#lg-glass-warp, rendered once by ExploreGraph) so the
+   dot grid and lines visibly refract at the panel. A fine grain gives the frosted texture; rim light + inner shade give
+   thickness. Other engines get a plain frosted blur. */
 @layer components {
 .lg-glass {
-  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 62%, transparent);
-  --glass-hi: color-mix(in srgb, var(--color-bg-surface) 92%, transparent);
-  --glass-rim: color-mix(in srgb, var(--color-bg-surface) 55%, transparent);
-  --glass-shade: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
-  position: relative;
+  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 26%, transparent);
+  --glass-hi: color-mix(in srgb, var(--color-bg-surface) 95%, transparent);
+  --glass-rim: color-mix(in srgb, var(--color-bg-surface) 70%, transparent);
+  --glass-inner: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  --glass-shade: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  --glass-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23g)' opacity='.38'/></svg>");
   isolation: isolate;
-  background: var(--glass-fill);
-  -webkit-backdrop-filter: blur(22px) saturate(1.7);
-  backdrop-filter: blur(22px) saturate(1.7);
+  background: var(--glass-grain), var(--glass-fill);
+  -webkit-backdrop-filter: blur(9px) saturate(1.9) brightness(1.04);
+  backdrop-filter: blur(9px) saturate(1.9) brightness(1.04);
   box-shadow:
-    inset 0 1px 0 var(--glass-hi),
+    inset 0 1px 1px var(--glass-hi),
+    inset 0 -1px 1px var(--glass-inner),
     inset 0 0 0 1px var(--glass-rim),
-    0 12px 32px -10px var(--glass-shade),
-    0 2px 8px -2px var(--glass-shade);
+    inset 0 0 24px -6px var(--glass-hi),
+    0 18px 40px -14px var(--glass-shade),
+    0 3px 10px -3px var(--glass-shade);
 }
+/* the detail card carries reading content: a little more body for legibility */
+.lg-glass-card { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 52%, transparent); }
+
+/* Chromium: real refraction of what is behind the glass */
+:root[data-glass="warp"] .lg-glass {
+  -webkit-backdrop-filter: url(#lg-glass-warp) blur(2.5px) saturate(1.9) brightness(1.05);
+  backdrop-filter: url(#lg-glass-warp) blur(2.5px) saturate(1.9) brightness(1.05);
+}
+:root[data-glass="warp"] .lg-glass-card {
+  -webkit-backdrop-filter: url(#lg-glass-warp) blur(5px) saturate(1.9) brightness(1.05);
+  backdrop-filter: url(#lg-glass-warp) blur(5px) saturate(1.9) brightness(1.05);
+}
+
 /* specular rim: light catches the top-left edge and fades out, like the edge of a lens */
 .lg-glass::before {
   content: "";
@@ -27,38 +45,39 @@
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(140deg, var(--glass-hi), transparent 38%, transparent 70%, var(--glass-rim));
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--glass-hi), transparent 32%, transparent 68%, var(--glass-rim));
   -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 .dark .lg-glass {
-  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 58%, transparent);
-  --glass-hi: color-mix(in srgb, var(--color-text-primary) 20%, transparent);
-  --glass-rim: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
-  --glass-shade: color-mix(in srgb, var(--color-text-inverted) 70%, transparent);
+  --glass-fill: color-mix(in srgb, var(--color-bg-surface) 34%, transparent);
+  --glass-hi: color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+  --glass-rim: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  --glass-inner: color-mix(in srgb, var(--color-text-inverted) 50%, transparent);
+  --glass-shade: color-mix(in srgb, var(--color-text-inverted) 75%, transparent);
 }
+.dark .lg-glass-card { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 60%, transparent); }
 
 /* raised segment inside a glass bar (selected job / view), like an iOS segmented control */
 .lg-seg-on {
-  background: var(--color-bg-surface);
-  box-shadow: 0 1px 3px var(--glass-shade, transparent), 0 0 0 0.5px var(--glass-rim, transparent);
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  box-shadow: 0 1px 4px var(--glass-shade, transparent), inset 0 1px 0 var(--glass-hi, transparent);
 }
 
-/* card content entering: short and only when the selection changes (motion = feedback) */
 .lg-card-in { animation: lg-card-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 /* fallbacks: solid surfaces when glass would cost legibility */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lg-glass { background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent); }
+  .lg-glass, .lg-glass-card { background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent); }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .lg-glass, .lg-glass-card, :root[data-glass="warp"] .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @media (prefers-contrast: more), (forced-colors: active) {
-  .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--color-border-strong); }
+  .lg-glass, .lg-glass-card, :root[data-glass="warp"] .lg-glass { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--color-border-strong); }
   .lg-glass::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

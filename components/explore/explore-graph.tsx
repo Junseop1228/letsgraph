@@ -68,9 +68,13 @@ export function ExploreGraph(p: Props) {
       setWide(lg.matches);
     };
     upd();
+    // real refraction (SVG displacement inside backdrop-filter) only where the engine renders it: Chromium
+    const uaData = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData;
+    if (uaData?.brands.some((b) => b.brand === "Chromium")) document.documentElement.dataset.glass = "warp";
     narrow.addEventListener("change", upd);
     lg.addEventListener("change", upd);
     return () => {
+      delete document.documentElement.dataset.glass;
       narrow.removeEventListener("change", upd);
       lg.removeEventListener("change", upd);
     };
@@ -125,6 +129,14 @@ export function ExploreGraph(p: Props) {
 
   return (
     <div className="relative h-[calc(100dvh-var(--spacing-header-height))] min-h-[560px] overflow-hidden bg-graph-canvas">
+      {/* displacement map for the glass layers (styles/glass.css): low-frequency noise bends what is behind the glass */}
+      <svg aria-hidden width="0" height="0" className="absolute">
+        <filter id="lg-glass-warp" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.007 0.011" numOctaves={2} seed={4} result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="1.2" result="soft" />
+          <feDisplacementMap in="SourceGraphic" in2="soft" scale={42} xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       {/* the graph (or the list) fills the screen */}
       {view === "graph" ? (
         <div className="absolute inset-0">
@@ -181,7 +193,7 @@ export function ExploreGraph(p: Props) {
       )}
 
       {/* detail card: floating glass card on wide screens, bottom sheet on narrow ones */}
-      <aside aria-live="polite" aria-label="자세히" className="lg-glass absolute inset-x-2 bottom-2 z-20 max-h-[46%] overflow-y-auto overscroll-contain rounded-[28px] px-5 pb-5 pt-3 lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-4 lg:max-h-[calc(100%-2rem)] lg:w-[364px] lg:p-6">
+      <aside aria-live="polite" aria-label="자세히" className="lg-glass lg-glass-card absolute inset-x-2 bottom-2 z-20 max-h-[46%] overflow-y-auto overscroll-contain rounded-[28px] px-5 pb-5 pt-3 lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-4 lg:max-h-[calc(100%-2rem)] lg:w-[364px] lg:p-6">
         <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-border-emphasized lg:hidden" />
         <div key={cardKey} className="lg-card-in space-y-5">
           {!sel || sel.kind === "job" ? (
