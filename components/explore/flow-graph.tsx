@@ -8,6 +8,8 @@ import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRe
 import {
   Handle,
   Position,
+  Background,
+  BackgroundVariant,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
@@ -28,7 +30,9 @@ import { formatEokShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // ---- types -------------------------------------------------------------------------------------
-type PillData = { g: GNode; aria: string; rev: string | null };
+// tier = company size step by revenue (DESIGN JobMap: companies sized by revenue); 0 for job/industry nodes
+type Tier = 0 | 1 | 2 | 3 | 4;
+type PillData = { g: GNode; aria: string; rev: string | null; tier: Tier };
 type PillNode = Node<PillData, "pill">;
 type LineData = { kind: GLink["kind"]; width: number; x1: number; y1: number; x2: number; y2: number };
 type PathData = { d: string };
@@ -47,7 +51,19 @@ type Props = {
   companyIndustry: Record<string, string>;
   label: (n: GNode) => string; // accessible name
   revenueOf?: (companyId: string) => number | null | undefined;
+  maxRevenue?: number; // largest revenue in the catalogue, so a company keeps its size whichever stars are on
 };
+
+/** 4 size steps by sqrt(revenue / max): area-like scaling, readable steps instead of a continuous font size. */
+export function tierOf(revenue: number | null | undefined, max: number): Exclude<Tier, 0> {
+  if (revenue == null || max <= 0) return 1;
+  const t = Math.sqrt(Math.max(revenue, 0) / max);
+  return t >= 0.7 ? 4 : t >= 0.4 ? 3 : t >= 0.2 ? 2 : 1;
+}
+const CO_FONT = { 1: 13, 2: 14, 3: 14, 4: 16 } as const;
+const CO_H = { 1: 26, 2: 29, 3: 33, 4: 38 } as const;
+const CO_PAD = { 1: 8, 2: 10, 3: 12, 4: 14 } as const;
+const CO_NAME = { 1: "text-caption font-medium", 2: "text-label", 3: "text-label-strong", 4: "text-body font-semibold" } as const;
 
 // Pills sit further out than the v1.3 dots so names fit (targets scaled around each star centre).
 const SCALE: Record<GNode["type"], number> = { center: 1, ind: 1.18, co: 1.4 };
@@ -57,10 +73,11 @@ const STR: Record<GLink["kind"], number> = { "job-ind": 0.25, "ind-co": 0.45, "i
 const FIT_MIN_ZOOM = 0.92;
 
 /** Size estimate until React Flow reports the measured size (same type roles as the Pill below). */
-function estimate(g: GNode, rev: string | null): Box {
+function estimate(g: GNode, rev: string | null, tier: Tier): Box {
   if (g.type === "center") return { w: textWidth(g.label, 18) + 36, h: 40 };
   if (g.type === "ind") return { w: textWidth(g.label, 14) + 6 + textWidth(`${g.count ?? 0}곳`, 13) + 24, h: 32 };
-  return { w: textWidth(g.label, 14) + (rev ? 6 + textWidth(rev, 13) : 0) + 22, h: 28 };
+  const k = (tier || 1) as Exclude<Tier, 0>;
+  return { w: textWidth(g.label, CO_FONT[k]) + (rev ? 6 + textWidth(rev, k === 4 ? 14 : 13) : 0) + CO_PAD[k] * 2 + 2, h: CO_H[k] };
 }
 
 function bridgePath(s: SimNode, t: SimNode, sign: 1 | -1): string {
@@ -85,6 +102,7 @@ const Pill = memo(function Pill({ id, data }: NodeProps<PillNode>) {
     <button
       type="button"
       data-gn={g.type}
+      data-size={g.type === "co" ? data.tier : undefined}
       aria-description={data.aria} // name = the visible text (WCAG 2.5.3 label in name); details go in the description
       aria-expanded={g.type === "ind" ? !!g.expanded : undefined}
       className={cn("gpill", `gp-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", shared && "is-shared", g.expanded && "is-expanded")}
@@ -97,9 +115,9 @@ const Pill = memo(function Pill({ id, data }: NodeProps<PillNode>) {
       onFocus={() => ctx.hover(id)}
       onBlur={() => ctx.hover(null)}
     >
-      <span className={g.type === "center" ? "text-heading-3" : g.type === "ind" ? "text-label-strong" : "text-label"}>{g.label}</span>{" "}
+      <span className={g.type === "center" ? "text-heading-3" : g.type === "ind" ? "text-label-strong" : CO_NAME[(data.tier || 1) as Exclude<Tier, 0>]}>{g.label}</span>{" "}
       {g.type === "ind" && <span className="gp-meta figures text-caption">{g.count}곳</span>}
-      {g.type === "co" && data.rev && <span className="gp-meta figures text-caption">{data.rev}</span>}
+      {g.type === "co" && data.rev && <span className={cn("gp-meta figures", data.tier === 4 ? "text-label" : "text-caption")}>{data.rev}</span>}
       {shared && <span className="gp-badge figures" aria-hidden>{g.shared}</span>}
       {/* React Flow only draws edges between nodes that have handles; ours are invisible and centred (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
@@ -123,7 +141,7 @@ const nodeTypes = { pill: Pill } satisfies NodeTypes;
 const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
-function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, revenueOf }: Props) {
+function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, revenueOf, maxRevenue }: Props) {
   const rf = useReactFlow<PillNode, GEdge>();
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const byIdRef = useRef(new Map<string, SimNode>());
@@ -132,23 +150,26 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
   const posRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>());
   const sizeRef = useRef(new Map<string, Box>());
   const revRef = useRef(new Map<string, string | null>());
+  const tierRef = useRef(new Map<string, Tier>());
   const planeRef = useRef<string | null>(null);
   const draggedRef = useRef(false);
   const fitKeyRef = useRef("");
-  const cbRef = useRef({ onSelect, onBackground, label, revenueOf, companyIndustry });
-  cbRef.current = { onSelect, onBackground, label, revenueOf, companyIndustry };
+  const cbRef = useRef({ onSelect, onBackground, label, revenueOf, companyIndustry, maxRevenue });
+  cbRef.current = { onSelect, onBackground, label, revenueOf, companyIndustry, maxRevenue };
 
   const [nodes, setNodes] = useState<PillNode[]>([]);
   const [frame, setFrame] = useState(0);
   const [lit, setLit] = useState<Set<string> | null>(null);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const sizeOf = (n: SimNode): Box => sizeRef.current.get(n.id) ?? estimate(n, revRef.current.get(n.id) ?? null);
+  const sizeOf = (n: SimNode): Box => sizeRef.current.get(n.id) ?? estimate(n, revRef.current.get(n.id) ?? null, tierRef.current.get(n.id) ?? 0);
 
   // (re)build the simulation whenever the graph data changes (stars toggled, industry opened, company saved)
   useEffect(() => {
     const rev = cbRef.current.revenueOf;
     revRef.current = new Map(data.nodes.map((n) => [n.id, n.type === "co" && rev ? (rev(n.ref) == null ? null : formatEokShort(rev(n.ref))) : null]));
+    const maxRev = cbRef.current.maxRevenue ?? Math.max(0, ...data.nodes.filter((n) => n.type === "co").map((n) => rev?.(n.ref) ?? 0));
+    tierRef.current = new Map(data.nodes.map((n) => [n.id, n.type === "co" ? tierOf(rev?.(n.ref), maxRev) : 0] as const));
     const centre = new Map(data.nodes.filter((n) => n.type === "center").map((n) => [n.job, n]));
     const sn: SimNode[] = data.nodes.map((n) => {
       const c = centre.get(n.job);
@@ -224,7 +245,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
           id: s.id,
           type: "pill" as const,
           position: { x: (s.x ?? 0) - b.w / 2, y: (s.y ?? 0) - b.h / 2 },
-          data: { g: data.nodes[i], aria: cbRef.current.label(data.nodes[i]), rev: revRef.current.get(s.id) ?? null },
+          data: { g: data.nodes[i], aria: cbRef.current.label(data.nodes[i]), rev: revRef.current.get(s.id) ?? null, tier: tierRef.current.get(s.id) ?? 0 },
           measured: old.get(s.id)?.measured,
           selectable: false,
           zIndex: s.type === "center" ? 3 : s.type === "ind" ? 2 : 1,
@@ -292,7 +313,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         target: l.target.id,
         type: "line",
         className: lit && lit.has(l.source.id) && lit.has(l.target.id) ? "lit" : undefined,
-        data: { kind: l.kind, width: l.kind === "job-ind" ? 1 + ((Math.min(w, 6.4) - 1) / 5.4) * 2 : 1, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
+        // more posting evidence = thicker (spec FR-MAP-03): job -> industry 1.5-4.5px; company links posting 2px, estimated 1px
+        data: { kind: l.kind, width: l.kind === "job-ind" ? 1.5 + ((Math.min(w, 6.4) - 1) / 5.4) * 3 : w, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
         selectable: false,
         focusable: false,
       });
@@ -345,7 +367,9 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         fitView
         fitViewOptions={{ padding: 0.14, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
         attributionPosition="bottom-left"
-      />
+      >
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.4} />
+      </ReactFlow>
       <div className="absolute bottom-3 right-3 z-10 flex gap-1" role="group" aria-label="확대와 축소">
         <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">+</button>
         <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-element bg-bg-surface text-label shadow-[0_0_0_1px_var(--color-border)] hover:bg-overlay-hover">−</button>

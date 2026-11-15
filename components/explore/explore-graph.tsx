@@ -34,6 +34,7 @@ export function ExploreGraph(p: Props) {
   const roleById = useMemo(() => new Map(p.roles.map((r) => [r.id, r])), [p.roles]);
   const coById = useMemo(() => new Map(p.companies.map((c) => [c.id, c])), [p.companies]);
   const companyIndustry = useMemo(() => Object.fromEntries(p.companies.map((c) => [c.id, c.industryId])), [p.companies]);
+  const maxRevenue = useMemo(() => Math.max(0, ...p.companies.map((c) => c.revenue ?? 0)), [p.companies]);
   const linkedJobs = useMemo(() => new Set(p.links.map((l) => l.jobRoleId)), [p.links]);
 
   const [myJobs, setMyJobs] = useState<string[]>([p.initialJob]);
@@ -127,15 +128,16 @@ export function ExploreGraph(p: Props) {
               {engine === "d3" ? (
                 <JobGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} />
               ) : (
-                <FlowGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} revenueOf={(id) => coById.get(id)?.revenue} />
+                <FlowGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => { setSel(null); }} companyIndustry={companyIndustry} label={label} revenueOf={(id) => coById.get(id)?.revenue} maxRevenue={maxRevenue} />
               )}
               <div className="pointer-events-none absolute left-4 top-4 space-y-2 rounded-element bg-bg-surface/90 p-3 shadow-[0_0_0_1px_var(--color-border)]">
                 <p className="text-label-strong">나의 취업 그래프</p>
                 <ul className="space-y-1 text-caption text-text-secondary">
-                  <li className="flex items-center gap-2"><i className="size-2.5 rounded-full bg-graph-job" />내 직무</li>
-                  <li className="flex items-center gap-2"><i className="size-2.5 rounded-full bg-graph-node" />산업 · 눌러서 기업 펼치기</li>
-                  <li className="flex items-center gap-2"><i className="size-2.5 rounded-full border-2 border-border-strong" />내 직무 여러 개가 함께 뽑는 산업</li>
-                  <li className="flex items-center gap-2"><i className="size-2.5 rounded-full bg-graph-saved" />관심 기업 · 점선 = 추정</li>
+                  <li className="flex items-center gap-2"><i className="h-2.5 w-4 rounded-inner bg-graph-job" />내 직무</li>
+                  <li className="flex items-center gap-2"><i className="h-2.5 w-4 rounded-inner bg-bg-tonal" />산업 · 눌러서 기업 펼치기</li>
+                  <li className="flex items-center gap-2"><i className="h-2.5 w-4 rounded-inner bg-bg-tonal ring-1 ring-border-strong" />내 직무 여러 개가 함께 뽑는 산업</li>
+                  <li className="flex items-center gap-2"><span className="flex w-4 items-end gap-0.5"><i className="h-1.5 w-1.5 rounded-inner border border-border-emphasized" /><i className="h-2.5 w-2 rounded-inner border border-border-emphasized" /></span>기업 · 클수록 매출이 커요 · 검정 = 관심 기업</li>
+                  <li className="flex items-center gap-2"><i className="h-0.5 w-4 bg-graph-division" />선이 굵을수록 실제 공고가 많아요 · 점선 = 추정</li>
                 </ul>
               </div>
             </>

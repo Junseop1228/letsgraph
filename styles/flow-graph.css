@@ -5,6 +5,7 @@
 .lg-flow {
   --xy-background-color: var(--color-graph-canvas);
   --xy-attribution-background-color: transparent;
+  --xy-background-pattern-color: var(--color-graph-orbit); /* faint dot grid so the canvas reads as a surface */
   font-family: inherit;
 }
 .lg-flow .react-flow__attribution { font-size: var(--text-caption); }
@@ -56,6 +57,11 @@
 
 /* company = surface pill; saved = ink; estimated link or no figures = dashed */
 .lg-flow .gp-co { height: 28px; padding: 0 10px; background: var(--color-bg-surface); color: var(--color-text-primary); border: 1px solid var(--color-border-emphasized); }
+/* company size by revenue, 4 steps (DESIGN JobMap: companies sized by revenue); type roles set in flow-graph.tsx */
+.lg-flow .gp-co[data-size="1"] { height: 26px; padding: 0 8px; }
+.lg-flow .gp-co[data-size="2"] { height: 29px; padding: 0 10px; }
+.lg-flow .gp-co[data-size="3"] { height: 33px; padding: 0 12px; }
+.lg-flow .gp-co[data-size="4"] { height: 38px; padding: 0 14px; }
 .lg-flow .gp-co.is-est { border-style: dashed; border-color: var(--color-graph-node); }
 .lg-flow .gp-co.is-saved { background: var(--color-graph-saved); color: var(--color-text-inverted); border-color: var(--color-graph-saved); }
 .lg-flow .gp-co.is-saved .gp-meta, .lg-flow .gp-center .gp-meta { color: var(--color-text-inverted-secondary); }
