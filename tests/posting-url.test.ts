@@ -51,6 +51,14 @@ describe("isPrivateIp", () => {
     expect(isPrivateIp("2001:4860:4860::8888")).toBe(false);
     expect(isPrivateIp("not-an-ip")).toBe(true);
   });
+  it("NAT64 addresses (IPv6-only networks) are judged by the IPv4 address inside", () => {
+    expect(isPrivateIp("64:ff9b::7479:1f6f")).toBe(false); // 116.121.31.111, a public job site
+    expect(isPrivateIp("64:ff9b::116.121.31.111")).toBe(false);
+    expect(isPrivateIp("64:ff9b::a00:1")).toBe(true); // 10.0.0.1
+    expect(isPrivateIp("64:ff9b::7f00:1")).toBe(true); // 127.0.0.1
+    expect(isPrivateIp("64:ff9b::a9fe:a9fe")).toBe(true); // 169.254.169.254 (cloud metadata)
+    expect(isPrivateIp("64:ff9b:1::7479:1f6f")).toBe(true); // other NAT64 prefixes stay refused
+  });
 });
 
 describe("POST-03 주소 넣기: 페이지 본문 읽기", () => {
