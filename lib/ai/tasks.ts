@@ -11,8 +11,12 @@ import {
   type Experience,
 } from "@/lib/contracts/activity";
 
-/** PROPOSED: interactive model; batch extraction uses the Flash-Lite tier (decisions 2026-11-09). */
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+/**
+ * Model for every AI task. GEMINI_MODEL overrides it; an empty value falls back to the default.
+ * gemini-2.5-flash is no longer offered to new Gemini API projects (404 on 2026-11-15), so the default is gemini-3.8-flash.
+ * PROPOSED (decisions 2026-11-09): batch extraction may use a lighter tier later.
+ */
+export const AI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const TIMEOUT_MS = 30_000;
 
 export const aiEnabled = () => !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
@@ -31,7 +35,7 @@ const RULES = `규칙:
 async function run<T>(schema: z.ZodType, system: string, content: ModelMessage[]) {
   if (!aiEnabled()) throw new AiUnavailable();
   const res = await generateText({
-    model: google(MODEL),
+    model: google(AI_MODEL),
     system,
     messages: content,
     output: Output.object({ schema }),

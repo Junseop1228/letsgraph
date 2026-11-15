@@ -2,7 +2,7 @@
 // 연결 결과 만들기 (specs/connection FR-PREM-02). Premium feature, quota-charged, AI output validated before storing.
 import { revalidatePath } from "next/cache";
 import { supabaseEnabled } from "@/lib/data";
-import { aiEnabled, AiUnavailable, connect } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable, connect } from "@/lib/ai/tasks";
 import { PostingAnalysisOutput, Experience } from "@/lib/contracts/activity";
 import { currentPlan } from "@/lib/billing/server";
 import type { ActionState } from "@/app/(main)/postings/actions";
@@ -37,7 +37,7 @@ export async function connectAction(postingId: string, _prev: ActionState): Prom
       context,
     );
     const { createAdminClient } = await import("@/lib/supabase/admin");
-    await createAdminClient().from("connections").upsert({ posting_id: postingId, user_id: uid, output: out, model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+    await createAdminClient().from("connections").upsert({ posting_id: postingId, user_id: uid, output: out, model: AI_MODEL });
     await db.from("quota_usage").insert({ user_id: uid, feature: "connection" });
   } catch (e) {
     return { error: e instanceof AiUnavailable ? e.message : "연결 결과를 만들지 못했어요. 잠시 뒤 다시 시도해 주세요." }; // EX-03

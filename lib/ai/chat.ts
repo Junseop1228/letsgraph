@@ -3,9 +3,8 @@ import "server-only";
 import { generateText, Output, type ModelMessage } from "ai";
 import { google } from "@ai-sdk/google";
 import { ExperienceOutput } from "@/lib/contracts/activity";
-import { aiEnabled, AiUnavailable } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable } from "@/lib/ai/tasks";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 export type ChatTurn = { role: "user" | "assistant"; text: string };
 
 const SYSTEM = `너는 대학생의 경험을 정리해 주는 코치다. 한 번에 질문 하나만, 해요체로 짧게 묻는다.
@@ -16,14 +15,14 @@ const toMessages = (h: ChatTurn[]): ModelMessage[] => h.map((t) => ({ role: t.ro
 
 export async function chatReply(history: ChatTurn[]): Promise<string> {
   if (!aiEnabled()) throw new AiUnavailable();
-  const res = await generateText({ model: google(MODEL), system: SYSTEM, messages: toMessages(history.slice(-20)), abortSignal: AbortSignal.timeout(30_000) });
+  const res = await generateText({ model: google(AI_MODEL), system: SYSTEM, messages: toMessages(history.slice(-20)), abortSignal: AbortSignal.timeout(30_000) });
   return res.text.trim();
 }
 
 export async function draftExperience(history: ChatTurn[]) {
   if (!aiEnabled()) throw new AiUnavailable();
   const res = await generateText({
-    model: google(MODEL),
+    model: google(AI_MODEL),
     system: `${SYSTEM}\n지금까지의 대화를 경험 카드 하나로 요약한다. 대화에 없는 내용은 비워 둔다.`,
     messages: toMessages(history.slice(-30)),
     output: Output.object({ schema: ExperienceOutput }),

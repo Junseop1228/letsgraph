@@ -2,7 +2,7 @@
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
-import { aiEnabled, AiUnavailable, analyzePosting, extractExperiences, type PostingSource } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable, analyzePosting, extractExperiences, type PostingSource } from "@/lib/ai/tasks";
 import { canSpend, planFromPasses } from "@/lib/billing/state";
 import type { QuotaFeature } from "@/lib/contracts/billing";
 import { PostingUrlInput } from "@/lib/contracts/activity";
@@ -14,6 +14,12 @@ export type ActionState = { error?: string; ok?: string } | undefined;
 type Db = Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>;
 
 const MAX_BYTES = 10 * 1024 * 1024;
+
+/** Server log line for a failed AI call: error type and message only, no user content or keys. */
+function logAiFailure(task: string, e: unknown) {
+  const err = e as { name?: string; message?: string; statusCode?: number };
+  console.error(`[ai:${task}] ${err?.name ?? "Error"}${err?.statusCode ? ` ${err.statusCode}` : ""}: ${String(err?.message ?? e).slice(0, 300)}`);
+}
 
 async function readPdf(form: FormData): Promise<Uint8Array | string> {
   const f = form.get("file");
@@ -50,6 +56,7 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
   try {
     out = await analyzePosting(src);
   } catch (e) {
+    logAiFailure("posting_analysis", e);
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const { data: posting, error } = await db
@@ -68,7 +75,7 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
   await db.from("quota_usage").insert({ user_id: uid, feature: "posting_analysis" });
   // posting_analyses is written with the server key (users have read-only access to AI results)
   const { createAdminClient } = await import("@/lib/supabase/admin");
-  await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash" });
+  await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: AI_MODEL });
   redirect(`/postings/${posting.id}`);
 }
 
@@ -108,6 +115,7 @@ export async function extractExperiencesAction(_prev: ActionState, form: FormDat
   try {
     out = await extractExperiences(pdf);
   } catch (e) {
+    logAiFailure("experience_extraction", e);
     return { error: e instanceof AiUnavailable ? e.message : "경험을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const label = (form.get("file") as File).name;
