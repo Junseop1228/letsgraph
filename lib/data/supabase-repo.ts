@@ -2,6 +2,10 @@
 // Rows are mapped to the domain contracts; JSON columns are re-validated with Zod.
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
+
+// catalogue reads need no session (public RLS policies); user reads use the cookie client
+const pub = () => createPublicClient();
 import type { CatalogRepo, UserRepo } from "@/lib/data/repo";
 import {
   BusinessSegment,
@@ -48,7 +52,7 @@ function toSegment(r: Row, jobRoleIds: string[]): BusinessSegment {
 }
 
 async function updatesFor(companyId: string, segmentId?: string) {
-  const db = await createClient();
+  const db = pub();
   let q = db.from("company_updates").select("*").eq("company_id", companyId).order("date", { ascending: false }).limit(10);
   if (segmentId) q = q.eq("segment_id", segmentId);
   const { data } = await q;
@@ -60,54 +64,57 @@ async function updatesFor(companyId: string, segmentId?: string) {
 export const supabaseCatalog: CatalogRepo = {
   source: "supabase",
   async industries() {
-    const { data } = await (await createClient()).from("industries").select("id,name").order("id");
+    const { data } = await pub().from("industries").select("id,name").order("id");
     return data ?? [];
   },
   async jobFamilies() {
-    const { data } = await (await createClient()).from("job_families").select("id,name").order("id");
+    const { data } = await pub().from("job_families").select("id,name").order("id");
     return data ?? [];
   },
   async jobRoles() {
-    const { data } = await (await createClient()).from("job_roles").select("id,name,family_id,description");
+    const { data } = await pub().from("job_roles").select("id,name,family_id,description");
     return (data ?? []).map((r) => ({ id: r.id, name: r.name, groupId: r.family_id, description: r.description }));
   },
   async jobRole(id) {
-    const { data } = await (await createClient()).from("job_roles").select("id,name,family_id,description").eq("id", id).maybeSingle();
+    const { data } = await pub().from("job_roles").select("id,name,family_id,description").eq("id", id).maybeSingle();
     return data ? { id: data.id, name: data.name, groupId: data.family_id, description: data.description } : null;
   },
   async onboardingJobIds() {
-    const { data } = await (await createClient()).from("job_roles").select("id").limit(6);
-    return (data ?? []).map((r) => r.id);
+    // Deck order is a product choice (fixtures ONBOARDING_JOB_IDS); keep the ids that exist in the DB.
+    const { data } = await pub().from("job_roles").select("id");
+    const ids = new Set((data ?? []).map((r) => r.id));
+    const { ONBOARDING_JOB_IDS } = await import("@/lib/data/fixtures");
+    return ONBOARDING_JOB_IDS.filter((id) => ids.has(id));
   },
   async companies() {
-    const { data } = await (await createClient()).from("companies").select("*").order("revenue", { ascending: false, nullsFirst: false });
+    const { data } = await pub().from("companies").select("*").order("revenue", { ascending: false, nullsFirst: false });
     return (data ?? []).map(toCompany);
   },
   async company(id) {
-    const { data } = await (await createClient()).from("companies").select("*").eq("id", id).maybeSingle();
+    const { data } = await pub().from("companies").select("*").eq("id", id).maybeSingle();
     return data ? toCompany(data) : null;
   },
   async searchCompanies(q) {
     if (!q.trim()) return [];
-    const { data } = await (await createClient()).from("companies").select("*").ilike("name", `%${q.trim()}%`).limit(10);
+    const { data } = await pub().from("companies").select("*").ilike("name", `%${q.trim()}%`).limit(10);
     return (data ?? []).map(toCompany);
   },
   async jobLinks(jobRoleId) {
-    const { data } = await (await createClient()).from("job_links").select("job_role_id,company_id,basis").eq("job_role_id", jobRoleId);
+    const { data } = await pub().from("job_links").select("job_role_id,company_id,basis").eq("job_role_id", jobRoleId);
     return (data ?? []).map((l) => ({ jobRoleId: l.job_role_id, companyId: l.company_id, basis: l.basis }));
   },
   async segments(companyId) {
-    const db = await createClient();
+    const db = pub();
     const { data } = await db.from("business_segments").select("*, segment_job_roles(job_role_id)").eq("company_id", companyId);
     return (data ?? []).map((s) => toSegment(s, ((s.segment_job_roles as Row[]) ?? []).map((j) => String(j.job_role_id))));
   },
   async segment(id) {
-    const db = await createClient();
+    const db = pub();
     const { data } = await db.from("business_segments").select("*, segment_job_roles(job_role_id)").eq("id", id).maybeSingle();
     return data ? toSegment(data, ((data.segment_job_roles as Row[]) ?? []).map((j) => String(j.job_role_id))) : null;
   },
   async segmentDetail(id) {
-    const db = await createClient();
+    const db = pub();
     const { data } = await db.from("segment_details").select("*, business_segments(company_id)").eq("segment_id", id).maybeSingle();
     if (!data) return null;
     const companyId = String((data.business_segments as Row | null)?.company_id ?? "");
@@ -124,7 +131,7 @@ export const supabaseCatalog: CatalogRepo = {
     });
   },
   async companyDetail(companyId) {
-    const { data } = await (await createClient()).from("company_details").select("*").eq("company_id", companyId).maybeSingle();
+    const { data } = await pub().from("company_details").select("*").eq("company_id", companyId).maybeSingle();
     if (!data) return null;
     return CompanyDetail.parse({
       companyId,
