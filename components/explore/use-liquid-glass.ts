@@ -137,7 +137,7 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
       map.setAttribute("href", lensMap(w, h, r, bezel));
     };
     draw();
-    const value = `url(#${id}) saturate(1.8) brightness(1.06)`;
+    const value = `url(#${id}) saturate(1.5)`;
     node.dataset.lens = "on";
     node.style.setProperty("backdrop-filter", value);
     node.style.setProperty("-webkit-backdrop-filter", value);

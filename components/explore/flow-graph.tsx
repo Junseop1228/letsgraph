@@ -141,7 +141,7 @@ const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdge
 function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, controlsClassName }: Props) {
   const rf = useReactFlow<VNode, GEdge>();
   const zoomRef = useRef<HTMLDivElement>(null);
-  useLiquidGlass(zoomRef, { bezel: 14, scale: 34, frost: 0.5 });
+  useLiquidGlass(zoomRef, { bezel: 14, scale: 34, frost: 0.3 });
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const byIdRef = useRef(new Map<string, SimNode>());
   const linksRef = useRef<SimLink[]>([]);

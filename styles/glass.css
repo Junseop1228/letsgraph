@@ -13,7 +13,7 @@
   --glass-bevel: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   --glass-floor: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   /* gloss: light falls on the top of the glass and fades out; a faint shade at the bottom gives it volume */
-  --glass-gloss: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-surface) 42%, transparent) 0%, transparent 40%, transparent 72%, color-mix(in srgb, var(--color-text-primary) 4%, transparent) 100%);
+  --glass-gloss: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-surface) 20%, transparent) 0%, transparent 34%, transparent 76%, color-mix(in srgb, var(--color-text-primary) 3%, transparent) 100%);
   isolation: isolate;
   background: var(--glass-gloss), var(--glass-fill);
   -webkit-backdrop-filter: blur(14px) saturate(1.6);
@@ -41,7 +41,7 @@
   inset: 18px;
   z-index: -1;
   border-radius: var(--radius-tile);
-  background: color-mix(in srgb, var(--color-bg-surface) 20%, transparent);
+  background: color-mix(in srgb, var(--color-bg-surface) 6%, transparent);
   filter: blur(12px);
   pointer-events: none;
 }
@@ -72,7 +72,10 @@
 .dark .lg-glass-card { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 80%, transparent); }
 .dark .lg-glass[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 14%, transparent); }
 .dark .lg-glass-card[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 8%, transparent); }
-.dark .lg-glass-card[data-lens="on"]::after { background: color-mix(in srgb, var(--color-bg-surface) 30%, transparent); }
+.dark .lg-glass-card[data-lens="on"]::after { background: color-mix(in srgb, var(--color-bg-surface) 10%, transparent); }
+/* clear glass keeps text readable the way vibrancy does: a soft halo in the surface colour around each glyph instead of
+   a white pane, so the graph behind stays visible and text still separates from a vertex passing under it */
+.lg-glass-card[data-lens="on"] { text-shadow: 0 0 1px var(--color-bg-surface), 0 0 6px var(--color-bg-surface), 0 0 12px color-mix(in srgb, var(--color-bg-surface) 70%, transparent); }
 
 /* raised segment inside a glass bar (selected job / view), like an iOS segmented control: not another glass layer */
 .lg-seg-on {
