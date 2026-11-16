@@ -89,6 +89,8 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .lg-glass, .lg-glass-card { background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent); }
 }
+/* no GPU (software rendering, detected in use-liquid-glass.ts): any backdrop filter costs whole frames -> solid layers */
+:root[data-glass="solid"] .lg-glass, :root[data-glass="solid"] .lg-glass-card { background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-transparency: reduce) {
   .lg-glass, .lg-glass-card { background: var(--color-bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
