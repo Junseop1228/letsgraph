@@ -37,8 +37,8 @@ type Sel = { kind: "job"; job: string } | { kind: "ind"; job: string; ind: strin
 const FIT_WIDE = { top: "84px", right: "404px", bottom: "76px", left: "48px" } as const;
 const FIT_NARROW = { top: "76px", right: "20px", bottom: "48%", left: "20px" } as const;
 // glass lens per layer (use-liquid-glass.ts): capsules bend in a narrow rim; the card has a wider rim and a frosted middle for reading
-const LENS_PILL: Lens = { bezel: 14, scale: 34, frost: 1 };
-const LENS_CARD: Lens = { bezel: 22, scale: 52, frost: 10 };
+const LENS_PILL: Lens = { bezel: 14, scale: 34, frost: 0.5 };
+const LENS_CARD: Lens = { bezel: 22, scale: 52, frost: 12 };
 
 export function ExploreGraph(p: Props) {
   const watched = useWatched(p.watchedInitial);

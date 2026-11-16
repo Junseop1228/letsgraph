@@ -27,8 +27,8 @@
 .lg-glass-card { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 78%, transparent); }
 
 /* lens mode (Chromium): the filter does the refraction and the frost; the fill stays thin so the rim shows through */
-.lg-glass[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 12%, transparent); }
-.lg-glass-card[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 8%, transparent); }
+.lg-glass[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 5%, transparent); }
+.lg-glass-card[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 3%, transparent); }
 /* the card's reading body: a soft-edged frosted pane inside the lens rim, so the rim stays clear (bent dots and lines
    show there) while text in the middle sits on an even, light surface even when the graph passes under the card */
 .lg-glass-card[data-lens="on"]::after {
@@ -37,7 +37,7 @@
   inset: 18px;
   z-index: -1;
   border-radius: var(--radius-tile);
-  background: color-mix(in srgb, var(--color-bg-surface) 74%, transparent);
+  background: color-mix(in srgb, var(--color-bg-surface) 48%, transparent);
   filter: blur(12px);
   pointer-events: none;
 }
@@ -64,9 +64,9 @@
   --glass-shade: color-mix(in srgb, var(--color-text-inverted) 70%, transparent);
 }
 .dark .lg-glass-card { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 80%, transparent); }
-.dark .lg-glass[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 24%, transparent); }
-.dark .lg-glass-card[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 16%, transparent); }
-.dark .lg-glass-card[data-lens="on"]::after { background: color-mix(in srgb, var(--color-bg-surface) 80%, transparent); }
+.dark .lg-glass[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 14%, transparent); }
+.dark .lg-glass-card[data-lens="on"] { --glass-fill: color-mix(in srgb, var(--color-bg-surface) 8%, transparent); }
+.dark .lg-glass-card[data-lens="on"]::after { background: color-mix(in srgb, var(--color-bg-surface) 58%, transparent); }
 
 /* raised segment inside a glass bar (selected job / view), like an iOS segmented control: not another glass layer */
 .lg-seg-on {
