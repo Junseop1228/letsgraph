@@ -159,8 +159,10 @@ export function ExploreGraph(p: Props) {
             {roleById.get(j)?.name}
           </button>
         ))}
-        <Link href={DECK_AGAIN_PATH} aria-label="직무 더 고르기" className="grid size-8 shrink-0 place-items-center rounded-full text-text-secondary hover:bg-overlay-hover hover:text-text-primary">
+        {/* visible text so the way back to the card deck is easy to find (user 2026-11-16); icon only below lg, like the view switch (audit M-7) */}
+        <Link href={DECK_AGAIN_PATH} aria-label="직무 더 고르기" className="flex h-8 min-w-8 shrink-0 items-center justify-center gap-1 rounded-full px-2 text-label text-text-secondary hover:bg-overlay-hover hover:text-text-primary lg:px-3">
           <Plus className="size-4" aria-hidden />
+          <span aria-hidden className="hidden lg:inline">직무 더 고르기</span>
         </Link>
         <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
         <div role="group" aria-label="보기 방식" className="flex shrink-0 gap-0.5">
