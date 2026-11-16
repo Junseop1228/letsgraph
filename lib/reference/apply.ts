@@ -5,13 +5,16 @@
 //   companies    <- staging rows (industry_reviewed = false): industry from classify.ts (override > name > KSIC rule);
 //                   reviewed = true unless excluded or unclassified; headline figures from company_financials
 //                   (latest fiscal year, 연결 first, else 별도), labelled as DART figures.
-// Rows already reviewed (hand-made seed rows) are never touched. Safe to run again.
+//   companies.revenue_growth <- 3-year revenue growth of every company with DART figures (lib/reference/growth.ts;
+//                   D 2026-11-17 step 5b), the only column also written for already reviewed rows.
+// Rows already reviewed (hand-made seed rows) are otherwise never touched. Safe to run again.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INDUSTRIES } from "@/lib/reference/industry-map";
 import { JOB_FAMILIES, JOBS } from "@/lib/reference/jobs";
 import { industryForCompany } from "@/lib/reference/classify";
 import { dartDate } from "@/lib/dart/parse";
+import { revenueGrowthByCompany } from "@/lib/reference/growth";
 
 export type ApplyResult = {
   dryRun: boolean;
@@ -23,6 +26,8 @@ export type ApplyResult = {
   excluded: number;
   unclassified: number;
   withFigures: number;
+  /** companies with a 3-year revenue growth */
+  withGrowth: number;
   perIndustry: Record<string, number>;
   errors: string[];
 };
@@ -53,6 +58,7 @@ export async function applyCatalogue(db: SupabaseClient, opts: { dryRun: boolean
     excluded: 0,
     unclassified: 0,
     withFigures: 0,
+    withGrowth: 0,
     perIndustry: {},
     errors,
   };
@@ -118,5 +124,17 @@ export async function applyCatalogue(db: SupabaseClient, opts: { dryRun: boolean
       const { error } = await db.from("companies").upsert(rows.slice(i, i + 500), { onConflict: "id" });
       if (error) errors.push(`companies ${i}: ${error.message}`);
     }
+
+  // 3-year revenue growth for every company with DART figures (upsert writes only id, name, revenue_growth)
+  const growth = revenueGrowthByCompany(fins);
+  r.withGrowth = growth.size;
+  if (write && growth.size) {
+    const names = await readAll<{ id: string; name: string }>((a, b) => db.from("companies").select("id, name").order("id").range(a, b));
+    const g = names.filter((c) => growth.has(c.id)).map((c) => ({ id: c.id, name: c.name, revenue_growth: growth.get(c.id)! }));
+    for (let i = 0; i < g.length; i += 500) {
+      const { error } = await db.from("companies").upsert(g.slice(i, i + 500), { onConflict: "id" });
+      if (error) errors.push(`growth ${i}: ${error.message}`);
+    }
+  }
   return r;
 }
