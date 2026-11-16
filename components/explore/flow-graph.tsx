@@ -30,6 +30,7 @@ import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/exp
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
 import { BriefcaseBusiness } from "lucide-react";
 import { IndustryIcon } from "@/components/explore/industry-icon";
+import { useLiquidGlass } from "@/components/explore/use-liquid-glass";
 import { cn } from "@/lib/utils";
 
 // ---- types -------------------------------------------------------------------------------------
@@ -139,6 +140,8 @@ const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdge
 // ---- engine ------------------------------------------------------------------------------------
 function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, controlsClassName }: Props) {
   const rf = useReactFlow<VNode, GEdge>();
+  const zoomRef = useRef<HTMLDivElement>(null);
+  useLiquidGlass(zoomRef, { bezel: 14, scale: 34, frost: 1 });
   const simRef = useRef<Simulation<SimNode, undefined> | null>(null);
   const byIdRef = useRef(new Map<string, SimNode>());
   const linksRef = useRef<SimLink[]>([]);
@@ -399,7 +402,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
       </ReactFlow>
-      <div className={cn("lg-glass absolute z-10 flex items-center gap-0.5 rounded-full p-1", controlsClassName ?? "bottom-3 right-3")} role="group" aria-label="확대와 축소">
+      <div ref={zoomRef} className={cn("lg-glass absolute z-10 flex items-center gap-0.5 rounded-full p-1", controlsClassName ?? "bottom-3 right-3")} role="group" aria-label="확대와 축소">
         {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">배치 되돌리기</button>}
         <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-full text-label hover:bg-overlay-hover">+</button>
         <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-full text-label hover:bg-overlay-hover">−</button>

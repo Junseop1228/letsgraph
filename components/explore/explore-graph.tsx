@@ -5,7 +5,7 @@
 // float above it on glass (styles/glass.css). Toss: one thing per card, big figures with small captions, 해요체, no helper
 // sentences ("잡초 뽑기"), but the 실제 공고 / 추정 trust label always stays. Mobile: the card becomes a bottom sheet.
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, List, Network, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { BusinessSegment, Company, Industry, JobLink, JobRole } from "@/lib/contracts/domain";
@@ -15,6 +15,7 @@ import { readLikedJobs, useWatched } from "@/lib/client/local-state";
 import { JobGraph } from "@/components/explore/job-graph";
 import { FlowGraph } from "@/components/explore/flow-graph";
 import { IndustryIcon } from "@/components/explore/industry-icon";
+import { useLiquidGlass, type Lens } from "@/components/explore/use-liquid-glass";
 import { stressGraph } from "@/lib/explore/stress";
 import { track } from "@/lib/client/analytics";
 import { SourceLine, TrustLabel, btn } from "@/components/lg/ui";
@@ -35,6 +36,9 @@ type Sel = { kind: "job"; job: string } | { kind: "ind"; job: string; ind: strin
 // The graph keeps clear of the floating layers when it fits itself.
 const FIT_WIDE = { top: "84px", right: "404px", bottom: "76px", left: "48px" } as const;
 const FIT_NARROW = { top: "76px", right: "20px", bottom: "48%", left: "20px" } as const;
+// glass lens per layer (use-liquid-glass.ts): capsules bend in a narrow rim; the card has a wider rim and a frosted middle for reading
+const LENS_PILL: Lens = { bezel: 14, scale: 34, frost: 1 };
+const LENS_CARD: Lens = { bezel: 22, scale: 52, frost: 10 };
 
 export function ExploreGraph(p: Props) {
   const watched = useWatched(p.watchedInitial);
@@ -68,13 +72,9 @@ export function ExploreGraph(p: Props) {
       setWide(lg.matches);
     };
     upd();
-    // real refraction (SVG displacement inside backdrop-filter) only where the engine renders it: Chromium
-    const uaData = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData;
-    if (uaData?.brands.some((b) => b.brand === "Chromium")) document.documentElement.dataset.glass = "warp";
     narrow.addEventListener("change", upd);
     lg.addEventListener("change", upd);
     return () => {
-      delete document.documentElement.dataset.glass;
       narrow.removeEventListener("change", upd);
       lg.removeEventListener("change", upd);
     };
@@ -124,19 +124,18 @@ export function ExploreGraph(p: Props) {
     toast(was ? "관심 기업에서 뺐어요" : "관심 기업에 저장했어요");
   }
 
+  const barRef = useRef<HTMLDivElement>(null);
+  const legendRef = useRef<HTMLUListElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  useLiquidGlass(barRef, LENS_PILL);
+  useLiquidGlass(legendRef, LENS_PILL, view === "graph");
+  useLiquidGlass(cardRef, LENS_CARD);
+
   const cardJob = sel?.job ?? stars[0]?.id ?? p.initialJob;
   const cardKey = !sel ? `job:${cardJob}` : selectedId!;
 
   return (
     <div className="relative h-[calc(100dvh-var(--spacing-header-height))] min-h-[560px] overflow-hidden bg-graph-canvas">
-      {/* displacement map for the glass layers (styles/glass.css): low-frequency noise bends what is behind the glass */}
-      <svg aria-hidden width="0" height="0" className="absolute">
-        <filter id="lg-glass-warp" x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.007 0.011" numOctaves={2} seed={4} result="noise" />
-          <feGaussianBlur in="noise" stdDeviation="1.2" result="soft" />
-          <feDisplacementMap in="SourceGraphic" in2="soft" scale={42} xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </svg>
       {/* the graph (or the list) fills the screen */}
       {view === "graph" ? (
         <div className="absolute inset-0">
@@ -151,7 +150,7 @@ export function ExploreGraph(p: Props) {
               companyIndustry={companyIndustry}
               label={label}
               fitPadding={wide ? FIT_WIDE : FIT_NARROW}
-              controlsClassName={wide ? "bottom-4 right-[396px]" : "right-3 top-16"}
+              controlsClassName={wide ? "bottom-4 right-4" : "right-3 top-16"}
             />
           )}
         </div>
@@ -162,7 +161,7 @@ export function ExploreGraph(p: Props) {
       )}
 
       {/* floating glass bar: my jobs + view switch */}
-      <div className="lg-glass absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full p-1 lg:left-4 lg:top-4 lg:max-w-[calc(100%-26rem)]">
+      <div ref={barRef} className="lg-glass absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full p-1 lg:left-4 lg:top-4 lg:max-w-[calc(100%-26rem)]">
         {myJobs.map((j) => (
           <button key={j} type="button" aria-pressed={on.includes(j)} onClick={() => toggleJob(j)} className={cn("h-8 shrink-0 rounded-full px-3.5 text-label transition-colors", on.includes(j) ? "lg-seg-on font-semibold text-text-primary" : "text-text-secondary hover:text-text-primary")}>
             {roleById.get(j)?.name}
@@ -184,7 +183,7 @@ export function ExploreGraph(p: Props) {
 
       {/* how to read the graph: one glass line instead of a boxed legend */}
       {view === "graph" && (
-        <ul aria-label="그래프 읽는 법" className="lg-glass absolute bottom-4 left-4 z-10 hidden items-center gap-4 rounded-full px-4 py-2 text-caption text-text-secondary lg:flex">
+        <ul ref={legendRef} aria-label="그래프 읽는 법" className="lg-glass absolute bottom-4 left-4 z-10 hidden items-center gap-4 rounded-full px-4 py-2 text-caption text-text-secondary lg:flex">
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full bg-graph-job" />내 직무</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full border border-border-emphasized bg-bg-tonal" />산업</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full border border-graph-node" />기업 · 클수록 매출이 커요</li>
@@ -193,7 +192,9 @@ export function ExploreGraph(p: Props) {
       )}
 
       {/* detail card: floating glass card on wide screens, bottom sheet on narrow ones */}
-      <aside aria-live="polite" aria-label="자세히" className="lg-glass lg-glass-card absolute inset-x-2 bottom-2 z-20 max-h-[46%] overflow-y-auto overscroll-contain rounded-[28px] px-5 pb-5 pt-3 lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-4 lg:max-h-[calc(100%-2rem)] lg:w-[364px] lg:p-6">
+      <aside ref={cardRef} aria-live="polite" aria-label="자세히" className="lg-glass lg-glass-card absolute inset-x-2 bottom-2 z-20 flex max-h-[46%] flex-col overflow-hidden rounded-sheet lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-4 lg:max-h-[calc(100%-5.25rem)] lg:w-floating-card-width">
+        {/* only the content scrolls, so the glass rim and lens stay put */}
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 pt-3 lg:p-6">
         <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-border-emphasized lg:hidden" />
         <div key={cardKey} className="lg-card-in space-y-5">
           {!sel || sel.kind === "job" ? (
@@ -222,6 +223,7 @@ export function ExploreGraph(p: Props) {
               onBack={() => openIndustry(sel.job, companyIndustry[sel.co])}
             />
           )}
+        </div>
         </div>
       </aside>
     </div>
