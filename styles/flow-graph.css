@@ -59,19 +59,16 @@
   box-shadow: 0 0 0 2px var(--color-graph-canvas);
 }
 
-/* company = open circle; saved = ink; estimated link or no figures = dashed */
+/* company = open circle; saved = ink (one border style: evidence is told in words on the cards, D 2026-11-17) */
 .lg-flow .gv-co { background: var(--color-bg-surface); border: 1.5px solid var(--color-graph-node); }
-.lg-flow .gv-co.is-est { border-style: dashed; }
 .lg-flow .gv-co.is-saved { background: var(--color-graph-saved); border-color: var(--color-graph-saved); }
 
 /* selection + keyboard focus: canvas gap + strong ring */
 .lg-flow .react-flow__node.sel .gv,
 .lg-flow .gv:focus-visible { box-shadow: 0 0 0 2px var(--color-graph-canvas), 0 0 0 4px var(--color-border-strong); }
 
-/* ---- edges: quiet lines; thickness = posting evidence ---- */
+/* ---- edges: one quiet thin line for every link (D 2026-11-17 "실선을 쓰지 말자") ---- */
 .lg-flow .ge { fill: none; stroke: var(--color-graph-edge); stroke-linecap: round; }
-.lg-flow .ge.job-ind { stroke: var(--color-graph-division); }
-.lg-flow .ge.ind-co-est { stroke-dasharray: 4 4; }
 .lg-flow .gbridge { fill: none; stroke: var(--color-border-strong); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: 0.7; }
 
 /* gray plane behind an opened industry (DESIGN LAY-6: planes, not boxes) */

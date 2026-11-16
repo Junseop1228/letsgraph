@@ -49,7 +49,7 @@ async function AccountContent() {
 
       <section className="mt-10 space-y-3">
         <Kicker>관심 기업</Kicker>
-        <WatchedList companies={await cat.companies()} initial={await repo.watchedCompanyIds()} />
+        <WatchedList companies={await cat.companiesByIds(await repo.watchedCompanyIds())} initial={await repo.watchedCompanyIds()} />
       </section>
 
       {!demo && <DeleteAccount />}

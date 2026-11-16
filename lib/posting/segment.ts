@@ -13,7 +13,10 @@ export type PostingLink = { companyId: string | null; segmentId: string | null }
 export async function linkPosting(analysis: PostingAnalysisOutput): Promise<PostingLink> {
   try {
     const cat = await catalog();
-    const company = matchCompany(await cat.companies(), analysis.companyName);
+    // the catalogue is searched by the name's first word ("CJ제일제당 식품사업부문" -> "CJ제일제당"), then matched exactly
+    const head = analysis.companyName.replace(/\(주\)|㈜|주식회사/g, " ").trim().split(/\s+/)[0] ?? "";
+    const candidates = head.length >= 2 ? await cat.searchCompanies(head) : [];
+    const company = matchCompany(candidates, analysis.companyName);
     if (!company) return { companyId: null, segmentId: null };
     const segments = await cat.segments(company.id);
     if (segments.length === 1) return { companyId: company.id, segmentId: segments[0].id };

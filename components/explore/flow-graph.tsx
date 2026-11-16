@@ -346,8 +346,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         target: l.target.id,
         type: "line",
         className: lit && lit.has(l.source.id) && lit.has(l.target.id) ? "lit" : undefined,
-        // more posting evidence = thicker (spec FR-MAP-03): job -> industry 1.5-4.5px; company links posting 2px, estimated 1px
-        data: { kind: l.kind, width: l.kind === "job-ind" ? 1.5 + ((Math.min(w, 6.4) - 1) / 5.4) * 3 : w, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
+        // one thin line for every link (D 2026-11-17, "실선을 쓰지 말자"): posting evidence is told in words on the cards
+        data: { kind: l.kind, width: w, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
         selectable: false,
         focusable: false,
       });

@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { catalog, userData } from "@/lib/data";
 import { ExploreGraph } from "@/components/explore/explore-graph";
+import { loadGraph } from "@/lib/explore/load";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
-import type { BusinessSegment } from "@/lib/contracts/domain";
 
 export const metadata = { title: "나의 취업 그래프 · letsGraph" };
 
@@ -19,19 +19,17 @@ async function GraphContent({ searchParams }: Props) {
   const job = await repo.jobRole(jobId);
   if (!job) notFound();
 
-  const [roles, industries, companies, { repo: user }] = await Promise.all([repo.jobRoles(), repo.industries(), repo.companies(), userData()]);
-  const links = (await Promise.all(roles.map((r) => repo.jobLinks(r.id)))).flat();
-  const linkedCompanies = [...new Set(links.map((l) => l.companyId))];
-  const segmentsByCompany: Record<string, BusinessSegment[]> = Object.fromEntries(
-    await Promise.all(linkedCompanies.map(async (id) => [id, await repo.segments(id)] as const)),
-  );
+  // every job card can become a star, so the slice covers all jobs (top N per industry keeps it small)
+  const [roles, { repo: user }] = await Promise.all([repo.jobRoles(), userData()]);
+  const g = await loadGraph(repo, roles.map((r) => r.id));
   return (
     <ExploreGraph
       roles={roles}
-      industries={industries}
-      companies={companies}
-      links={links}
-      segmentsByCompany={segmentsByCompany}
+      industries={g.industries}
+      industryTotals={g.industryTotals}
+      companies={g.companies}
+      links={g.links}
+      segmentsByCompany={g.segmentsByCompany}
       watchedInitial={await user.watchedCompanyIds()}
       initialJob={job.id}
     />

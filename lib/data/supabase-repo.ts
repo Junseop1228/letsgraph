@@ -21,6 +21,10 @@ import { Activity, ConnectionOutput, Experience, JobPosting, PostingAnalysisOutp
 import { z } from "zod";
 
 type Row = Record<string, unknown>;
+type JobLinkRow = { job_role_id: string; company_id: string; basis: "posting" | "estimated" };
+
+/** reviewed catalogue companies (FR-OPS-01) */
+const reviewed = () => pub().from("companies").select("*").eq("industry_reviewed", true);
 
 function toCompany(r: Row): Company {
   return Company.parse({
@@ -87,14 +91,41 @@ export const supabaseCatalog: CatalogRepo = {
     return ONBOARDING_JOB_IDS.filter((id) => ids.has(id));
   },
   // The catalogue is the reviewed set only (FR-OPS-01): DART filers collected for review stay out of every list,
-  // search and graph until a person assigns their industry. A single company page still opens by id.
-  async companies() {
-    const { data } = await pub()
-      .from("companies")
-      .select("*")
-      .eq("industry_reviewed", true)
-      .order("revenue", { ascending: false, nullsFirst: false });
+  // search and graph until their industry is assigned. A single company page still opens by id.
+  async companiesByIds(ids) {
+    if (!ids.length) return [];
+    const out: Company[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data } = await reviewed().in("id", ids.slice(i, i + 100));
+      out.push(...(data ?? []).map(toCompany));
+    }
+    return out;
+  },
+  async companiesWithDetail() {
+    const { data } = await reviewed().eq("has_detail", true).order("revenue", { ascending: false, nullsFirst: false }).limit(200);
     return (data ?? []).map(toCompany);
+  },
+  async topCompanies(industryId, n) {
+    const { data } = await reviewed().eq("industry_id", industryId).order("revenue", { ascending: false, nullsFirst: false }).limit(n);
+    return (data ?? []).map(toCompany);
+  },
+  async industryCompanyCounts() {
+    const { data: inds } = await pub().from("industries").select("id");
+    const counts = await Promise.all(
+      (inds ?? []).map(async (i) => {
+        const { count } = await pub()
+          .from("companies")
+          .select("id", { count: "exact", head: true })
+          .eq("industry_reviewed", true)
+          .eq("industry_id", i.id);
+        return [i.id as string, count ?? 0] as const;
+      }),
+    );
+    return Object.fromEntries(counts);
+  },
+  async companyCount() {
+    const { count } = await pub().from("companies").select("id", { count: "exact", head: true }).eq("industry_reviewed", true);
+    return count ?? 0;
   },
   async company(id) {
     const { data } = await pub().from("companies").select("*").eq("id", id).maybeSingle();
@@ -102,13 +133,32 @@ export const supabaseCatalog: CatalogRepo = {
   },
   async searchCompanies(q) {
     if (!q.trim()) return [];
-    const { data } = await pub()
-      .from("companies")
-      .select("*")
-      .eq("industry_reviewed", true)
+    const { data } = await reviewed()
       .ilike("name", `%${q.trim()}%`)
+      .order("revenue", { ascending: false, nullsFirst: false })
       .limit(10);
     return (data ?? []).map(toCompany);
+  },
+  async storedJobLinks() {
+    const out: JobLinkRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await pub().from("job_links").select("job_role_id,company_id,basis").range(from, from + 999);
+      out.push(...((data ?? []) as JobLinkRow[]));
+      if (!data || data.length < 1000) break;
+    }
+    return out.map((l) => ({ jobRoleId: l.job_role_id, companyId: l.company_id, basis: l.basis }));
+  },
+  async segmentsFor(companyIds) {
+    const out: Record<string, BusinessSegment[]> = Object.fromEntries(companyIds.map((id) => [id, []]));
+    for (let i = 0; i < companyIds.length; i += 100) {
+      const { data } = await pub()
+        .from("business_segments")
+        .select("*, segment_job_roles(job_role_id)")
+        .in("company_id", companyIds.slice(i, i + 100));
+      for (const s of data ?? [])
+        out[String(s.company_id)]?.push(toSegment(s, ((s.segment_job_roles as Row[]) ?? []).map((j) => String(j.job_role_id))));
+    }
+    return out;
   },
   async jobLinks(jobRoleId) {
     const { data } = await pub().from("job_links").select("job_role_id,company_id,basis").eq("job_role_id", jobRoleId);

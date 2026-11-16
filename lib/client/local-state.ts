@@ -50,6 +50,40 @@ export function useWatched(initial: string[]) {
   return { ids, has: (id: string) => ids.includes(id), toggle };
 }
 
+/**
+ * A list of ids kept in this browser (graph add / hide, D 2026-11-17 D4). Read after hydration, so the server HTML and
+ * the first client render agree.
+ */
+export function useIdList(key: string) {
+  const [ids, setIds] = useState<string[]>([]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage is only readable after hydration
+  useEffect(() => setIds(read<string[]>(key, [])), [key]);
+  const add = useCallback(
+    (id: string) =>
+      setIds((cur) => {
+        if (cur.includes(id)) return cur;
+        const next = [...cur, id];
+        write(key, next);
+        return next;
+      }),
+    [key],
+  );
+  const remove = useCallback(
+    (id: string) =>
+      setIds((cur) => {
+        const next = cur.filter((x) => x !== id);
+        write(key, next);
+        return next;
+      }),
+    [key],
+  );
+  const clear = useCallback(() => {
+    write(key, []);
+    setIds([]);
+  }, [key]);
+  return { ids, has: (id: string) => ids.includes(id), add, remove, clear };
+}
+
 export function savePrimaryJob(jobId: string, liked: string[]) {
   write(KEY_JOB, jobId);
   write(KEY_LIKED, liked);

@@ -5,9 +5,9 @@ import { NotificationBell, type Note } from "@/components/header/notification-be
  *  the visitor saved (server list, or the browser list before login), so saving a company fills it at once (audit C-2). */
 export async function HeaderNotifications() {
   const [{ repo, demo }, cat] = await Promise.all([userData(), catalog()]);
-  const [watched, companies] = await Promise.all([repo.watchedCompanyIds(), cat.companies()]);
+  const [watched, companies] = await Promise.all([repo.watchedCompanyIds(), cat.companiesWithDetail()]);
   const notes: Note[] = [];
-  for (const company of companies.filter((c) => c.hasDetail)) {
+  for (const company of companies) {
     const detail = await cat.companyDetail(company.id);
     if (!detail) continue;
     for (const u of detail.updates)

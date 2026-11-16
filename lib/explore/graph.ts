@@ -8,24 +8,19 @@ export const RING = 108; // job -> industry distance
 export const CO_RING = RING + 110; // job -> company distance
 export const PER_IND_CAP = 8;
 
-/** Same industry sits at the same spot in every star (degrees, 0 = right, 90 = down). */
-const KNOWN_ANGLE: Record<string, number> = { food: 150, "bio-pharma": 30, cosmetics: 270, auto: 90, semi: 330, logistics: 210 };
-const FREE_ANGLES = [90, 210, 330, 0, 120, 240, 60, 180, 300];
-
+/**
+ * Same industry sits at the same spot in every star (degrees, 0 = right, 90 = down). Only the industries on the graph
+ * share the circle, evenly, in catalogue order, starting at the top, so a few industries never crowd one side.
+ */
 export function industryAngles(industries: Industry[]): Record<string, number> {
-  const used = new Set<number>();
   const out: Record<string, number> = {};
-  for (const i of industries) if (KNOWN_ANGLE[i.id] != null) { out[i.id] = KNOWN_ANGLE[i.id]; used.add(KNOWN_ANGLE[i.id]); }
-  let k = 0;
-  for (const i of industries) {
-    if (out[i.id] != null) continue;
-    while (used.has(FREE_ANGLES[k % FREE_ANGLES.length]) && k < FREE_ANGLES.length * 2) k++;
-    out[i.id] = FREE_ANGLES[k % FREE_ANGLES.length];
-    used.add(out[i.id]);
-    k++;
-  }
+  const step = 360 / Math.max(industries.length, 1);
+  industries.forEach((ind, k) => (out[ind.id] = (270 + k * step) % 360));
   return out;
 }
+
+/** Industry circle radius from how many companies the industry has (log scale: 8 -> ~15, 400 -> ~26). */
+export const industryRadius = (companies: number) => 9 + 2 * Math.log2(1 + Math.max(companies, 1));
 
 /** Star centres: a row (2-3), two rows (4-5) or a vertical stack on narrow screens. */
 export function anchors(n: number, vertical: boolean): [number, number][] {
@@ -69,6 +64,8 @@ type Input = {
   industries: Industry[];
   companies: Company[];
   links: JobLink[]; // links for all star jobs
+  /** reviewed companies per industry (the industry circle size and its count); defaults to the star's own links */
+  totals?: Record<string, number>;
   saved: string[];
   expanded: string | null; // "jobId|industryId"
   vertical: boolean;
@@ -79,7 +76,6 @@ const rad = (deg: number) => (deg * Math.PI) / 180;
 export function buildGraph(i: Input): GraphData {
   const jobs = i.jobs.slice(0, 5);
   const coById = new Map(i.companies.map((c) => [c.id, c]));
-  const angles = industryAngles(i.industries);
   const maxRev = Math.max(1, ...i.companies.map((c) => c.revenue ?? 0));
   const [exJob, exInd] = i.expanded ? i.expanded.split("|") : [null, null];
 
@@ -96,6 +92,7 @@ export function buildGraph(i: Input): GraphData {
   }
   const shareCount: Record<string, number> = {};
   for (const m of jobInds.values()) for (const ind of m.keys()) shareCount[ind] = (shareCount[ind] ?? 0) + 1;
+  const angles = industryAngles(i.industries.filter((ind) => shareCount[ind.id]));
 
   const nodes: GNode[] = [];
   const links: GLink[] = [];
@@ -112,11 +109,13 @@ export function buildGraph(i: Input): GraphData {
       const id = `ind:${j.id}:${ind.id}`;
       const postings = ls.filter((l) => l.basis === "posting").length;
       const isEx = exJob === j.id && exInd === ind.id;
+      const count = Math.max(i.totals?.[ind.id] ?? 0, ls.length);
       nodes.push({
-        id, type: "ind", ref: ind.id, job: j.id, label: ind.name, count: ls.length, postings, shared: shareCount[ind.id],
-        r: 10 + 2.2 * Math.sqrt(ls.length), tx: cx + Math.cos(ang) * RING, ty: cy + Math.sin(ang) * RING, expanded: isEx,
+        id, type: "ind", ref: ind.id, job: j.id, label: ind.name, count, postings, shared: shareCount[ind.id],
+        r: industryRadius(count), tx: cx + Math.cos(ang) * RING, ty: cy + Math.sin(ang) * RING, expanded: isEx,
       });
-      links.push({ source: `job:${j.id}`, target: id, kind: "job-ind", w: 1 + 0.9 * Math.min(Math.max(postings * 2 + (ls.length - postings), 1), 6) });
+      // one thin line style for every link (D 2026-11-17): evidence is told in words on the cards, not by line weight
+      links.push({ source: `job:${j.id}`, target: id, kind: "job-ind", w: 1 });
 
       // saved companies always; the opened industry adds the rest (biggest first)
       const ordered = [...ls].sort((a, b) => (coById.get(b.companyId)?.revenue ?? -1) - (coById.get(a.companyId)?.revenue ?? -1));
@@ -130,7 +129,7 @@ export function buildGraph(i: Input): GraphData {
           r: noData ? 7 : 6 + 8 * Math.sqrt((c.revenue ?? 0) / maxRev),
           tx: cx + Math.cos(ang + spread) * CO_RING, ty: cy + Math.sin(ang + spread) * CO_RING,
         });
-        links.push({ source: id, target: `co:${j.id}:${c.id}`, kind: l.basis === "posting" ? "ind-co" : "ind-co-est", w: l.basis === "posting" ? 2 : 1 });
+        links.push({ source: id, target: `co:${j.id}:${c.id}`, kind: l.basis === "posting" ? "ind-co" : "ind-co-est", w: 1 });
       });
     }
   });

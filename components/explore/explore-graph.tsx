@@ -6,12 +6,13 @@
 // sentences ("잡초 뽑기"), but the 실제 공고 / 추정 trust label always stays. Mobile: the card becomes a bottom sheet.
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, List, Network, Plus } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, ChevronLeft, ChevronRight, EyeOff, Heart, List, Network, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { BusinessSegment, Company, Industry, JobLink, JobRole } from "@/lib/contracts/domain";
 import { buildGraph, type GNode } from "@/lib/explore/graph";
+import { withExtras } from "@/lib/explore/stars";
 import { formatEokShort } from "@/lib/format";
-import { readLikedJobs, useWatched } from "@/lib/client/local-state";
+import { readLikedJobs, useIdList, useWatched } from "@/lib/client/local-state";
 import { FlowGraph } from "@/components/explore/flow-graph";
 import { DECK_AGAIN_PATH } from "@/lib/onboarding";
 import { IndustryIcon } from "@/components/explore/industry-icon";
@@ -24,7 +25,9 @@ type Props = {
   roles: JobRole[];
   industries: Industry[];
   companies: Company[];
-  links: JobLink[]; // all jobs
+  links: JobLink[]; // all jobs: stored links + top companies of each picked industry (lib/explore/load.ts)
+  /** reviewed companies per industry */
+  industryTotals: Record<string, number>;
   segmentsByCompany: Record<string, BusinessSegment[]>;
   watchedInitial: string[];
   initialJob: string;
@@ -41,10 +44,35 @@ const LENS_CARD: Lens = { bezel: 22, scale: 52, frost: 3 };
 
 export function ExploreGraph(p: Props) {
   const watched = useWatched(p.watchedInitial);
+  // D4: companies the visitor added by search or took off the graph (kept in this browser)
+  const added = useIdList("lg:graph-added");
+  const hidden = useIdList("lg:graph-hidden");
+  const [fetched, setFetched] = useState<Company[]>([]);
   const roleById = useMemo(() => new Map(p.roles.map((r) => [r.id, r])), [p.roles]);
-  const coById = useMemo(() => new Map(p.companies.map((c) => [c.id, c])), [p.companies]);
-  const companyIndustry = useMemo(() => Object.fromEntries(p.companies.map((c) => [c.id, c.industryId])), [p.companies]);
+  const coById = useMemo(() => {
+    const m = new Map(p.companies.map((c) => [c.id, c]));
+    for (const c of fetched) if (!m.has(c.id)) m.set(c.id, c);
+    return m;
+  }, [p.companies, fetched]);
+  const companyIndustry = useMemo(() => Object.fromEntries([...coById.values()].map((c) => [c.id, c.industryId])), [coById]);
   const linkedJobs = useMemo(() => new Set(p.links.map((l) => l.jobRoleId)), [p.links]);
+  const keep = (cs: Company[]) => setFetched((f) => [...f, ...cs.filter((c) => !f.some((x) => x.id === c.id))]);
+
+  // watched or added companies outside the server slice are fetched once
+  const extraIds = [...new Set([...watched.ids, ...added.ids])];
+  useEffect(() => {
+    const want = extraIds.filter((id) => !coById.has(id));
+    if (!want.length) return;
+    let live = true;
+    fetch(`/api/catalog/companies?ids=${encodeURIComponent(want.join(","))}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((cs: Company[]) => live && keep(cs))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraIds.join(","), coById]);
 
   const [myJobs, setMyJobs] = useState<string[]>([p.initialJob]);
   const [on, setOn] = useState<string[]>([p.initialJob]);
@@ -75,14 +103,37 @@ export function ExploreGraph(p: Props) {
   }, [p.initialJob, roleById, linkedJobs]);
 
   const stars = on.map((j) => roleById.get(j)).filter((r): r is JobRole => !!r);
-  const data = useMemo(
-    () => buildGraph({ jobs: stars, industries: p.industries, companies: p.companies, links: p.links, saved: watched.ids, expanded, vertical }),
+  const links = useMemo(
+    () =>
+      withExtras(
+        p.links,
+        on,
+        extraIds.map((id) => coById.get(id)).filter((c): c is Company => !!c).map((c) => ({ id: c.id, industryId: c.industryId })),
+        hidden.ids,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [on.join(","), watched.ids.join(","), expanded, vertical, p.links],
+    [p.links, on.join(","), extraIds.join(","), hidden.ids.join(","), coById],
+  );
+  const data = useMemo(
+    () => buildGraph({ jobs: stars, industries: p.industries, companies: [...coById.values()], links, totals: p.industryTotals, saved: watched.ids, expanded, vertical }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [on.join(","), watched.ids.join(","), expanded, vertical, links],
   );
 
   const indName = (id: string) => p.industries.find((i) => i.id === id)?.name ?? id;
-  const linksOf = (job: string) => p.links.filter((l) => l.jobRoleId === job);
+  const linksOf = (job: string) => links.filter((l) => l.jobRoleId === job);
+  function addCompany(c: Company) {
+    keep([c]);
+    added.add(c.id);
+    hidden.remove(c.id);
+    toast(`${c.name}을(를) 그래프에 넣었어요`);
+  }
+  function hideCompany(id: string, job: string) {
+    hidden.add(id);
+    added.remove(id);
+    setSel({ kind: "job", job });
+    toast("그래프에서 뺐어요");
+  }
   const label = (n: GNode) =>
     n.type === "center"
       ? `내 직무 ${n.label}`
@@ -148,7 +199,7 @@ export function ExploreGraph(p: Props) {
         </div>
       ) : (
         <div className="absolute inset-0 overflow-y-auto px-4 pb-[52vh] pt-20 lg:right-101 lg:pb-10 lg:pl-8 lg:pr-8">
-          <ListView stars={stars} links={p.links} coById={coById} indName={indName} saved={watched.ids} onPick={(job, co) => setSel({ kind: "co", job, co })} />
+          <ListView stars={stars} links={links} coById={coById} indName={indName} saved={watched.ids} onPick={(job, co) => setSel({ kind: "co", job, co })} />
         </div>
       )}
 
@@ -185,8 +236,6 @@ export function ExploreGraph(p: Props) {
           {/* every mark the graph draws has a line here (audit M-1, M-2) */}
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full bg-graph-saved" />관심 기업</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full border border-graph-node" />기업 · 클수록 매출이 커요</li>
-          <li className="flex items-center gap-1.5"><i aria-hidden className="w-4 border-t-2 border-graph-node" />실제 공고</li>
-          <li className="flex items-center gap-1.5"><i aria-hidden className="w-4 border-t border-dashed border-graph-node" />추정</li>
           {myJobs.length > 1 && (
             <li className="flex items-center gap-1.5">
               <span aria-hidden className="figures grid size-4 place-items-center rounded-full bg-bg-inverted text-data-sm text-text-inverted">2</span>
@@ -203,13 +252,24 @@ export function ExploreGraph(p: Props) {
         <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-border-emphasized lg:hidden" />
         <div key={cardKey} className="lg-card-in space-y-5">
           {!sel || sel.kind === "job" ? (
-            <JobCard job={roleById.get(cardJob)!} links={linksOf(cardJob)} coById={coById} indName={indName} onOpen={openIndustry} />
+            <JobCard
+              job={roleById.get(cardJob)!}
+              links={linksOf(cardJob)}
+              coById={coById}
+              indName={indName}
+              totals={p.industryTotals}
+              onOpen={openIndustry}
+              onAdd={addCompany}
+              hiddenCount={hidden.ids.length}
+              onUnhide={hidden.clear}
+            />
           ) : sel.kind === "ind" ? (
             <IndustryCard
               job={roleById.get(sel.job)!}
               ind={sel.ind}
               indName={indName}
               links={linksOf(sel.job).filter((l) => coById.get(l.companyId)?.industryId === sel.ind)}
+              total={p.industryTotals[sel.ind] ?? 0}
               coById={coById}
               otherJobs={myJobs.filter((j) => j !== sel.job && linksOf(j).some((l) => coById.get(l.companyId)?.industryId === sel.ind)).map((j) => roleById.get(j)!.name)}
               saved={watched.ids}
@@ -224,6 +284,7 @@ export function ExploreGraph(p: Props) {
               segs={p.segmentsByCompany[sel.co] ?? []}
               saved={watched.has(sel.co)}
               onToggle={() => toggleWatch(sel.co)}
+              onHide={() => hideCompany(sel.co, sel.job)}
               backLabel={indName(companyIndustry[sel.co])}
               onBack={() => openIndustry(sel.job, companyIndustry[sel.co])}
             />
@@ -273,13 +334,35 @@ function Row({ onClick, lead, title, sub, value }: { onClick: () => void; lead?:
   );
 }
 
-function JobCard({ job, links, coById, indName, onOpen }: { job: JobRole; links: JobLink[]; coById: Map<string, Company>; indName: (id: string) => string; onOpen: (job: string, ind: string) => void }) {
+function JobCard({
+  job,
+  links,
+  coById,
+  indName,
+  totals,
+  onOpen,
+  onAdd,
+  hiddenCount,
+  onUnhide,
+}: {
+  job: JobRole;
+  links: JobLink[];
+  coById: Map<string, Company>;
+  indName: (id: string) => string;
+  totals: Record<string, number>;
+  onOpen: (job: string, ind: string) => void;
+  onAdd: (c: Company) => void;
+  hiddenCount: number;
+  onUnhide: () => void;
+}) {
   const byInd = new Map<string, JobLink[]>();
   for (const l of links) {
     const c = coById.get(l.companyId);
     if (c) byInd.set(c.industryId, [...(byInd.get(c.industryId) ?? []), l]);
   }
   const posting = links.filter((l) => l.basis === "posting").length;
+  const size = (ind: string, ls: JobLink[]) => Math.max(totals[ind] ?? 0, ls.length);
+  const companies = [...byInd.entries()].reduce((n, [ind, ls]) => n + size(ind, ls), 0);
   return (
     <>
       <header className="flex items-center gap-3">
@@ -292,7 +375,7 @@ function JobCard({ job, links, coById, indName, onOpen }: { job: JobRole; links:
         </div>
       </header>
       <div className="grid grid-cols-2 gap-2">
-        <Stat value={links.length} label="연결된 기업" />
+        <Stat value={companies} label="연결된 기업" />
         <Stat value={posting} label="실제 공고로 확인" />
       </div>
       <ul>
@@ -302,16 +385,75 @@ function JobCard({ job, links, coById, indName, onOpen }: { job: JobRole; links:
             onClick={() => onOpen(job.id, ind)}
             lead={<span className="grid size-9 shrink-0 place-items-center rounded-full bg-bg-tonal"><IndustryIcon id={ind} className="size-4" /></span>}
             title={indName(ind)}
-            sub={`기업 ${ls.length}곳 · 실제 공고 ${ls.filter((l) => l.basis === "posting").length}곳`}
+            sub={`기업 ${size(ind, ls)}곳 · 실제 공고 ${ls.filter((l) => l.basis === "posting").length}곳`}
           />
         ))}
       </ul>
-      <p className="text-caption text-text-secondary">산업을 누르면 그 산업의 기업이 그래프에 펼쳐져요.</p>
+      <p className="text-caption text-text-secondary">산업을 누르면 매출이 큰 기업부터 그래프에 펼쳐져요.</p>
+      <AddCompany onAdd={onAdd} />
+      {hiddenCount > 0 && (
+        <button type="button" onClick={onUnhide} className="text-caption text-text-secondary underline underline-offset-2 hover:text-text-primary">
+          뺀 기업 {hiddenCount}곳 다시 보이기
+        </button>
+      )}
     </>
   );
 }
 
-function IndustryCard({ job, ind, indName, links, coById, otherJobs, saved, onPick, onBack }: { job: JobRole; ind: string; indName: (id: string) => string; links: JobLink[]; coById: Map<string, Company>; otherJobs: string[]; saved: string[]; onPick: (co: string) => void; onBack: () => void }) {
+/** D4: search the catalogue and put a company on my graph (it joins the stars whose job relates to its industry). */
+function AddCompany({ onAdd }: { onAdd: (c: Company) => void }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<Company[]>([]);
+  useEffect(() => {
+    const term = q.trim();
+    if (!term) return;
+    let live = true;
+    const t = setTimeout(() => {
+      fetch(`/api/catalog/search?q=${encodeURIComponent(term)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((cs: Company[]) => live && setHits(cs))
+        .catch(() => {});
+    }, 200);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [q]);
+  const shown = q.trim() ? hits : [];
+  return (
+    <div className="space-y-2">
+      <label className="flex h-10 items-center gap-2 rounded-full bg-overlay-hover px-3 text-label">
+        <Search className="size-4 shrink-0 text-text-secondary" aria-hidden />
+        <span className="sr-only">그래프에 넣을 기업 찾기</span>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="기업을 찾아 그래프에 넣기" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-text-secondary" />
+      </label>
+      {shown.length > 0 && (
+        <ul>
+          {shown.slice(0, 5).map((c) => (
+            <li key={c.id} className="flex items-center gap-3 py-1.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-label-strong">{c.name}</span>
+                <span className="figures block text-caption text-text-secondary">{formatEokShort(c.revenue)}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onAdd(c);
+                  setQ("");
+                }}
+                className={cn(btn.secondary, "h-8 rounded-full px-3")}
+              >
+                <Plus className="size-4" aria-hidden /> 넣기
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function IndustryCard({ job, ind, indName, links, total, coById, otherJobs, saved, onPick, onBack }: { job: JobRole; ind: string; indName: (id: string) => string; links: JobLink[]; total: number; coById: Map<string, Company>; otherJobs: string[]; saved: string[]; onPick: (co: string) => void; onBack: () => void }) {
   const rows = [...links].sort((a, b) => (coById.get(b.companyId)?.revenue ?? -1) - (coById.get(a.companyId)?.revenue ?? -1));
   return (
     <>
@@ -322,7 +464,10 @@ function IndustryCard({ job, ind, indName, links, coById, otherJobs, saved, onPi
         </span>
         <div className="min-w-0">
           <h1 className="truncate text-heading-2">{indName(ind)}</h1>
-          <p className="text-caption text-text-secondary">{job.name} 직무로 {links.length}곳과 이어져요</p>
+          <p className="text-caption text-text-secondary">
+            {job.name} 직무로 {Math.max(total, links.length)}곳과 이어져요
+            {total > links.length && <> · 매출 상위 {links.length}곳</>}
+          </p>
         </div>
       </header>
       {otherJobs.length > 0 && (
@@ -339,7 +484,7 @@ function IndustryCard({ job, ind, indName, links, coById, otherJobs, saved, onPi
             <Row
               key={c.id}
               onClick={() => onPick(c.id)}
-              lead={<i aria-hidden className={cn("size-3 shrink-0 rounded-full border", isSaved ? "border-graph-saved bg-graph-saved" : "border-graph-node", l.basis !== "posting" && !isSaved && "border-dashed")} />}
+              lead={<i aria-hidden className={cn("size-3 shrink-0 rounded-full border", isSaved ? "border-graph-saved bg-graph-saved" : "border-graph-node")} />}
               title={c.name}
               sub={l.basis === "posting" ? "실제 공고" : "추정"}
               value={formatEokShort(c.revenue)}
@@ -351,7 +496,7 @@ function IndustryCard({ job, ind, indName, links, coById, otherJobs, saved, onPi
   );
 }
 
-function CompanyCard({ c, job, basis, segs, saved, onToggle, backLabel, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; backLabel: string; onBack: () => void }) {
+function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; onHide: () => void; backLabel: string; onBack: () => void }) {
   const withJob = segs.filter((s) => s.jobRoleIds.includes(job.id));
   return (
     <>
@@ -393,6 +538,9 @@ function CompanyCard({ c, job, basis, segs, saved, onToggle, backLabel, onBack }
           <Heart className={cn("size-4", saved && "fill-current")} aria-hidden /> {saved ? "관심 저장됨" : "관심 저장"}
         </button>
       </div>
+      <button type="button" onClick={onHide} className="flex items-center gap-1.5 text-caption text-text-secondary hover:text-text-primary">
+        <EyeOff className="size-3.5" aria-hidden /> 내 그래프에서 빼기
+      </button>
       {c.source ? <SourceLine p={c.source} /> : <p className="text-caption text-text-secondary">수치 연결 전이에요.</p>}
     </>
   );

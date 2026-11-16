@@ -10,7 +10,7 @@ export async function GET() {
   let companies = -1;
   let error: string | null = null;
   try {
-    companies = (await repo.companies()).length;
+    companies = await repo.companyCount();
   } catch (e) {
     error = e instanceof Error ? e.message.slice(0, 200) : "unknown";
   }

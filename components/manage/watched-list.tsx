@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { Company } from "@/lib/contracts/domain";
 import { useWatched } from "@/lib/client/local-state";
 import { formatEokShort } from "@/lib/format";
@@ -9,7 +10,23 @@ import { cn } from "@/lib/utils";
 /** 관심 기업 목록 (specs/explore FR-DISC-03) */
 export function WatchedList({ companies, initial }: { companies: Company[]; initial: string[] }) {
   const w = useWatched(initial);
-  const list = w.ids.map((id) => companies.find((c) => c.id === id)).filter((c): c is Company => !!c);
+  // the server sends the saved companies it knows; ones saved in this browser before login are fetched here
+  const [more, setMore] = useState<Company[]>([]);
+  const all = [...companies, ...more];
+  const missing = w.ids.filter((id) => !all.some((c) => c.id === id));
+  useEffect(() => {
+    if (!missing.length) return;
+    let live = true;
+    fetch(`/api/catalog/companies?ids=${encodeURIComponent(missing.join(","))}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((cs: Company[]) => live && setMore((m) => [...m, ...cs]))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missing.join(",")]);
+  const list = w.ids.map((id) => all.find((c) => c.id === id)).filter((c): c is Company => !!c);
   if (!list.length) {
     return <EmptyState title="관심 기업이 없어요" body="직무 맵이나 기업 상세에서 관심 저장을 누르면 여기에 모여요." action={<Link href="/explore/map" className={btn.secondary}>직무 맵으로</Link>} />;
   }

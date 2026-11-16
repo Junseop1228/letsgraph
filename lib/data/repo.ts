@@ -21,11 +21,25 @@ export interface CatalogRepo {
   jobRoles(): Promise<JobRole[]>;
   jobRole(id: string): Promise<JobRole | null>;
   onboardingJobIds(): Promise<string[]>;
-  companies(): Promise<Company[]>;
+  // The catalogue holds thousands of reviewed companies: never read it whole (PostgREST caps a read at 1,000 rows and the
+  // client would get everything). Ask for the slice a screen needs.
   company(id: string): Promise<Company | null>;
+  /** reviewed companies with these ids (watched, added to the graph) */
+  companiesByIds(ids: string[]): Promise<Company[]>;
+  /** reviewed companies that have a detail page (search defaults, the bell) */
+  companiesWithDetail(): Promise<Company[]>;
+  /** the n biggest reviewed companies of an industry, by revenue */
+  topCompanies(industryId: string, n: number): Promise<Company[]>;
+  /** reviewed companies per industry */
+  industryCompanyCounts(): Promise<Record<string, number>>;
+  /** reviewed companies in total */
+  companyCount(): Promise<number>;
   searchCompanies(q: string): Promise<Company[]>;
   jobLinks(jobRoleId: string): Promise<JobLink[]>;
+  /** every stored link (layer 2 'posting' links and hand-made seed links), for all jobs */
+  storedJobLinks(): Promise<JobLink[]>;
   segments(companyId: string): Promise<BusinessSegment[]>;
+  segmentsFor(companyIds: string[]): Promise<Record<string, BusinessSegment[]>>;
   segment(id: string): Promise<BusinessSegment | null>;
   segmentDetail(id: string): Promise<SegmentDetail | null>;
   companyDetail(companyId: string): Promise<CompanyDetail | null>;

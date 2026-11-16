@@ -5,13 +5,50 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { formatEokShort } from "@/lib/format";
+import type { Company } from "@/lib/contracts/domain";
 
 export type SearchItem = { kind: "company" | "job"; id: string; label: string; hint: string; href: string; revenue?: number | null; ready?: boolean };
 
-export function CommandSearch({ items }: { items: SearchItem[] }) {
+export function CommandSearch({ items, industryNames = {} }: { items: SearchItem[]; industryNames?: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [found, setFound] = useState<SearchItem[]>([]);
   const router = useRouter();
+
+  // companies come from the server search while typing (the catalogue is too big to ship to the browser)
+  useEffect(() => {
+    const term = q.trim();
+    if (!term) return;
+    let live = true;
+    const t = setTimeout(() => {
+      fetch(`/api/catalog/search?q=${encodeURIComponent(term)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((cs: Company[]) => {
+          if (!live) return;
+          setFound(
+            cs.map((c) => ({
+              kind: "company" as const,
+              id: c.id,
+              label: c.name,
+              hint: `${industryNames[c.industryId] ?? ""}${c.hasDetail ? "" : " · 상세 준비 중"}`,
+              href: `/company/${c.id}`,
+              revenue: c.revenue,
+              ready: c.hasDetail,
+            })),
+          );
+        })
+        .catch(() => {});
+    }, 150);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [q, industryNames]);
+  const typing = q.trim() !== "";
+  // companies with a detail page answer at once (cmdk filters them locally); the server search adds the rest
+  const featured = items.filter((i) => i.kind === "company");
+  const companies = typing ? [...found, ...featured.filter((f) => !found.some((x) => x.id === f.id))] : featured;
+  const shown = [...items.filter((i) => i.kind === "job"), ...companies];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -55,7 +92,7 @@ export function CommandSearch({ items }: { items: SearchItem[] }) {
           <Command.Empty className="px-3 py-6 text-center text-body text-text-secondary">찾는 직무나 기업이 없어요.</Command.Empty>
           {(["job", "company"] as const).map((kind) => (
             <Command.Group key={kind} heading={kind === "job" ? "직무" : "기업"} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-caption [&_[cmdk-group-heading]]:text-text-secondary">
-              {items.filter((i) => i.kind === kind && (q.trim() !== "" || i.ready !== false)).map((i) => (
+              {shown.filter((i) => i.kind === kind && (typing || i.ready !== false)).map((i) => (
                 <Command.Item
                   key={`${kind}:${i.id}`}
                   value={`${i.label} ${i.hint}`}

@@ -26,15 +26,28 @@ export const fixtureCatalog: CatalogRepo = {
   jobRoles: async () => JOB_ROLES,
   jobRole: async (id) => JOB_ROLES.find((j) => j.id === id) ?? null,
   onboardingJobIds: async () => ONBOARDING_JOB_IDS,
-  companies: async () => COMPANIES,
   company: async (id) => COMPANIES.find((c) => c.id === id) ?? null,
+  companiesByIds: async (ids) => COMPANIES.filter((c) => ids.includes(c.id)),
+  companiesWithDetail: async () => COMPANIES.filter((c) => c.hasDetail),
+  topCompanies: async (industryId, n) =>
+    COMPANIES.filter((c) => c.industryId === industryId)
+      .sort((a, b) => (b.revenue ?? -1) - (a.revenue ?? -1))
+      .slice(0, n),
+  industryCompanyCounts: async () => {
+    const out: Record<string, number> = {};
+    for (const c of COMPANIES) out[c.industryId] = (out[c.industryId] ?? 0) + 1;
+    return out;
+  },
+  companyCount: async () => COMPANIES.length,
   searchCompanies: async (q) => {
     const n = norm(q);
     if (!n) return [];
     return COMPANIES.filter((c) => norm(c.name).includes(n)).slice(0, 10);
   },
   jobLinks: async (jobRoleId) => JOB_LINKS.filter((l) => l.jobRoleId === jobRoleId),
+  storedJobLinks: async () => JOB_LINKS,
   segments: async (companyId) => SEGMENTS.filter((s) => s.companyId === companyId),
+  segmentsFor: async (ids) => Object.fromEntries(ids.map((id) => [id, SEGMENTS.filter((s) => s.companyId === id)])),
   segment: async (id) => SEGMENTS.find((s) => s.id === id) ?? null,
   segmentDetail: async (id) => SEGMENT_DETAILS.find((d) => d.segmentId === id) ?? null,
   companyDetail: async (companyId) => COMPANY_DETAILS.find((d) => d.companyId === companyId) ?? null,
