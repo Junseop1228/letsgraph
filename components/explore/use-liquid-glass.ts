@@ -6,6 +6,9 @@
 //          strongest at the edge -> the dot grid and lines behind bend and stretch at the edge like a lens;
 //          its blue channel is the frost mask (1 in the middle, 0 at the rim).
 //   lens = backdrop displaced by the map; frost = lens blurred; out = frost in the middle over a sharp lens rim.
+// Performance: the prism triples the displacement work, and a backdrop filter reruns on every frame in which the graph
+// behind it moves. While the graph moves (pan, zoom, drag, the force layout settling: glassMotion()), each layer switches
+// to a single-pass lens and gets the prism back 160 ms after the motion stops (fps probe 2026-11-16: 44 -> 60).
 // Other engines, reduced transparency and more contrast keep the CSS fallbacks in styles/glass.css.
 import { useEffect, type RefObject } from "react";
 
@@ -95,32 +98,64 @@ function el<K extends string>(tag: K, attrs: Record<string, string | number>) {
   return e;
 }
 
+// ---- motion: the graph tells the glass when it moves, so the expensive prism pauses -------------------------------
+let moving = false;
+let idleTimer = 0;
+const motionSubs = new Set<(m: boolean) => void>();
+
+/** Call on every frame in which the graph behind the glass moves; the prism comes back after a short idle. */
+export function glassMotion() {
+  if (typeof window === "undefined") return;
+  if (!moving) {
+    moving = true;
+    motionSubs.forEach((f) => f(true));
+  }
+  window.clearTimeout(idleTimer);
+  idleTimer = window.setTimeout(() => {
+    moving = false;
+    motionSubs.forEach((f) => f(false));
+  }, 160);
+}
+
+function lensFilter(id: string, map: SVGElement, scale: number, frost: number, prism: boolean) {
+  const filter = el("filter", { id, x: 0, y: 0, width: "100%", height: "100%", "color-interpolation-filters": "sRGB" });
+  const bend = prism
+    ? [
+        // prism edge: red, green and blue bend by slightly different amounts, so dots and lines behind the rim get a thin
+        // colour fringe (the sparkle of real glass); the map is neutral in the middle, so the middle stays clean
+        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "dr" }),
+        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.9, xChannelSelector: "R", yChannelSelector: "G", result: "dg" }),
+        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.8, xChannelSelector: "R", yChannelSelector: "G", result: "db" }),
+        el("feColorMatrix", { in: "dr", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" }),
+        el("feColorMatrix", { in: "dg", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" }),
+        el("feColorMatrix", { in: "db", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" }),
+        el("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" }),
+        el("feBlend", { in: "rg", in2: "b", mode: "screen", result: "lens" }),
+      ]
+    : [el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "lens" })];
+  filter.append(
+    map,
+    ...bend,
+    el("feGaussianBlur", { in: "lens", stdDeviation: frost, result: "frost" }),
+    el("feColorMatrix", { in: "map", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0", result: "mask" }),
+    el("feComposite", { in: "frost", in2: "mask", operator: "in", result: "middle" }),
+    el("feComposite", { in: "middle", in2: "lens", operator: "over" }),
+  );
+  return filter;
+}
+
 /** Turns the element into a lens-glass layer on Chromium; no-op elsewhere (CSS frosted fallback stays). */
 export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scale, frost }: Lens, enabled = true) {
   useEffect(() => {
     const node = ref.current;
     if (!node || !enabled || !lensSupported()) return;
     const id = `lg-lens-${++seq}`;
-    const filter = el("filter", { id, x: 0, y: 0, width: "100%", height: "100%", "color-interpolation-filters": "sRGB" });
-    const map = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
-    filter.append(
-      map,
-      // prism edge: red, green and blue bend by slightly different amounts, so dots and lines behind the rim get a thin
-      // colour fringe (the sparkle of real glass); the map is neutral in the middle, so the middle stays clean
-      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "dr" }),
-      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.9, xChannelSelector: "R", yChannelSelector: "G", result: "dg" }),
-      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.8, xChannelSelector: "R", yChannelSelector: "G", result: "db" }),
-      el("feColorMatrix", { in: "dr", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" }),
-      el("feColorMatrix", { in: "dg", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" }),
-      el("feColorMatrix", { in: "db", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" }),
-      el("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" }),
-      el("feBlend", { in: "rg", in2: "b", mode: "screen", result: "lens" }),
-      el("feGaussianBlur", { in: "lens", stdDeviation: frost, result: "frost" }),
-      el("feColorMatrix", { in: "map", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0", result: "mask" }),
-      el("feComposite", { in: "frost", in2: "mask", operator: "in", result: "middle" }),
-      el("feComposite", { in: "middle", in2: "lens", operator: "over" }),
-    );
-    svgHost().appendChild(filter);
+    // two filters per layer: with the prism (at rest) and a single-pass lens (while the graph moves)
+    const mapFull = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
+    const mapLite = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
+    const full = lensFilter(id, mapFull, scale, frost, true);
+    const lite = lensFilter(`${id}-lite`, mapLite, scale, frost, false);
+    svgHost().append(full, lite);
 
     let last = "";
     let raf = 0;
@@ -132,15 +167,22 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
       const key = `${w}x${h}x${r}`;
       if (key === last) return;
       last = key;
-      map.setAttribute("width", String(w));
-      map.setAttribute("height", String(h));
-      map.setAttribute("href", lensMap(w, h, r, bezel));
+      const href = lensMap(w, h, r, bezel);
+      for (const m of [mapFull, mapLite]) {
+        m.setAttribute("width", String(w));
+        m.setAttribute("height", String(h));
+        m.setAttribute("href", href);
+      }
     };
     draw();
-    const value = `url(#${id}) saturate(1.5)`;
+    const apply = (isMoving: boolean) => {
+      const value = `url(#${isMoving ? `${id}-lite` : id}) saturate(1.5)`;
+      node.style.setProperty("backdrop-filter", value);
+      node.style.setProperty("-webkit-backdrop-filter", value);
+    };
     node.dataset.lens = "on";
-    node.style.setProperty("backdrop-filter", value);
-    node.style.setProperty("-webkit-backdrop-filter", value);
+    apply(moving);
+    motionSubs.add(apply);
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(draw);
@@ -149,7 +191,9 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf);
-      filter.remove();
+      motionSubs.delete(apply);
+      full.remove();
+      lite.remove();
       delete node.dataset.lens;
       node.style.removeProperty("backdrop-filter");
       node.style.removeProperty("-webkit-backdrop-filter");
