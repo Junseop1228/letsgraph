@@ -18,6 +18,12 @@ const PAGES = [
   "/manage?tab=cards",
   "/billing",
   "/auth/login",
+
+  "/auth/forgot-password",
+
+  "/auth/sign-up-success",
+
+  "/auth/error?error=otp_expired",
 ];
 
 for (const path of PAGES) {

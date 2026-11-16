@@ -93,7 +93,7 @@ export function DeadlineCalendar({ postings, month }: { postings: JobPosting[]; 
                       <span className={cn("figures inline-block min-w-6 rounded-inner px-1 text-center", d.iso === today && "bg-bg-inverted text-text-inverted")}>{d.day}</span>
                       {(byDay.get(d.iso) ?? []).map((p) => (
                         <Link key={p.id} href={`/postings/${p.id}`} className="mt-1 flex items-center gap-1.5 rounded-inner border border-border-emphasized px-1.5 py-1 text-caption hover:bg-overlay-hover">
-                          <i aria-hidden className={cn("size-2 shrink-0", STATUS_MARK[p.status])} />
+                          <span className="shrink-0 rounded-inner bg-bg-tonal px-1 text-text-secondary">{POSTING_STATUS_LABEL[p.status]}</span>
                           <span className="truncate">{p.companyName} · {p.title}</span>
                         </Link>
                       ))}
@@ -139,11 +139,6 @@ export function DeadlineCalendar({ postings, month }: { postings: JobPosting[]; 
               </div>
             ))}
           </div>
-          <ul className="mt-3 space-y-1 text-caption text-text-secondary">
-            {(Object.keys(STATUS_MARK) as JobPosting["status"][]).map((s) => (
-              <li key={s} className="flex items-center gap-2"><i aria-hidden className={cn("size-2.5", STATUS_MARK[s])} />{POSTING_STATUS_LABEL[s]}</li>
-            ))}
-          </ul>
         </div>
       </aside>
     </div>
