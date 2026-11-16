@@ -87,7 +87,7 @@ export function ExploreGraph(p: Props) {
     n.type === "center"
       ? `내 직무 ${n.label}`
       : n.type === "ind"
-        ? `${n.label}, ${roleById.get(n.job)?.name} 연결 기업 ${n.count}곳${(n.shared ?? 0) > 1 ? `, 내 직무 ${n.shared}개가 함께 뽑는 산업` : ""}`
+        ? `${n.label}, ${roleById.get(n.job)?.name} 연결 기업 ${n.count}곳${(n.shared ?? 0) > 1 ? `, 내 직무 ${n.shared}개가 겹치는 산업` : ""}`
         : `${n.label}, ${n.basis === "posting" ? "실제 공고 근거" : "추정 연결"}`;
 
   function openIndustry(job: string, ind: string) {
@@ -190,7 +190,7 @@ export function ExploreGraph(p: Props) {
           {myJobs.length > 1 && (
             <li className="flex items-center gap-1.5">
               <span aria-hidden className="figures grid size-4 place-items-center rounded-full bg-bg-inverted text-data-sm text-text-inverted">2</span>
-              여러 직무가 함께 뽑는 산업
+              내 직무 여러 개가 겹치는 산업
             </li>
           )}
         </ul>
