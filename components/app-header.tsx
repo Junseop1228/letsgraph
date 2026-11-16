@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { UserRound } from "lucide-react";
@@ -10,12 +11,10 @@ import { HeaderNotifications } from "@/components/header/header-notifications";
 function Logo() {
   return (
     <Link href="/explore" className="flex items-center gap-2 text-heading-3">
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6">
-        <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2.6" />
-        <circle cx="12" cy="12" r="3.2" fill="currentColor" />
-        <circle cx="19" cy="8" r="2" fill="currentColor" />
-      </svg>
-      LetsGraph
+      {/* Final logo (team decision 2026-11-16). Dark variant swaps the black strokes for light ones. */}
+      <Image src="/brand/logo-mark.png" alt="" width={32} height={32} priority className="size-8 dark:hidden" />
+      <Image src="/brand/logo-mark-dark.png" alt="" width={32} height={32} priority className="hidden size-8 dark:block" />
+      letsGraph
     </Link>
   );
 }

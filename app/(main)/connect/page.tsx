@@ -5,7 +5,7 @@ import { userData } from "@/lib/data";
 import { DemoBadge, EmptyState, btn } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 
-export const metadata = { title: "연결 · LetsGraph" };
+export const metadata = { title: "연결 · letsGraph" };
 
 // 연결 탭 (teammate spec 4): pick a posting, then 매칭 화면 -> 키트.
 async function ConnectContent() {

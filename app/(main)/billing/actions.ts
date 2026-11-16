@@ -20,7 +20,7 @@ export async function createOrderAction(passTypeRaw: string): Promise<CheckoutOr
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const { error } = await createAdminClient().from("orders").insert({ id: orderId, user_id: uid, pass_type: parsed.data, amount: pass.price, status: "pending" });
   if (error) return { error: "주문을 만들지 못했어요." };
-  return { orderId, amount: pass.price, orderName: `LetsGraph ${pass.name}`, customerKey: uid };
+  return { orderId, amount: pass.price, orderName: `letsGraph ${pass.name}`, customerKey: uid };
 }
 
 /** fail redirect or closed window: pending -> canceled */

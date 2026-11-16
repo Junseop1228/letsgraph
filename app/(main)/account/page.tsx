@@ -7,7 +7,7 @@ import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { WatchedList } from "@/components/manage/watched-list";
 import { DeleteAccount } from "@/components/manage/delete-account";
 
-export const metadata = { title: "내 계정 · LetsGraph" };
+export const metadata = { title: "내 계정 · letsGraph" };
 
 // 내 계정 (header profile): 이용 현황 (FR-ACCT-04), 관심 기업 (FR-DISC-03), 회원 탈퇴 (FR-ACCT-05).
 async function AccountContent() {

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { ConsentForm } from "@/components/auth/consent-form";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 
-export const metadata = { title: "시작하기 전에 · LetsGraph" };
+export const metadata = { title: "시작하기 전에 · letsGraph" };
 
 type Props = { searchParams: Promise<{ next?: string }> };
 

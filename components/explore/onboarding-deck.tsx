@@ -51,7 +51,7 @@ export function OnboardingDeck({ jobs }: Props) {
   return (
     <div className="grid min-h-[calc(100vh-var(--spacing-header-height))] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <section className="flex flex-col justify-center gap-4 border-r border-border bg-bg-sunken px-8 py-12">
-        <p className="text-data-sm text-text-secondary">LETSGRAPH / 01</p>
+        <p className="text-data-sm text-text-secondary">letsGraph / 01</p>
         <h1 className="text-display">어떤 일이 궁금하세요?</h1>
         <p className="max-w-[28rem] text-body-lg text-text-secondary">
           카드를 넘기면, 고른 직무가 있는 기업과 그 기업이 돈 버는 구조를 보여드려요.

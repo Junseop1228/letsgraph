@@ -11,7 +11,7 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "LetsGraph",
+  title: "letsGraph",
   description: "기업의 돈 흐름으로 산업과 직무를 이해하는 취업 준비 서비스",
 };
 

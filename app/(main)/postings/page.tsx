@@ -13,7 +13,7 @@ import { DeadlineCalendar } from "@/components/postings/deadline-calendar";
 import { analyzePostingAction, analyzePostingTextAction, analyzePostingUrlAction } from "./actions";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "공고 · LetsGraph" };
+export const metadata = { title: "공고 · letsGraph" };
 
 type Props = { searchParams: Promise<{ view?: string }> };
 

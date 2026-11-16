@@ -10,7 +10,7 @@ import { ActivityBoard } from "@/components/manage/activity-board";
 import { importActivitiesAction } from "@/app/(main)/manage/chat-actions";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "관리 · LetsGraph" };
+export const metadata = { title: "관리 · letsGraph" };
 
 // 관리 탭 (teammate spec 3-0, whiteboard 2026-11-16): 만들기 (AI 채팅: 활동 -> 에피소드) and 카드 (활동별 에피소드 보드).
 const TABS = [

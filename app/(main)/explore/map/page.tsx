@@ -6,7 +6,7 @@ import { ExploreGraph } from "@/components/explore/explore-graph";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import type { BusinessSegment } from "@/lib/contracts/domain";
 
-export const metadata = { title: "나의 취업 그래프 · LetsGraph" };
+export const metadata = { title: "나의 취업 그래프 · letsGraph" };
 
 type Props = { searchParams: Promise<{ job?: string }> };
 

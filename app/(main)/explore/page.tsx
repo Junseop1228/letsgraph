@@ -3,7 +3,7 @@ import { catalog } from "@/lib/data";
 import { OnboardingDeck } from "@/components/explore/onboarding-deck";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 
-export const metadata = { title: "탐색 · LetsGraph" };
+export const metadata = { title: "탐색 · letsGraph" };
 
 async function ExploreContent() {
   const repo = await catalog();

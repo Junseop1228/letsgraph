@@ -21,7 +21,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const HTML_TYPES = ["text/html", "application/xhtml+xml", "text/plain"];
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
-const UA = "Mozilla/5.0 (compatible; LetsGraph/0.1; single page fetched at the user's request)";
+const UA = "Mozilla/5.0 (compatible; letsGraph/0.1; single page fetched at the user's request)";
 
 export type FetchedPosting =
   | { kind: "text"; text: string; url: string }

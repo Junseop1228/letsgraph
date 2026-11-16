@@ -1,7 +1,7 @@
 ---
 version: alpha
-name: LetsGraph — Ink (v4.3)
-description: Korean product design system for LetsGraph. Near-black ink on white with an active gray scale (every Radix gray step has a job), color only for status, market up/down and AI-made content, Pretendard for text and figures (tabular numerals), shadcn/ui on Radix. Rules carry IDs, smell tags and Verify lines (Astryx-style); Hangul rules from oh-my-design.
+name: letsGraph — Ink (v4.3)
+description: Korean product design system for letsGraph. Near-black ink on white with an active gray scale (every Radix gray step has a job), color only for status, market up/down and AI-made content, Pretendard for text and figures (tabular numerals), shadcn/ui on Radix. Rules carry IDs, smell tags and Verify lines (Astryx-style); Hangul rules from oh-my-design.
 colors:
   primary: "#202020"
   bg-page: "#ffffff"
@@ -489,11 +489,11 @@ components:
     height: 12px
 ---
 
-# LetsGraph — DESIGN.md v4.3 "Ink"
+# letsGraph — DESIGN.md v4.3 "Ink"
 
 ## Overview
 
-LetsGraph helps Korean undergraduates (2nd–4th year) understand industries, companies and jobs through how money flows: a job map (직무 맵), division money structures from filings, posting analysis, experience cards and a prompt kit. The identity is **Ink**: near-black ink on white with a working gray scale. Grays are not leftovers between black and white; they carry surfaces, selection, quantity and the graph. Color appears only where it means something: status, market up/down, and AI-made content. Chosen by the user 2026-11-13 from three candidates (코발트, 잉크, 제이드); "use the mid grays actively" is a standing instruction.
+letsGraph helps Korean undergraduates (2nd–4th year) understand industries, companies and jobs through how money flows: a job map (직무 맵), division money structures from filings, posting analysis, experience cards and a prompt kit. The identity is **Ink**: near-black ink on white with a working gray scale. Grays are not leftovers between black and white; they carry surfaces, selection, quantity and the graph. Color appears only where it means something: status, market up/down, and AI-made content. Chosen by the user 2026-11-13 from three candidates (코발트, 잉크, 제이드); "use the mid grays actively" is a standing instruction.
 
 Versions: v4.3 (2026-11-16) no prism; the glass lens bends only near-black content. v4.2 (2026-11-16) glass material settled — clear liquid glass with lens and gloss. v4.1 (2026-11-16) synced to the app at main 870b9c2 — 직무 맵 with circle vertices and industry icons, the floating layer family over the graph (glass material, `sheet` / `tile` radii), React Flow attribution hidden. v4 (2026-11-13) is archived in context/design-archive/.
 

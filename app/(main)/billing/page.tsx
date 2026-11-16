@@ -5,7 +5,7 @@ import { supabaseEnabled } from "@/lib/data";
 import { Kicker } from "@/components/lg/ui";
 import { CheckoutButton } from "@/components/billing/checkout-button";
 
-export const metadata = { title: "패스 · LetsGraph" };
+export const metadata = { title: "패스 · letsGraph" };
 
 // 패스 구매 (specs/billing FR-ACCT-03). Prices are PROPOSED placeholders until the team sets pricing.
 export default function BillingPage() {
