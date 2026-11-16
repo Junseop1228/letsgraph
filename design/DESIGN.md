@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: LetsGraph — Ink (v4.1)
+name: LetsGraph — Ink (v4.2)
 description: Korean product design system for LetsGraph. Near-black ink on white with an active gray scale (every Radix gray step has a job), color only for status, market up/down and AI-made content, Pretendard for text and figures (tabular numerals), shadcn/ui on Radix. Rules carry IDs, smell tags and Verify lines (Astryx-style); Hangul rules from oh-my-design.
 colors:
   primary: "#202020"
@@ -489,13 +489,13 @@ components:
     height: 12px
 ---
 
-# LetsGraph — DESIGN.md v4.1 "Ink"
+# LetsGraph — DESIGN.md v4.2 "Ink"
 
 ## Overview
 
 LetsGraph helps Korean undergraduates (2nd–4th year) understand industries, companies and jobs through how money flows: a job map (직무 맵), division money structures from filings, posting analysis, experience cards and a prompt kit. The identity is **Ink**: near-black ink on white with a working gray scale. Grays are not leftovers between black and white; they carry surfaces, selection, quantity and the graph. Color appears only where it means something: status, market up/down, and AI-made content. Chosen by the user 2026-11-13 from three candidates (코발트, 잉크, 제이드); "use the mid grays actively" is a standing instruction.
 
-Versions: v4.1 (2026-11-16) synced to the app at main 870b9c2 — 직무 맵 with circle vertices and industry icons, the floating layer family over the graph (glass material, `sheet` / `tile` radii), React Flow attribution hidden. v4 (2026-11-13) is archived in context/design-archive/.
+Versions: v4.2 (2026-11-16) glass material settled — clear liquid glass with lens, prism and gloss. v4.1 (2026-11-16) synced to the app at main 870b9c2 — 직무 맵 with circle vertices and industry icons, the floating layer family over the graph (glass material, `sheet` / `tile` radii), React Flow attribution hidden. v4 (2026-11-13) is archived in context/design-archive/.
 
 How to read this file:
 - **YAML tokens are normative values. Prose is intent.** When a value is wrong, change the token; never patch a raw value in code.
@@ -534,7 +534,7 @@ Alpha overlays (Radix grayA 3 / 5) tint whatever surface they sit on for hover a
 - **COL-1 — Every gray has one job.** A gray is chosen by role from the table, never by "a bit lighter". Verify: every gray in a diff maps to a token in this table. `[auto]` via @shadcn/lint `no-raw-colors`.
 - **COL-2 — Ink is scarce.** Solid ink (`accent`) marks the one primary action per region, the job node, saved companies and the focus data series. Selection uses gray (`bg-selected`), not ink. Verify: squint at a screen; at most one ink block per region besides text and the graph.
 - **COL-3 — Mid grays carry structure.** Use `bg-sunken` for side panels and the graph canvas, `bg-tonal` for secondary actions, badges and wells, `bg-selected` for current items, gray-9/10/8 for data and nodes. Verify: remove all borders in a screenshot; regions are still separable by gray value alone. `[judge]`
-- **COL-4 — Color only for meaning.** Hue appears only in status (`success`, `warning`, `error`, `info`), market movement (`data-up` red / `data-down` blue, Korean convention) and AI content (`ai` violet). Never decorative. Verify: every non-gray pixel answers "what does this mean?". `[assist]`
+- **COL-4 — Color only for meaning.** Hue appears only in status (`success`, `warning`, `error`, `info`), market movement (`data-up` red / `data-down` blue, Korean convention) and AI content (`ai` violet). Never decorative. The one exception is the optical prism fringe at the rim of the graph's glass layers (Elevation), which is never a fill. Verify: every non-gray pixel answers "what does this mean?". `[assist]`
 - **COL-5 — Color is never alone.** Status pairs color with an icon or word; AI pairs violet with a dashed edge and an "AI" label; up/down pairs color with ▲/▼ and a sign. Verify: in grayscale the meaning survives. `[assist]`
 - **COL-6 — Fill tokens are not text tokens.** `data-up`, `data-down`, `success`, `warning`, `error`, `info`, `ai` are fills and indicators; text uses `text-up`, `text-down`, `text-<intent>`. Verify: contrast script passes for every text pair. `[auto]`
 - **COL-7 — Contrast.** Text ≥ 4.5:1, control boundaries and meaningful graphics ≥ 3:1, in both modes. Verify: the contrast script (44 pairs) and `design.md lint` report no failures. `[auto]`
@@ -590,9 +590,15 @@ On the 탐색 graph screen the graph fills the screen and the controls float ove
 - **범례 줄 GraphLegend:** one line at the bottom-left, desktop only.
 - **상세 카드 DetailCard:** a `floating-card-width` (364px) card at the right from 1024px up; below that a bottom sheet up to 46% of the height with a grab handle.
 
-Material: **liquid glass** — a translucent `bg-surface` fill, backdrop blur, a specular rim (light at the top-left edge, faint shade at the bottom) and a soft two-layer shadow. The card carries a thicker fill than the controls because it holds reading text. On Chromium the backdrop is also refracted through an SVG displacement filter; other engines get a plain frosted blur. Order: legend and zoom capsule z-10, job bar and card z-20.
+Material: **clear liquid glass** (Apple's clear variant, decided 2026-11-16). The whole family uses this one variant; never mix it with a frosted look. On Chromium every layer gets its own lens filter (`app/components/explore/use-liquid-glass.ts`, values in `app/styles/glass.css`):
+- **Lens:** a displacement map shaped to the layer bends what is behind it only in a rim band (bezel 14px on capsules, 22px on the card; inward shift up to 17 / 26px). The middle stays clear.
+- **Prism:** red, green and blue bend by 1.0 / 0.9 / 0.8 of that shift, so lines and dots crossing the rim get a thin colour fringe — the sparkle. The prism pauses while the graph moves (pan, zoom, drag, layout settling) and returns 160ms after it stops, which keeps 60 fps.
+- **Fill and frost:** 5% `bg-surface` on capsules, 3% on the card; frost 0.3px on capsules, 3px in the card's middle; no backdrop brightening (saturate 1.5 only), so the glass never looks whiter than the canvas.
+- **Light:** a gloss gradient (20% surface at the top → clear → 3% ink at the bottom), a crisp 0.5px outer hairline, 1px top and left specular lines, a 1px bottom floor line, a 1.5px rim ring that is brightest at the top-left and bottom-right corners, a soft inner bevel and a small shadow (0 8px 24px −10px).
+- **Text on glass:** no white pane. Card text carries a soft surface-coloured halo (vibrancy-like) and a 6% pane sits inside the card rim, so text separates from a vertex passing under it.
+- Other engines keep the same family as frosted glass (14px blur, 62% fill; card 78%).
 
-> OPEN (design session 2026-11-16): the material values (fill, blur, refraction, rim, shadow) are being retuned because the current version reads as a plain white card. Current values live in `app/styles/glass.css`; tokens are added here once the material is settled.
+Order: legend and zoom capsule z-10, job bar and card z-20.
 
 - **ELV-4 — Glass only for floating layers over the graph canvas.** Never on page content, rows or dialogs; never glass on glass (a selected segment inside a glass bar is a raised `bg-surface` segment, not another glass layer). `[judge]`
 - **ELV-5 — Glass always has a solid fallback:** no backdrop-filter → 96% `bg-surface`; reduced transparency → solid `bg-surface`; more contrast or forced colors → solid `bg-surface` + 1px `border-strong`, no rim. Reading text on glass keeps 4.5:1 in every case. `[auto]`
@@ -666,7 +672,7 @@ Motion confirms an action or reveals a change; it never decorates. Fast 120–18
 - Do set Korean with Pretendard, 16/1.5 body, tracking 0, keep-all on short UI text.
 - Do show numbers in tabular numerals with units and a comparison.
 - Don't use raw hex, Tailwind palette colors or arbitrary values in components.
-- Don't use hue for decoration, gradients or glows (the glass rim highlight is the one exception), emoji or sparkle icons.
+- Don't use hue for decoration, gradients or glows (the glass rim light, gloss and prism fringe are the only exceptions), emoji or sparkle icons.
 - Don't nest cards, wrap records in cards, or add side stripes to rounded cards.
 - Don't use italics, break-all, line-height under 1.3 on wrapping Hangul, or tracking below −0.03em.
 - Don't add intro loaders, looping animation or opaque black hover blocks.
