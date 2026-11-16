@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: LetsGraph — Ink (v4)
+name: LetsGraph — Ink (v4.1)
 description: Korean product design system for LetsGraph. Near-black ink on white with an active gray scale (every Radix gray step has a job), color only for status, market up/down and AI-made content, Pretendard for text and figures (tabular numerals), shadcn/ui on Radix. Rules carry IDs, smell tags and Verify lines (Astryx-style); Hangul rules from oh-my-design.
 colors:
   primary: "#202020"
@@ -58,6 +58,7 @@ colors:
   graph-edge: "#bbbbbb"
   graph-orbit: "#d9d9d9"
   graph-division: "#646464"
+  graph-grid: "#cecece"
   skeleton: "#f0f0f0"
 typography:
   display:
@@ -159,6 +160,8 @@ rounded:
   inner: 2px
   element: 4px
   container: 6px
+  tile: 16px
+  sheet: 28px
   full: 9999px
 spacing:
   hairline: 1px
@@ -181,6 +184,7 @@ spacing:
   tab-bar-height: 60px
   drawer-width: 360px
   side-panel-width: 240px
+  floating-card-width: 364px
   content-max: 1280px
   reading-max: 720px
 components:
@@ -421,22 +425,61 @@ components:
   graph-job-node:
     backgroundColor: "{colors.graph-job}"
     textColor: "{colors.on-accent}"
+    typography: "{typography.body}"
+    rounded: "{rounded.full}"
+    height: 52px
+  graph-industry-node:
+    backgroundColor: "{colors.bg-tonal}"
+    textColor: "{colors.text-primary}"
     typography: "{typography.label-strong}"
-    rounded: "{rounded.element}"
-    height: 36px
-    padding: 14px
+    rounded: "{rounded.full}"
+    height: 32px
+  graph-industry-ring:
+    backgroundColor: "{colors.border-emphasized}"
+    height: 1px
   graph-saved-company:
     backgroundColor: "{colors.graph-saved}"
-    rounded: "{rounded.inner}"
+    rounded: "{rounded.full}"
   graph-company:
+    backgroundColor: "{colors.bg-surface}"
+    rounded: "{rounded.full}"
+  graph-company-ring:
     backgroundColor: "{colors.graph-node}"
-    rounded: "{rounded.inner}"
+    height: 1.5px
   graph-company-dim:
     backgroundColor: "{colors.graph-node-dim}"
-    rounded: "{rounded.inner}"
+    rounded: "{rounded.full}"
   graph-edge:
     backgroundColor: "{colors.graph-edge}"
     height: 1px
+  graph-job-edge:
+    backgroundColor: "{colors.graph-division}"
+    height: 2px
+  graph-grid:
+    backgroundColor: "{colors.graph-grid}"
+    rounded: "{rounded.full}"
+    height: 1.5px
+  graph-plane:
+    backgroundColor: "{colors.bg-tonal}"
+  floating-card:
+    backgroundColor: "{colors.bg-surface}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body}"
+    rounded: "{rounded.sheet}"
+    padding: 24px
+  floating-tile:
+    backgroundColor: "{colors.bg-tonal}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.figure}"
+    rounded: "{rounded.tile}"
+    padding: 16px
+  floating-capsule:
+    backgroundColor: "{colors.bg-surface}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+    height: 40px
+    padding: 4px
   graph-orbit:
     backgroundColor: "{colors.graph-orbit}"
     height: 1px
@@ -446,11 +489,13 @@ components:
     height: 12px
 ---
 
-# LetsGraph — DESIGN.md v4 "Ink"
+# LetsGraph — DESIGN.md v4.1 "Ink"
 
 ## Overview
 
 LetsGraph helps Korean undergraduates (2nd–4th year) understand industries, companies and jobs through how money flows: a job map (직무 맵), division money structures from filings, posting analysis, experience cards and a prompt kit. The identity is **Ink**: near-black ink on white with a working gray scale. Grays are not leftovers between black and white; they carry surfaces, selection, quantity and the graph. Color appears only where it means something: status, market up/down, and AI-made content. Chosen by the user 2026-11-13 from three candidates (코발트, 잉크, 제이드); "use the mid grays actively" is a standing instruction.
+
+Versions: v4.1 (2026-11-16) synced to the app at main 870b9c2 — 직무 맵 with circle vertices and industry icons, the floating layer family over the graph (glass material, `sheet` / `tile` radii), React Flow attribution hidden. v4 (2026-11-13) is archived in context/design-archive/.
 
 How to read this file:
 - **YAML tokens are normative values. Prose is intent.** When a value is wrong, change the token; never patch a raw value in code.
@@ -473,14 +518,15 @@ Open-source foundations: Radix Colors (MIT) gray, alpha and status scales with f
 |---|---|---|---|
 | 1 | #FCFCFC | text-inverted | text on ink |
 | 2 | #F9F9F9 | bg-sunken, graph-canvas | side panels, page bands, the graph canvas |
-| 3 | #F0F0F0 | bg-tonal, skeleton, data-track | tonal buttons, wells, badges, chart tracks, loading blocks |
+| 3 | #F0F0F0 | bg-tonal, skeleton, data-track | tonal buttons, wells, badges, chart tracks, loading blocks, industry vertices, the plane behind an opened industry, tiles in a floating card |
 | 4 | #E8E8E8 | bg-tonal-hover | hover on tonal parts |
 | 5 | #E0E0E0 | bg-selected, border | selected chip / row / nav item; dividers |
-| 6 | #D9D9D9 | bg-pressed, graph-node-dim, graph-orbit | pressed; dimmed nodes; orbit rings |
+| 6 | #D9D9D9 | bg-pressed, graph-node-dim, graph-orbit | pressed; dimmed nodes; orbit rings (superseded orbit map only) |
+| 7 | #CECECE | graph-grid | the graph's dot grid |
 | 8 | #BBBBBB | data-3, graph-edge, text-inverted-secondary | third chart series; graph edges; secondary text on ink |
-| 9 | #8D8D8D | border-emphasized, graph-node, text-disabled | input and control boundaries (3.3:1); unsaved companies; disabled text |
+| 9 | #8D8D8D | border-emphasized, graph-node, text-disabled | input and control boundaries (3.3:1); company and industry rings; disabled text |
 | 10 | #838383 | data-2 | second chart series |
-| 11 | #646464 | text-secondary, accent-hover, graph-division | secondary text (5.9:1); primary hover; division nodes |
+| 11 | #646464 | text-secondary, accent-hover, graph-division | secondary text (5.9:1); primary hover; job→industry lines; division nodes |
 | 12 | #202020 | text-primary, accent, bg-inverted, data-1, graph-job, graph-saved | ink: body text, primary action, toast, focus series, the job node, saved companies |
 
 Alpha overlays (Radix grayA 3 / 5) tint whatever surface they sit on for hover and press.
@@ -497,7 +543,7 @@ Smells: `[auto]` raw hex or Tailwind palette classes in components; `[auto]` tex
 
 Got it right: the page reads as white, two or three gray planes and ink; the eye lands on one ink action; numbers that rise or fall carry a sign and a color; AI content is recognisable at a glance without being loud.
 
-**Dark mode** (Radix grayDark; same jobs, values below). Ink and paper swap: page #111111, surface and sunken #191919, tonal #222222, tonal-hover #2A2A2A, selected #313131, pressed #3A3A3A, inverted #EEEEEE; overlay-hover #FFFFFF12, overlay-pressed #FFFFFF22; text-primary #EEEEEE, text-secondary #B4B4B4, text-disabled #6E6E6E, text-inverted #111111, text-inverted-secondary #606060; border #313131, border-emphasized #6E6E6E, border-strong #EEEEEE; accent #EEEEEE with on-accent #111111, accent-hover #B4B4B4; ai-muted #291F43, text-ai #BAA7FF, border-ai #56468B, skeleton-ai #33255B; success-muted #132D21 / text #3DD68C; warning-muted #302008 / text #FFCA16; error-muted #3B1219 / text #FF9592; info-muted #0D2847 / text #70B8FF; text-up #FF9592, text-down #70B8FF; data-1 #EEEEEE, data-2 #7B7B7B, data-3 #484848, data-track #2A2A2A; graph-canvas #191919, graph-job and graph-saved #EEEEEE, graph-node #7B7B7B, graph-node-dim #3A3A3A, graph-edge #606060, graph-orbit #3A3A3A, graph-division #B4B4B4; skeleton #222222. Light is the default (projector demo); dark follows the system setting.
+**Dark mode** (Radix grayDark; same jobs, values below). Ink and paper swap: page #111111, surface and sunken #191919, tonal #222222, tonal-hover #2A2A2A, selected #313131, pressed #3A3A3A, inverted #EEEEEE; overlay-hover #FFFFFF12, overlay-pressed #FFFFFF22; text-primary #EEEEEE, text-secondary #B4B4B4, text-disabled #6E6E6E, text-inverted #111111, text-inverted-secondary #606060; border #313131, border-emphasized #6E6E6E, border-strong #EEEEEE; accent #EEEEEE with on-accent #111111, accent-hover #B4B4B4; ai-muted #291F43, text-ai #BAA7FF, border-ai #56468B, skeleton-ai #33255B; success-muted #132D21 / text #3DD68C; warning-muted #302008 / text #FFCA16; error-muted #3B1219 / text #FF9592; info-muted #0D2847 / text #70B8FF; text-up #FF9592, text-down #70B8FF; data-1 #EEEEEE, data-2 #7B7B7B, data-3 #484848, data-track #2A2A2A; graph-canvas #191919, graph-job and graph-saved #EEEEEE, graph-node #7B7B7B, graph-node-dim #3A3A3A, graph-edge #606060, graph-orbit #3A3A3A, graph-division #B4B4B4, graph-grid #484848; skeleton #222222. Light is the default (projector demo); dark follows the system setting.
 
 ## Typography
 
@@ -522,7 +568,7 @@ Got it right: a page title, a figure, a body sentence and a caption are distingu
 
 *Why it matters.* Proximity tells users what belongs together before they read. Dense money data stays readable when regions are framed first and records are rows.
 
-- **LAY-1 — Frame first.** Settle the shell and region budgets (header 56, side panel, main, drawer 360, mobile tab bar 60) before content. Verify: every screen names its regions and their widths. `[judge]`
+- **LAY-1 — Frame first.** Settle the shell and region budgets (header 56, side panel, main, drawer 360, mobile tab bar 60) before content. The 탐색 graph screen is the exception: the graph is full-bleed under the header and the controls float over it (see Elevation → Floating layers over the graph). Verify: every screen names its regions and their widths. `[judge]`
 - **LAY-2 — Weakest container first.** Group with spacing, then a divider, then a section with a heading; a bordered card only for a self-contained widget (a KPI, a chart, a gallery item). Never a card inside a card. Verify: Impeccable reports no nested cards. `[auto]`
 - **LAY-3 — Records are rows.** Companies, postings, episodes and kit items are rows (48–56px) in a list or table, not one card each. `[assist]`
 - **LAY-4 — Gaps grow with grouping.** 4 → 8 → 12/16 → 24 → 32/48 from label-to-value up to section-to-section, on the 4px grid. Verify: with borders removed, groups are still nameable from spacing alone. `[judge]`
@@ -536,12 +582,28 @@ No shadows on resting content. Depth is expressed by gray planes and 1px divider
 
 - **ELV-1 — Planes before shadows.** `[assist]` **ELV-2 — One edge language per surface** (border or shadow, not a hairline plus a wide blur). `[assist]` **ELV-3 — Floating content escapes containers** (no clipping by `overflow: hidden` ancestors). `[auto]`
 
+### Floating layers over the graph (glass)
+
+On the 탐색 graph screen the graph fills the screen and the controls float over it (Toss layout, Apple-Maps-style card; decisions 2026-11-15). These layers form one family:
+- **직무 바 JobBar:** top-left capsule — my jobs (selected = raised segment), 직무 더 고르기 (+), view switch (graph / list).
+- **확대 캡슐 ZoomCapsule:** bottom-right capsule — +, −, 전체 보기; 배치 되돌리기 appears after a drag.
+- **범례 줄 GraphLegend:** one line at the bottom-left, desktop only.
+- **상세 카드 DetailCard:** a `floating-card-width` (364px) card at the right from 1024px up; below that a bottom sheet up to 46% of the height with a grab handle.
+
+Material: **liquid glass** — a translucent `bg-surface` fill, backdrop blur, a specular rim (light at the top-left edge, faint shade at the bottom) and a soft two-layer shadow. The card carries a thicker fill than the controls because it holds reading text. On Chromium the backdrop is also refracted through an SVG displacement filter; other engines get a plain frosted blur. Order: legend and zoom capsule z-10, job bar and card z-20.
+
+> OPEN (design session 2026-11-16): the material values (fill, blur, refraction, rim, shadow) are being retuned because the current version reads as a plain white card. Current values live in `app/styles/glass.css`; tokens are added here once the material is settled.
+
+- **ELV-4 — Glass only for floating layers over the graph canvas.** Never on page content, rows or dialogs; never glass on glass (a selected segment inside a glass bar is a raised `bg-surface` segment, not another glass layer). `[judge]`
+- **ELV-5 — Glass always has a solid fallback:** no backdrop-filter → 96% `bg-surface`; reduced transparency → solid `bg-surface`; more contrast or forced colors → solid `bg-surface` + 1px `border-strong`, no rim. Reading text on glass keeps 4.5:1 in every case. `[auto]`
+- **ELV-6 — Floating layers never cover the data.** The graph's fit padding equals the floating layers' extents (desktop: top 84, right 404, bottom 76, left 48 px; narrow: top 76, sides 20, bottom 48%), so after a fit no vertex or label sits under a bar, capsule or card. No third-party marks in the canvas corners: the React Flow attribution is hidden (`proOptions.hideAttribution`, decided 2026-11-16); the MIT credit stays in THIRD_PARTY_NOTICES.md. `[assist]`
+
 ## Shapes
 
-Small, square-leaning corners: `inner` 2px (labels, badges, swatches), `element` 4px (buttons, chips, inputs, rows), `container` 6px (cards, panels, dialogs), `full` for the avatar and unread dot only.
+Small, square-leaning corners for page content: `inner` 2px (labels, badges, swatches), `element` 4px (buttons, chips, inputs, rows), `container` 6px (cards, panels, dialogs). The floating family over the graph is the one round exception (Toss style): `sheet` 28px (상세 카드 and the bottom sheet), `tile` 16px (tiles and rows inside a sheet), `full` (capsules, the segments inside them, chips and the back button inside a sheet). Elsewhere `full` is only for the avatar, status and unread dots, count badges and graph vertices.
 
 - **SHP-1 — Radius by role** from the YAML; no other values. `[auto]`
-- **SHP-2 — Nested corners stay concentric:** inner radius = outer radius − padding (never negative; 0 if padding ≥ radius). `[auto]`
+- **SHP-2 — Nested corners stay concentric:** inner radius = outer radius − padding (never negative; 0 if padding ≥ radius). Inside a `sheet`, tiles and rows use `tile` regardless of padding. `[auto]`
 - **SHP-3 — No side-stripe accents on rounded cards;** emphasis uses fill or a full border. `[judge]`
 - Icons: Lucide, 1.5–2px stroke, 16/18/20/24px; meaning first, never decoration; no sparkle icons for AI (use the "AI" label).
 
@@ -572,7 +634,15 @@ Core parts:
 - **인사이트 셀 InsightCell:** question (heading-3), one answer sentence (body-lg), at most one figure (figure) or one chart, then a TrustLabel.
 - **기간 슬라이더 PeriodScrubber:** segmented control of fiscal periods in tabular numerals; current = `bg-selected`.
 - **차트 Chart:** focus series `data-1` (ink), comparison `data-2`, context `data-3`; tracks `data-track`; up/down only with `data-up`/`data-down` plus ▲/▼. Every number shown against another number (previous year, share, total). **CMP-4** `[judge]`.
-- **직무 맵 JobMap (graph):** canvas `graph-canvas`; job node = ink rectangle with paper label; companies = squares sized by revenue — saved `graph-saved` (ink), others `graph-node` (gray-9), filtered `graph-node-dim`; edges `graph-edge` solid (real posting) or dashed (estimated); orbits `graph-orbit` dotted; division branches `graph-division`; division with the job = filled, without = hollow. Legend strip along the bottom.
+- **직무 맵 JobMap (graph; shown to users as 나의 취업 그래프, spec FR-MAP-03):** React Flow (@xyflow/react) renders, our d3-force lays out one star per liked job (up to 5), bubblesets-js draws the plane. Canvas `graph-canvas` with a `graph-grid` dot grid (20px gap, 1.5px dots). Every vertex is a **circle with its name under it** (on a canvas-coloured halo); an icon is never shown without the name.
+  - 내 직무 job = `graph-job` ink circle (~52px) with a Lucide briefcase in `text-inverted`; name body 700.
+  - 산업 industry = `bg-tonal` circle with a 1px `border-emphasized` ring, sized by linked companies (~30–42px), Lucide industry pictogram inside (half the diameter, 1.75 stroke); name label-strong. Hired by several of my jobs = 2px canvas gap + `border-strong` ring + ink count badge. Opened = 1.5px dashed `border-strong` outline (4px offset) and a `bg-tonal` plane (75%, 1px `border`) around it and its companies.
+  - 기업 company = open circle (`bg-surface`, 1.5px `graph-node` ring) sized by revenue (square-root scale, ~14–34px); saved = `graph-saved` fill; estimated link or no figures = dashed ring, no figures = smallest. Name caption 500 (saved 600).
+  - Lines: job→industry `graph-division`, 1.9–6.4px by posting evidence (posting links count double); industry→company `graph-edge`, posting solid 2px, estimated dashed 1px; bridge between stars that share an industry = 1.5px dashed `border-strong` at 70%.
+  - Hover or focus dims the rest (vertices 40%, lines 15%); selection and keyboard focus = 2px canvas gap + 2px `border-strong` ring.
+  - Drag: a dropped vertex stays where dropped; dragging a job moves its star, an industry moves its companies; 배치 되돌리기 restores the layout. Fit never zooms below 0.92, so labels stay ≥ 12px.
+  - Legend = 범례 줄 GraphLegend (glass, bottom-left, desktop): 내 직무 · 산업 · 기업 · 클수록 매출이 커요 · 추정.
+- **상세 카드 DetailCard:** the floating sheet of the graph screen (see Elevation). Toss-style content: a 44px icon circle + heading-2 title + one caption line; at most two stat tiles (`tile`, `overlay-hover` tint, figure 22/600 + unit + caption); then rows (`tile` corners, label-strong title, caption sub, tabular value, chevron); one primary action; the TrustLabel / source line last. The company view leads with a heading-1 name and a figure-hero revenue. Back = a ghost capsule with a chevron. Sentences in 해요체, one line each.
 - **Toast:** ink fill, paper text, brief. **Inputs:** surface, `border-emphasized`, focus = ink border + 3px `bg-selected` ring. **Skeleton:** `skeleton` gray blocks in the final layout; AI-pending content uses `skeleton-ai`.
 
 ## States
@@ -586,7 +656,7 @@ States are grouped by who drives them. Reuse a listed representation before inve
 
 ## Motion
 
-Motion confirms an action or reveals a change; it never decorates. Fast 120–180ms for hover/press (color and transform only), medium 200–260ms for drawers, sheets and branch reveals on the job map, ease-out, no bounce. Only `transform` and `opacity` animate. Nothing loops on working screens (the AI step bar fills, it does not pulse). `prefers-reduced-motion` turns transitions off.
+Motion confirms an action or reveals a change; it never decorates. Fast 120–180ms for hover/press (color and transform only), medium 200–260ms for drawers, sheets and branch reveals on the job map, ease-out, no bounce. Camera moves on the graph (fit, zoom, 배치 되돌리기) take 450ms; the force layout settles once and then rests; the detail card enters in 220ms (6px rise + fade). Only `transform` and `opacity` animate. Nothing loops on working screens (the AI step bar fills, it does not pulse). `prefers-reduced-motion` turns transitions off.
 
 ## Do's and Don'ts
 
@@ -596,7 +666,7 @@ Motion confirms an action or reveals a change; it never decorates. Fast 120–18
 - Do set Korean with Pretendard, 16/1.5 body, tracking 0, keep-all on short UI text.
 - Do show numbers in tabular numerals with units and a comparison.
 - Don't use raw hex, Tailwind palette colors or arbitrary values in components.
-- Don't use hue for decoration, gradients, glows, emoji or sparkle icons.
+- Don't use hue for decoration, gradients or glows (the glass rim highlight is the one exception), emoji or sparkle icons.
 - Don't nest cards, wrap records in cards, or add side stripes to rounded cards.
 - Don't use italics, break-all, line-height under 1.3 on wrapping Hangul, or tracking below −0.03em.
 - Don't add intro loaders, looping animation or opaque black hover blocks.

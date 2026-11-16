@@ -395,7 +395,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         maxZoom={2.5}
         fitView
         fitViewOptions={{ padding: fitPadding ?? 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
-        attributionPosition="bottom-left"
+        proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
       </ReactFlow>

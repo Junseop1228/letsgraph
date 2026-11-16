@@ -55,12 +55,15 @@
   --ds-graph-edge: #bbbbbb;
   --ds-graph-orbit: #d9d9d9;
   --ds-graph-division: #646464;
+  --ds-graph-grid: #cecece;
   --ds-skeleton: #f0f0f0;
   --ds-on-error: #ffffff;
   --ds-radius-none: 0px;
   --ds-radius-inner: 2px;
   --ds-radius-element: 4px;
   --ds-radius-container: 6px;
+  --ds-radius-tile: 16px;
+  --ds-radius-sheet: 28px;
   --ds-radius-full: 9999px;
   color-scheme: light;
 }
@@ -120,6 +123,7 @@
   --ds-graph-edge: #606060;
   --ds-graph-orbit: #3a3a3a;
   --ds-graph-division: #b4b4b4;
+  --ds-graph-grid: #484848;
   --ds-skeleton: #222222;
   color-scheme: dark;
 }
@@ -181,6 +185,7 @@
   --color-graph-edge: var(--ds-graph-edge);
   --color-graph-orbit: var(--ds-graph-orbit);
   --color-graph-division: var(--ds-graph-division);
+  --color-graph-grid: var(--ds-graph-grid);
   --color-skeleton: var(--ds-skeleton);
   /* shadcn/ui public layer (DESIGN.md > Components table) */
   --color-background: var(--ds-bg-page);
@@ -208,6 +213,8 @@
   --radius-inner: var(--ds-radius-inner);
   --radius-element: var(--ds-radius-element);
   --radius-container: var(--ds-radius-container);
+  --radius-tile: var(--ds-radius-tile);
+  --radius-sheet: var(--ds-radius-sheet);
   --radius-full: var(--ds-radius-full);
   --radius-sm: var(--ds-radius-inner);
   --radius-md: var(--ds-radius-element);
@@ -295,6 +302,7 @@
   --spacing-tab-bar-height: 60px;
   --spacing-drawer-width: 360px;
   --spacing-side-panel-width: 240px;
+  --spacing-floating-card-width: 364px;
   --spacing-content-max: 1280px;
   --spacing-reading-max: 720px;
 }

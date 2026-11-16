@@ -4,13 +4,10 @@
 
 .lg-flow {
   --xy-background-color: var(--color-graph-canvas);
-  --xy-attribution-background-color: transparent;
   /* faint dot grid so the canvas reads as a surface: a step between graph-orbit and graph-edge */
   --xy-background-pattern-color: color-mix(in srgb, var(--color-graph-orbit) 55%, var(--color-graph-edge));
   font-family: inherit;
 }
-.lg-flow .react-flow__attribution { font-size: var(--text-caption); }
-.lg-flow .react-flow__attribution a { color: var(--color-text-secondary); }
 .lg-flow .react-flow__node { transition: opacity 150ms ease-out; }
 .lg-flow .react-flow__edge { pointer-events: none; transition: opacity 150ms ease-out; }
 .lg-flow .react-flow__handle.ghandle { opacity: 0; pointer-events: none; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; left: 50%; top: 50%; }

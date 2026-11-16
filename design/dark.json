@@ -15,6 +15,6 @@
   "data-up": "#e5484d", "data-down": "#0090ff", "text-up": "#ff9592", "text-down": "#70b8ff",
   "data-1": "#eeeeee", "data-2": "#7b7b7b", "data-3": "#484848", "data-track": "#2a2a2a",
   "graph-canvas": "#191919", "graph-job": "#eeeeee", "graph-saved": "#eeeeee", "graph-node": "#7b7b7b", "graph-node-dim": "#3a3a3a",
-  "graph-edge": "#606060", "graph-orbit": "#3a3a3a", "graph-division": "#b4b4b4",
+  "graph-edge": "#606060", "graph-orbit": "#3a3a3a", "graph-division": "#b4b4b4", "graph-grid": "#484848",
   "skeleton": "#222222"
 }
