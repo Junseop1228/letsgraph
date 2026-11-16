@@ -36,6 +36,7 @@ export const Company = z.object({
   revenue: z.number().int().nullable(), // latest fiscal year, 억원
   operatingIncome: z.number().int().nullable(),
   fiscalYear: z.number().int().nullable(),
+  revenueGrowth: z.number().nullable().optional(), // 3-year average yearly revenue growth, 0.15 = +15% (D 2026-11-17 step 5b)
   basisNote: z.string().optional(), // "대한통운 제외", "연결"
   source: Provenance.optional(),
   hasDetail: z.boolean().default(false),

@@ -1,5 +1,6 @@
 // Supabase implementation of the read repositories (schema: supabase/migrations/20261113000000_init.sql).
 // Rows are mapped to the domain contracts; JSON columns are re-validated with Zod.
+import { GROWING_MIN_GROWTH, GROWING_MIN_REVENUE, LARGE_MIN_REVENUE, MID_MIN_REVENUE } from "@/lib/explore/company-type";
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -35,6 +36,7 @@ function toCompany(r: Row): Company {
     revenue: r.revenue ?? null,
     operatingIncome: r.operating_income ?? null,
     fiscalYear: r.fiscal_year ?? null,
+    revenueGrowth: r.revenue_growth ?? null,
     basisNote: r.basis_note ?? undefined,
     source: r.source_kind ? { kind: r.source_kind, label: r.source_label ?? "", date: r.source_date ?? undefined } : undefined,
     hasDetail: !!r.has_detail,
@@ -105,8 +107,12 @@ export const supabaseCatalog: CatalogRepo = {
     const { data } = await reviewed().eq("has_detail", true).order("revenue", { ascending: false, nullsFirst: false }).limit(200);
     return (data ?? []).map(toCompany);
   },
-  async topCompanies(industryId, n) {
-    const { data } = await reviewed().eq("industry_id", industryId).order("revenue", { ascending: false, nullsFirst: false }).limit(n);
+  async topCompanies(industryId, n, type) {
+    let q = reviewed().eq("industry_id", industryId);
+    if (type === "large") q = q.gte("revenue", LARGE_MIN_REVENUE);
+    if (type === "mid") q = q.gte("revenue", MID_MIN_REVENUE).lt("revenue", LARGE_MIN_REVENUE);
+    if (type === "growing") q = q.gte("revenue", GROWING_MIN_REVENUE).gte("revenue_growth", GROWING_MIN_GROWTH);
+    const { data } = await q.order("revenue", { ascending: false, nullsFirst: false }).limit(n);
     return (data ?? []).map(toCompany);
   },
   async industryCompanyCounts() {

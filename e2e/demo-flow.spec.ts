@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("explore", () => {
-  test("FR-DISC-01 직군 고르기 / 카드를 넘겨 관심 직무 고르기 / 산업 고르기", async ({ page }) => {
+  test("FR-DISC-01 직군 고르기 / 카드를 넘겨 관심 직무 고르기 / 산업 고르기 / 회사 성격 고르기", async ({ page }) => {
     await page.goto("/explore");
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
     await page.getByRole("group", { name: "직군" }).getByRole("button", { name: "생산·품질" }).click();
@@ -18,9 +18,13 @@ test.describe("explore", () => {
     const chips = page.getByRole("group", { name: "산업" }).getByRole("button");
     await chips.nth(1).click();
     await expect(chips.nth(1)).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("button", { name: "내 그래프 보기" }).click();
+    await page.getByRole("button", { name: "다음" }).click();
+    await expect(page.getByRole("heading", { name: "어떤 회사가 궁금하세요?" })).toBeVisible();
+    await page.getByRole("group", { name: "회사 성격" }).getByRole("button", { name: /이름 있는 큰 회사/ }).click();
     await expect(page).toHaveURL(/\/explore\/map\?job=quality/);
-    await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "lg_industries")).toBe(true);
+    const cookies = async () => (await page.context().cookies()).map((c) => `${c.name}=${c.value}`);
+    await expect.poll(cookies).toContain("lg_company_type=large");
+    await expect.poll(async () => (await cookies()).some((c) => c.startsWith("lg_industries="))).toBe(true);
     await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
   });
 

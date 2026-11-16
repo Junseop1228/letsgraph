@@ -1,3 +1,4 @@
+import { matchesType } from "@/lib/explore/company-type";
 import type { CatalogRepo, UserRepo } from "@/lib/data/repo";
 import {
   COMPANIES,
@@ -29,8 +30,8 @@ export const fixtureCatalog: CatalogRepo = {
   company: async (id) => COMPANIES.find((c) => c.id === id) ?? null,
   companiesByIds: async (ids) => COMPANIES.filter((c) => ids.includes(c.id)),
   companiesWithDetail: async () => COMPANIES.filter((c) => c.hasDetail),
-  topCompanies: async (industryId, n) =>
-    COMPANIES.filter((c) => c.industryId === industryId)
+  topCompanies: async (industryId, n, type) =>
+    COMPANIES.filter((c) => c.industryId === industryId && (!type || matchesType(c, type)))
       .sort((a, b) => (b.revenue ?? -1) - (a.revenue ?? -1))
       .slice(0, n),
   industryCompanyCounts: async () => {

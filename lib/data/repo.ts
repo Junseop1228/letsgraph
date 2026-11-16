@@ -2,6 +2,7 @@
 //  - fixtures (no keys / demo): lib/data/fixture-repo.ts
 //  - Supabase: lib/data/supabase-repo.ts
 // Pages depend on this interface only, so switching sources never touches UI code.
+import type { CompanyType } from "@/lib/explore/company-type";
 import type {
   BusinessSegment,
   Company,
@@ -28,8 +29,8 @@ export interface CatalogRepo {
   companiesByIds(ids: string[]): Promise<Company[]>;
   /** reviewed companies that have a detail page (search defaults, the bell) */
   companiesWithDetail(): Promise<Company[]>;
-  /** the n biggest reviewed companies of an industry, by revenue */
-  topCompanies(industryId: string, n: number): Promise<Company[]>;
+  /** the n biggest reviewed companies of an industry, by revenue; with a type, only companies of that type */
+  topCompanies(industryId: string, n: number, type?: CompanyType | null): Promise<Company[]>;
   /** reviewed companies per industry */
   industryCompanyCounts(): Promise<Record<string, number>>;
   /** reviewed companies in total */

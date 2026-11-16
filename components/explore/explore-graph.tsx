@@ -4,6 +4,7 @@
 // Layout (decisions 2026-11-15: Toss UX + Apple Liquid Glass): the graph fills the screen; controls and one detail card
 // float above it on glass (styles/glass.css). Toss: one thing per card, big figures with small captions, 해요체, no helper
 // sentences ("잡초 뽑기"), but the 실제 공고 / 추정 trust label always stays. Mobile: the card becomes a bottom sheet.
+import { reasonLine, type CompanyType } from "@/lib/explore/company-type";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BriefcaseBusiness, ChevronLeft, ChevronRight, EyeOff, Heart, List, Network, Plus, Search } from "lucide-react";
@@ -31,6 +32,12 @@ type Props = {
   segmentsByCompany: Record<string, BusinessSegment[]>;
   watchedInitial: string[];
   initialJob: string;
+  /** onboarding company-type card (D 2026-11-17 step 5b); null = any */
+  companyType?: CompanyType | null;
+  /** industries shown unfiltered because no company of that type was there (relax-and-tell) */
+  relaxed?: string[];
+  /** place of each top company in its industry's list on the graph (lib/explore/load.ts) */
+  ranks?: Record<string, number>;
 };
 
 type Sel = { kind: "job"; job: string } | { kind: "ind"; job: string; ind: string } | { kind: "co"; job: string; co: string } | null;
@@ -286,6 +293,15 @@ export function ExploreGraph(p: Props) {
               onToggle={() => toggleWatch(sel.co)}
               onHide={() => hideCompany(sel.co, sel.job)}
               backLabel={indName(companyIndustry[sel.co])}
+              reason={reasonLine({
+                basis: linksOf(sel.job).find((l) => l.companyId === sel.co)?.basis ?? "estimated",
+                jobName: roleById.get(sel.job)!.name,
+                industryName: indName(companyIndustry[sel.co]),
+                rank: p.ranks?.[sel.co] ?? null,
+                growth: coById.get(sel.co)?.revenueGrowth,
+                type: p.companyType ?? null,
+                relaxed: !!p.relaxed?.includes(companyIndustry[sel.co]),
+              })}
               onBack={() => openIndustry(sel.job, companyIndustry[sel.co])}
             />
           )}
@@ -496,7 +512,7 @@ function IndustryCard({ job, ind, indName, links, total, coById, otherJobs, save
   );
 }
 
-function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; onHide: () => void; backLabel: string; onBack: () => void }) {
+function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, reason, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; onHide: () => void; backLabel: string; reason: string; onBack: () => void }) {
   const withJob = segs.filter((s) => s.jobRoleIds.includes(job.id));
   return (
     <>
@@ -506,6 +522,8 @@ function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, 
         <p className="mt-1 flex items-center gap-2 text-caption text-text-secondary">
           {job.name} 연결 <TrustLabel p={{ kind: basis === "posting" ? "filing" : "estimate", text: basis === "posting" ? "실제 공고 근거" : "추정" }} />
         </p>
+        {/* one reason line per company (D 2026-11-17 onboarding card flow) */}
+        {reason && <p className="mt-1 text-body text-text-secondary">{reason}</p>}
       </header>
       <div>
         <p className="text-caption text-text-secondary">{c.fiscalYear ?? "최근"} 매출</p>
