@@ -11,7 +11,7 @@ import type {
   JobRole,
   SegmentDetail,
 } from "@/lib/contracts/domain";
-import type { Experience, JobPosting, PostingAnalysisOutput, ConnectionOutput } from "@/lib/contracts/activity";
+import type { Activity, Experience, JobPosting, PostingAnalysisOutput, ConnectionOutput } from "@/lib/contracts/activity";
 
 export const INDUSTRIES: Industry[] = [
   { id: "food", name: "식품" },
@@ -187,20 +187,38 @@ export const DEMO_ANALYSES: Record<string, PostingAnalysisOutput> = {
   },
 };
 
+export const DEMO_ACTIVITIES: Activity[] = [
+  { id: "act-app", title: "동아리 앱 개발 프로젝트", kind: "club", period: "2025.03 ~ 2025.12", role: "백엔드와 일정 관리", summary: "동아리원 5명이 학사 일정 알림 앱을 만들어 출시했어요.", sourceLabel: "경험 대화" },
+  { id: "act-cafe", title: "카페 아르바이트", kind: "parttime", period: "2024.06 ~ 2025.02", role: "마감 담당", dataset: "요일별 판매·폐기 기록 8개월치, 직접 정리한 엑셀", summary: "동네 카페에서 주 4회 마감과 발주를 맡았어요.", sourceLabel: "경험 대화" },
+  { id: "act-contest", title: "교내 데이터 분석 공모전", kind: "contest", period: "2025.09 ~ 2025.11", role: "데이터 전처리", dataset: "서울시 상권 공공 데이터, 공개 데이터", summary: "4명이 공공 데이터로 상권 분석 보고서를 냈어요.", sourceLabel: "포트폴리오.pdf", scenes: [
+    { title: "결측값 처리 기준 정하기", hint: "공공 데이터의 결측값 처리 기준을 팀에 제안했다고 적혀 있어요." },
+    { title: "상권 지도 시각화", hint: "분석 결과를 상권 지도로 시각화해 보고서에 넣었다고 적혀 있어요." },
+  ] },
+];
+
 export const DEMO_EXPERIENCES: Experience[] = [
-  { id: "exp-sched", title: "일정 지연 대응", kind: "club", period: "2025.03 ~ 2025.12", situation: "출시 2주 전 일정이 3주 밀렸어요.", action: "필수 기능 중심으로 일정을 다시 짰어요.", result: "필수 기능으로 출시했어요.", competencies: ["리더십", "일정관리"], sourceLabel: "동아리 앱 개발 프로젝트" },
-  { id: "exp-bug", title: "백엔드 장애 대응", kind: "club", period: "2025.03 ~ 2025.12", situation: "출시 직후 로그인 오류가 났어요.", action: "오류를 먼저 발견하고 원인을 좁혀 복구 순서를 문서로 만들었어요.", result: "같은 오류가 다시 나지 않게 대응 절차가 남았어요.", competencies: ["주도성", "문제해결"], sourceLabel: "동아리 앱 개발 프로젝트" },
-  { id: "exp-stock", title: "재고 폐기 줄이기", kind: "parttime", period: "2024.06 ~ 2025.02", situation: "마감 후 우유와 디저트 폐기가 잦았어요.", action: "요일별 판매 기록을 엑셀로 정리해 발주량을 조정했어요.", result: "폐기가 줄었어요. 정확한 수치는 직접 확인해서 넣어요.", competencies: ["분석", "주도성"], sourceLabel: "카페 아르바이트" },
-  { id: "exp-manual", title: "단골 응대 매뉴얼", kind: "parttime", period: "2024.06 ~ 2025.02", situation: "새 직원이 자주 받는 요청을 몰랐어요.", action: "자주 받는 요청을 정리해 교육 자료로 만들었어요.", result: "새 직원 교육에 썼어요.", competencies: ["협업", "고객응대"], sourceLabel: "카페 아르바이트" },
-  { id: "exp-null", title: "결측 데이터 정리", kind: "contest", period: "2025.09 ~ 2025.11", situation: "공모전 데이터에 결측값이 많았어요.", action: "결측값 처리 기준을 팀에 제안하고 전처리를 맡았어요.", result: "팀이 같은 기준으로 분석했어요.", competencies: ["분석", "문제해결"], sourceLabel: "교내 데이터 분석 공모전" },
+  { id: "exp-sched", activityId: "act-app", theme: "problem", title: "일정 지연 대응", kind: "club", period: "2025.03 ~ 2025.12", situation: "출시 2주 전 일정이 3주 밀렸어요.", action: "필수 기능 중심으로 일정을 다시 짰어요.", result: "필수 기능으로 출시했어요.", competencies: ["리더십", "일정관리"], sourceLabel: "동아리 앱 개발 프로젝트" },
+  { id: "exp-bug", activityId: "act-app", theme: "problem", title: "백엔드 장애 대응", kind: "club", period: "2025.03 ~ 2025.12", situation: "출시 직후 로그인 오류가 났어요.", action: "오류를 먼저 발견하고 원인을 좁혀 복구 순서를 문서로 만들었어요.", result: "같은 오류가 다시 나지 않게 대응 절차가 남았어요.", competencies: ["주도성", "문제해결"], sourceLabel: "동아리 앱 개발 프로젝트" },
+  { id: "exp-stock", activityId: "act-cafe", theme: "problem", title: "재고 폐기 줄이기", kind: "parttime", period: "2024.06 ~ 2025.02", situation: "마감 후 우유와 디저트 폐기가 잦았어요.", role: "마감 담당으로 재고 기록을 맡았어요.", action: "요일별 판매 기록을 엑셀로 정리해 발주량을 조정했어요.", result: "폐기가 줄었어요. 정확한 수치는 직접 확인해서 넣어요.", learning: "감보다 기록이 설득력이 있다는 걸 배웠어요.", chatLog: [
+    { role: "assistant", text: "'카페 아르바이트'에서 에피소드를 꺼내 볼게요. 아래 추천 에피소드에서 고르거나, 테마를 고르거나, 떠오르는 장면을 바로 말해 주세요." },
+    { role: "user", text: "문제 해결·직무 역량: '재고 폐기 줄이기' 장면으로 할게요." },
+    { role: "assistant", text: "그 장면에서 처음에 어떤 문제가 있었나요?" },
+    { role: "user", text: "마감 후 우유랑 디저트 폐기가 너무 많았어요." },
+    { role: "assistant", text: "문제를 풀려고 직접 한 행동을 순서대로 말해 줄래요?" },
+    { role: "user", text: "요일별 판매 기록을 엑셀로 정리해서 발주량을 바꿨어요." },
+  ], competencies: ["분석", "주도성"], sourceLabel: "카페 아르바이트" },
+  { id: "exp-manual", activityId: "act-cafe", theme: "collab", title: "단골 응대 매뉴얼", kind: "parttime", period: "2024.06 ~ 2025.02", situation: "새 직원이 자주 받는 요청을 몰랐어요.", action: "자주 받는 요청을 정리해 교육 자료로 만들었어요.", result: "새 직원 교육에 썼어요.", competencies: ["협업", "고객응대"], sourceLabel: "카페 아르바이트" },
+  { id: "exp-null", activityId: "act-contest", theme: "collab", title: "결측 데이터 정리", kind: "contest", period: "2025.09 ~ 2025.11", situation: "공모전 데이터에 결측값이 많았어요.", action: "결측값 처리 기준을 팀에 제안하고 전처리를 맡았어요.", result: "팀이 같은 기준으로 분석했어요.", competencies: ["분석", "문제해결"], sourceLabel: "교내 데이터 분석 공모전" },
 ];
 
 export const DEMO_CONNECTIONS: Record<string, ConnectionOutput> = {
   "demo-cj-quality": {
     links: [
-      { competency: "데이터 분석", experienceTitle: "결측 데이터 정리", reason: "품질관리는 검사 데이터에서 기준을 벗어난 값을 먼저 찾아내는 일이 많아요. 결측값 처리 기준을 세우고 정리한 경험이 그대로 이어져요.", context: "식품사업부문 2025 매출 11조 5,221억 원 중 해외가 5조 9,247억 원(51%)이에요." },
-      { competency: "문제해결", experienceTitle: "백엔드 장애 대응", reason: "클레임이 들어오면 원인을 좁혀 가며 재발을 막는 게 품질관리의 일이에요. 오류 원인을 찾고 복구 순서를 문서로 남긴 경험이 맞아요.", context: "주요 업무: 고객 불만 원인 분석과 재발 방지 (예시 공고)." },
-      { competency: "주도성", experienceTitle: "재고 폐기 줄이기", reason: "시키지 않은 기준을 스스로 세운 경험이에요. 판매 기록을 정리해 발주량을 바꾼 건, 이익이 줄어드는 시기에 낭비를 줄이는 시각으로 이어져요.", context: "식품사업부문 2025 영업이익 5,255억 원, 전년 대비 ▼ −15.3%." },
+      { competency: "문제해결", experienceId: "exp-bug", experienceTitle: "백엔드 장애 대응", reason: "클레임이 들어오면 원인을 좁혀 가며 재발을 막는 게 품질관리의 일이에요. 오류 원인을 찾고 복구 순서를 문서로 남긴 경험이 맞아요.", context: "주요 업무: 고객 불만 원인 분석과 재발 방지 (예시 공고)." },
+      { competency: "주도성", experienceId: "exp-stock", experienceTitle: "재고 폐기 줄이기", reason: "시키지 않은 기준을 스스로 세운 경험이에요. 판매 기록을 정리해 발주량을 바꾼 건, 이익이 줄어드는 시기에 낭비를 줄이는 시각으로 이어져요.", context: "식품사업부문 2025 영업이익 5,255억 원, 전년 대비 ▼ −15.3%." },
+    ],
+    skills: [
+      { competency: "데이터 분석", activityId: "act-contest", activityTitle: "교내 데이터 분석 공모전", reason: "서울시 상권 공공 데이터를 전처리해 분석 보고서를 낸 활동이에요. 품질관리의 검사 데이터에서 기준을 벗어난 값을 찾아내는 일과 이어져요." },
     ],
     gaps: ["도전"],
   },

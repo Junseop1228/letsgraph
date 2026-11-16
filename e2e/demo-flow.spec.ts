@@ -87,16 +87,31 @@ test.describe("manage", () => {
     await expect(page.getByText("상태 요약")).toBeVisible();
   });
 
-  test("PORT-02 데모 모드 대화", async ({ page }) => {
+  test("PORT-02 데모 모드 대화 (활동 고르기 → 에피소드 꺼내기)", async ({ page }) => {
     await page.goto("/manage?tab=chat");
+    await page.getByRole("button", { name: /카페 아르바이트/ }).click();
+    await expect(page.getByText("에피소드를 꺼내 볼게요")).toBeVisible();
     const input = page.getByLabel("메시지");
-    await input.fill("카페 아르바이트");
+    await input.fill("마감 후 폐기가 많던 날");
     await input.press("Enter");
     await expect(page.getByText("처음에 어떤 문제가 있었나요?")).toBeVisible();
     await input.fill("우유 폐기가 많았어요");
     await input.press("Enter");
-    await page.getByRole("button", { name: "카드 초안 만들기" }).click();
+    await page.getByRole("button", { name: "에피소드 초안 만들기" }).click();
     await expect(page.getByText("AI 요약")).toBeVisible();
+  });
+
+  test("PORT-03 카드 보드와 에피소드 자세히", async ({ page }) => {
+    await page.goto("/manage?tab=cards");
+    await expect(page.getByRole("list", { name: "카페 아르바이트 에피소드" })).toBeVisible();
+    await page.getByRole("button", { name: /재고 폐기 줄이기/ }).click();
+    const detail = page.getByRole("complementary", { name: "자세히" });
+    await expect(detail.getByRole("heading", { name: "재고 폐기 줄이기" })).toBeVisible();
+    await expect(detail.getByText("감보다 기록이 설득력이 있다는 걸 배웠어요.")).toBeVisible();
+    await page.getByRole("button", { name: "카페 아르바이트 활동 자세히 보기" }).click();
+    await expect(detail.getByText("사용한 데이터")).toBeVisible();
+    await detail.getByRole("button", { name: "자세히 접기" }).click();
+    await expect(page.getByRole("button", { name: "자세히 펼치기" })).toBeVisible();
   });
 });
 

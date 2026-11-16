@@ -1,12 +1,11 @@
 "use server";
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
-import { supabaseEnabled } from "@/lib/data";
-import { AI_MODEL, aiEnabled, AiUnavailable, analyzePosting, extractExperiences, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
-import { canSpend, planFromPasses } from "@/lib/billing/state";
-import type { QuotaFeature } from "@/lib/contracts/billing";
+import { gate } from "@/lib/billing/gate";
+import { AI_MODEL, AiUnavailable, analyzePosting, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
 import { PostingTextInput, PostingUrlInput } from "@/lib/contracts/activity";
 import { checkPostingUrl } from "@/lib/posting/url";
+import { linkPosting } from "@/lib/posting/segment";
 import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
 export type ActionState = { error?: string; ok?: string } | undefined;
@@ -29,27 +28,6 @@ async function readPdf(form: FormData): Promise<Uint8Array | string> {
   return new Uint8Array(await f.arrayBuffer());
 }
 
-/** Signed-in Supabase session + quota check. Returns a message when the request cannot start. */
-async function gate(feature: QuotaFeature) {
-  if (!supabaseEnabled()) return { error: "아직 계정 저장소가 연결되지 않았어요. 지금은 데모 공고로 흐름을 볼 수 있어요." as const };
-  if (!aiEnabled()) return { error: "AI 키가 아직 연결되지 않았어요. 지금은 데모 공고로 흐름을 볼 수 있어요." as const };
-  const { createClient } = await import("@/lib/supabase/server");
-  const db = await createClient();
-  const { data: claims } = await db.auth.getClaims();
-  const uid = claims?.claims?.sub as string | undefined;
-  if (!uid) redirect(`/auth/login?next=/postings`); // EX-01
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const [{ count }, { data: passes }] = await Promise.all([
-    db.from("quota_usage").select("id", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()),
-    db.from("passes").select("pass_type, expires_at, uses_left"),
-  ]);
-  const plan = planFromPasses((passes ?? []).map((p) => ({ type: p.pass_type, expiresAt: p.expires_at, usesLeft: p.uses_left })));
-  if (!canSpend(plan, count ?? 0)) return { error: "이번 달 쿼터를 다 썼어요. 패스로 쿼터를 늘릴 수 있어요." as const, quota: true }; // EX-04
-  return { db, uid, feature };
-}
-
 /** What to tell the user when the input had no posting body (nothing is stored or charged). */
 function notFoundMessage(src: PostingSource, fromUrl: boolean): string {
   if (fromUrl) return "이 페이지에서 공고 본문을 찾지 못했어요. 공고를 자바스크립트로 불러오는 사이트일 수 있어요. 공고 내용을 복사해 붙여넣거나 PDF로 올려 주세요.";
@@ -67,10 +45,13 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
     logAiFailure("posting_analysis", e);
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
+  const link = await linkPosting(out); // POST-05: catalogue company and division, when clear
   const { data: posting, error } = await db
     .from("job_postings")
     .insert({
       user_id: uid,
+      company_id: link.companyId,
+      segment_id: link.segmentId,
       company_name: out.companyName,
       title: out.title,
       deadline: out.deadline,
@@ -122,22 +103,3 @@ export async function analyzePostingTextAction(_prev: ActionState, form: FormDat
   return analyzeAndSave(g.db, g.uid, { kind: "text", text: input.data });
 }
 
-export async function extractExperiencesAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  const pdf = await readPdf(form);
-  if (typeof pdf === "string") return { error: pdf };
-  const g = await gate("experience_extraction");
-  if ("error" in g) return { error: g.error };
-  const { db, uid } = g;
-  let out;
-  try {
-    out = await extractExperiences(pdf);
-  } catch (e) {
-    logAiFailure("experience_extraction", e);
-    return { error: e instanceof AiUnavailable ? e.message : "경험을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
-  }
-  const label = (form.get("file") as File).name;
-  const rows = out.experiences.map((x) => ({ ...x, user_id: uid, source_label: label }));
-  if (rows.length) await db.from("experiences").insert(rows);
-  await db.from("quota_usage").insert({ user_id: uid, feature: "experience_extraction" });
-  return { ok: `경험 카드 ${rows.length}장을 만들었어요. 원본 파일은 저장하지 않아요.` };
-}

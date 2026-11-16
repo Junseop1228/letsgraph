@@ -8,8 +8,8 @@ test("내비게이션 4개 (탐색·공고·관리·연결)와 각 탭 첫 화�
   await expect(page.getByText("상태 요약")).toBeVisible();
 
   await nav.getByRole("link", { name: "관리" }).click();
-  await expect(page.getByRole("link", { name: "AI와 경험 정리하기" })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("link", { name: "내 카드 보기" }).click();
+  await expect(page.getByRole("link", { name: "만들기", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "카드", exact: true }).click();
   await expect(page.getByText("결측 데이터 정리")).toBeVisible();
 
   await nav.getByRole("link", { name: "연결" }).click();
