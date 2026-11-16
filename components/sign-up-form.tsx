@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { btn } from "@/components/lg/ui";
 
-export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
+export function SignUpForm({ className, oauth, ...props }: React.ComponentPropsWithoutRef<"div"> & { oauth?: React.ReactNode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -42,7 +42,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="rounded-container border border-border p-6">
         <h1 className="text-heading-2">가입하기</h1>
-        <p className="mt-1 text-support">이메일로 인증 링크를 보내 드려요.</p>
+        <p className="mt-1 text-support">{oauth ? "구글 계정이나 이메일로 가입해요." : "이메일로 인증 링크를 보내 드려요."}</p>
+        {oauth && <div className="mt-5">{oauth}</div>}
         <form onSubmit={handleSignUp} className="mt-5 flex flex-col gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">이메일</Label>

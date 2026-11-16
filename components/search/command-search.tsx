@@ -6,10 +6,11 @@ import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { formatEokShort } from "@/lib/format";
 
-export type SearchItem = { kind: "company" | "job"; id: string; label: string; hint: string; href: string; revenue?: number | null };
+export type SearchItem = { kind: "company" | "job"; id: string; label: string; hint: string; href: string; revenue?: number | null; ready?: boolean };
 
 export function CommandSearch({ items }: { items: SearchItem[] }) {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function CommandSearch({ items }: { items: SearchItem[] }) {
 
   function go(href: string) {
     setOpen(false);
+    setQ("");
     router.push(href);
   }
 
@@ -47,13 +49,13 @@ export function CommandSearch({ items }: { items: SearchItem[] }) {
       >
         <div className="flex items-center gap-2 border-b border-border px-4">
           <Search className="size-4 text-text-secondary" aria-hidden />
-          <Command.Input placeholder="직무나 기업 이름" className="h-12 w-full bg-transparent text-body outline-none placeholder:text-text-secondary" />
+          <Command.Input value={q} onValueChange={setQ} placeholder="직무나 기업 이름" className="h-12 w-full bg-transparent text-body outline-none placeholder:text-text-secondary" />
         </div>
         <Command.List className="max-h-[50vh] overflow-y-auto p-2">
           <Command.Empty className="px-3 py-6 text-center text-body text-text-secondary">찾는 직무나 기업이 없어요.</Command.Empty>
           {(["job", "company"] as const).map((kind) => (
             <Command.Group key={kind} heading={kind === "job" ? "직무" : "기업"} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-caption [&_[cmdk-group-heading]]:text-text-secondary">
-              {items.filter((i) => i.kind === kind).map((i) => (
+              {items.filter((i) => i.kind === kind && (q.trim() !== "" || i.ready !== false)).map((i) => (
                 <Command.Item
                   key={`${kind}:${i.id}`}
                   value={`${i.label} ${i.hint}`}

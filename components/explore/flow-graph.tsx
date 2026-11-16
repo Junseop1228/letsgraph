@@ -404,8 +404,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       </ReactFlow>
       <div ref={zoomRef} className={cn("lg-glass absolute z-10 flex items-center gap-0.5 rounded-full p-1", controlsClassName ?? "bottom-3 right-3")} role="group" aria-label="확대와 축소">
         {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">배치 되돌리기</button>}
-        <button type="button" onClick={() => zoom(1)} aria-label="확대" className="size-8 rounded-full text-label hover:bg-overlay-hover">+</button>
-        <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="size-8 rounded-full text-label hover:bg-overlay-hover">−</button>
+        <button type="button" onClick={() => zoom(1)} aria-label="확대" className="hidden size-8 rounded-full text-label hover:bg-overlay-hover lg:block">+</button>
+        <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="hidden size-8 rounded-full text-label hover:bg-overlay-hover lg:block">−</button>
         <button type="button" onClick={() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">전체 보기</button>
       </div>
     </GraphCtx.Provider>

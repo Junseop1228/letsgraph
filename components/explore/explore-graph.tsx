@@ -34,7 +34,7 @@ type Sel = { kind: "job"; job: string } | { kind: "ind"; job: string; ind: strin
 
 // The graph keeps clear of the floating layers when it fits itself.
 const FIT_WIDE = { top: "84px", right: "404px", bottom: "76px", left: "48px" } as const;
-const FIT_NARROW = { top: "76px", right: "20px", bottom: "48%", left: "20px" } as const;
+const FIT_NARROW = { top: "120px", right: "20px", bottom: "48%", left: "20px" } as const; // bar + zoom pill rows (audit M-5)
 // glass lens per layer (use-liquid-glass.ts): capsules bend in a narrow rim; the card has a wider rim and a frosted middle for reading
 const LENS_PILL: Lens = { bezel: 14, scale: 34, frost: 0.3 };
 const LENS_CARD: Lens = { bezel: 22, scale: 52, frost: 3 };
@@ -142,7 +142,7 @@ export function ExploreGraph(p: Props) {
             companyIndustry={companyIndustry}
             label={label}
             fitPadding={wide ? FIT_WIDE : FIT_NARROW}
-            controlsClassName={wide ? "bottom-4 right-4" : "right-3 top-16"}
+            controlsClassName={wide ? "bottom-4 right-4" : "left-3 top-16"}
           />
         </div>
       ) : (
@@ -163,11 +163,13 @@ export function ExploreGraph(p: Props) {
         </Link>
         <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
         <div role="group" aria-label="보기 방식" className="flex shrink-0 gap-0.5">
-          <button type="button" aria-pressed={view === "graph"} aria-label="그래프" onClick={() => setView("graph")} className={cn("grid size-8 place-items-center rounded-full", view === "graph" ? "lg-seg-on text-text-primary" : "text-text-secondary hover:text-text-primary")}>
+          <button type="button" aria-pressed={view === "graph"} aria-label="그래프" onClick={() => setView("graph")} className={cn("flex h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-label lg:px-3", view === "graph" ? "lg-seg-on text-text-primary" : "text-text-secondary hover:text-text-primary")}>
             <Network className="size-4" aria-hidden />
+            <span aria-hidden className="hidden lg:inline">그래프</span>
           </button>
-          <button type="button" aria-pressed={view === "list"} aria-label="목록" onClick={() => setView("list")} className={cn("grid size-8 place-items-center rounded-full", view === "list" ? "lg-seg-on text-text-primary" : "text-text-secondary hover:text-text-primary")}>
+          <button type="button" aria-pressed={view === "list"} aria-label="목록" onClick={() => setView("list")} className={cn("flex h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-label lg:px-3", view === "list" ? "lg-seg-on text-text-primary" : "text-text-secondary hover:text-text-primary")}>
             <List className="size-4" aria-hidden />
+            <span aria-hidden className="hidden lg:inline">목록</span>
           </button>
         </div>
       </div>
@@ -301,6 +303,7 @@ function JobCard({ job, links, coById, indName, onOpen }: { job: JobRole; links:
           />
         ))}
       </ul>
+      <p className="text-caption text-text-secondary">산업을 누르면 그 산업의 기업이 그래프에 펼쳐져요.</p>
     </>
   );
 }

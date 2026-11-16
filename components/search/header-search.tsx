@@ -15,6 +15,7 @@ export async function HeaderSearch() {
       hint: `${ind.get(c.industryId) ?? ""}${c.hasDetail ? "" : " · 상세 준비 중"}`,
       href: `/company/${c.id}`,
       revenue: c.revenue,
+      ready: c.hasDetail, // audit C-3: the empty search shows only companies with a detail page
     })),
   ];
   return <CommandSearch items={items} />;
