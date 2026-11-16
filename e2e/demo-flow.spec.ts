@@ -115,7 +115,8 @@ test.describe("manage", () => {
     const input = page.getByLabel("메시지");
     await input.fill("마감 후 폐기가 많던 날");
     await input.press("Enter");
-    await expect(page.getByText("처음에 어떤 문제가 있었나요?")).toBeVisible();
+    // the same coach line also sits in the saved 대화 기록 list, so look inside the chat only (CI runs keyless)
+    await expect(page.getByLabel("AI 코치와 대화").getByText("처음에 어떤 문제가 있었나요?")).toBeVisible();
     await input.fill("우유 폐기가 많았어요");
     await input.press("Enter");
     await page.getByRole("button", { name: "에피소드 초안 만들기" }).click();
