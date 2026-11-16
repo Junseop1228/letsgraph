@@ -30,7 +30,7 @@ import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/exp
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
 import { BriefcaseBusiness } from "lucide-react";
 import { IndustryIcon } from "@/components/explore/industry-icon";
-import { glassMotion, useLiquidGlass } from "@/components/explore/use-liquid-glass";
+import { useLiquidGlass } from "@/components/explore/use-liquid-glass";
 import { cn } from "@/lib/utils";
 
 // ---- types -------------------------------------------------------------------------------------
@@ -250,7 +250,6 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
       .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))));
     sim.alphaDecay(reduced ? 0.12 : 0.03);
     sim.on("tick", () => {
-      glassMotion(); // the graph moves behind the glass: drop the prism until it settles
       for (const n of sn) posRef.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, vx: n.vx ?? 0, vy: n.vy ?? 0 });
       if (tickNo++ % 2 === 0 || sim!.alpha() < 0.05) updatePlane();
       setNodes((cur) =>
@@ -381,7 +380,6 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
           pin(n);
         }}
         onNodeDrag={(_e, n) => pin(n)}
-        onMove={glassMotion}
         onNodeDragStop={(_e, n) => {
           simRef.current?.alphaTarget(0);
           const s = byIdRef.current.get(n.id);

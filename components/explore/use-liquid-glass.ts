@@ -3,12 +3,10 @@
 // Real Liquid Glass reads as glass because what is behind it bends at the rim, not because it is blurred everywhere.
 // So each glass element gets its own SVG filter, used inside backdrop-filter (Chromium only):
 //   map  = per-size displacement image: neutral in the middle, pushes the sample point inward inside a rim band (bezel),
-//          strongest at the edge -> the dot grid and lines behind bend and stretch at the edge like a lens;
-//          its blue channel is the frost mask (1 in the middle, 0 at the rim).
-//   lens = backdrop displaced by the map; frost = lens blurred; out = frost in the middle over a sharp lens rim.
-// Performance: the prism triples the displacement work, and a backdrop filter reruns on every frame in which the graph
-// behind it moves. While the graph moves (pan, zoom, drag, the force layout settling: glassMotion()), each layer switches
-// to a single-pass lens and gets the prism back 160 ms after the motion stops (fps probe 2026-11-16: 44 -> 60).
+//          strongest at the edge; its blue channel is the frost mask (1 in the middle, 0 at the rim).
+//   lens = only near-black content bends (vertices, labels; user 2026-11-16 "검은 컬러에서만 휘는"): the dot grid and the
+//          gray lines cross the rim straight, a dark vertex bends at the rim without leaving an unbent ghost.
+//   frost = lens blurred, shown in the middle only. No prism (removed 2026-11-16, user).
 // Other engines, reduced transparency and more contrast keep the CSS fallbacks in styles/glass.css.
 import { useEffect, type RefObject } from "react";
 
@@ -98,44 +96,29 @@ function el<K extends string>(tag: K, attrs: Record<string, string | number>) {
   return e;
 }
 
-// ---- motion: the graph tells the glass when it moves, so the expensive prism pauses -------------------------------
-let moving = false;
-let idleTimer = 0;
-const motionSubs = new Set<(m: boolean) => void>();
+// near-black test for the bend mask: alpha = 1 - luminance, then a steep ramp (slope 5, intercept -3) so only ink-dark
+// pixels count (graph-job, saved companies, labels); mid grays (#646464 lines and lighter, the dot grid) stay out
+const DARK_ALPHA = "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.2126 -0.7152 -0.0722 0 1";
 
-/** Call on every frame in which the graph behind the glass moves; the prism comes back after a short idle. */
-export function glassMotion() {
-  if (typeof window === "undefined") return;
-  if (!moving) {
-    moving = true;
-    motionSubs.forEach((f) => f(true));
-  }
-  window.clearTimeout(idleTimer);
-  idleTimer = window.setTimeout(() => {
-    moving = false;
-    motionSubs.forEach((f) => f(false));
-  }, 160);
-}
-
-function lensFilter(id: string, map: SVGElement, scale: number, frost: number, prism: boolean) {
+function lensFilter(id: string, map: SVGElement, scale: number, frost: number) {
   const filter = el("filter", { id, x: 0, y: 0, width: "100%", height: "100%", "color-interpolation-filters": "sRGB" });
-  const bend = prism
-    ? [
-        // prism edge: red, green and blue bend by slightly different amounts, so dots and lines behind the rim get a thin
-        // colour fringe (the sparkle of real glass); the map is neutral in the middle, so the middle stays clean
-        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "dr" }),
-        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.9, xChannelSelector: "R", yChannelSelector: "G", result: "dg" }),
-        el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.8, xChannelSelector: "R", yChannelSelector: "G", result: "db" }),
-        el("feColorMatrix", { in: "dr", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" }),
-        el("feColorMatrix", { in: "dg", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" }),
-        el("feColorMatrix", { in: "db", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" }),
-        el("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" }),
-        el("feBlend", { in: "rg", in2: "b", mode: "screen", result: "lens" }),
-      ]
-    : [el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "lens" })];
+  const ramp = (input: string, result: string) => {
+    const t = el("feComponentTransfer", { in: input, result });
+    t.append(el("feFuncA", { type: "linear", slope: 5, intercept: -3 }));
+    return t;
+  };
   filter.append(
     map,
-    ...bend,
+    el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "bent" }),
+    // where the bent or the original pixel is near-black, show the bent backdrop (the vertex bends, its unbent original
+    // does not stay behind as a ghost); everywhere else the plain backdrop, so light content crosses the rim straight
+    el("feColorMatrix", { in: "bent", type: "matrix", values: DARK_ALPHA, result: "bentDarkRaw" }),
+    ramp("bentDarkRaw", "bentDark"),
+    el("feColorMatrix", { in: "SourceGraphic", type: "matrix", values: DARK_ALPHA, result: "srcDarkRaw" }),
+    ramp("srcDarkRaw", "srcDark"),
+    el("feComposite", { in: "bentDark", in2: "srcDark", operator: "over", result: "darkMask" }),
+    el("feComposite", { in: "bent", in2: "darkMask", operator: "in", result: "bentDarkOnly" }),
+    el("feComposite", { in: "bentDarkOnly", in2: "SourceGraphic", operator: "over", result: "lens" }),
     el("feGaussianBlur", { in: "lens", stdDeviation: frost, result: "frost" }),
     el("feColorMatrix", { in: "map", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0", result: "mask" }),
     el("feComposite", { in: "frost", in2: "mask", operator: "in", result: "middle" }),
@@ -150,12 +133,9 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
     const node = ref.current;
     if (!node || !enabled || !lensSupported()) return;
     const id = `lg-lens-${++seq}`;
-    // two filters per layer: with the prism (at rest) and a single-pass lens (while the graph moves)
-    const mapFull = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
-    const mapLite = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
-    const full = lensFilter(id, mapFull, scale, frost, true);
-    const lite = lensFilter(`${id}-lite`, mapLite, scale, frost, false);
-    svgHost().append(full, lite);
+    const map = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
+    const filter = lensFilter(id, map, scale, frost);
+    svgHost().appendChild(filter);
 
     let last = "";
     let raf = 0;
@@ -167,22 +147,15 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
       const key = `${w}x${h}x${r}`;
       if (key === last) return;
       last = key;
-      const href = lensMap(w, h, r, bezel);
-      for (const m of [mapFull, mapLite]) {
-        m.setAttribute("width", String(w));
-        m.setAttribute("height", String(h));
-        m.setAttribute("href", href);
-      }
+      map.setAttribute("width", String(w));
+      map.setAttribute("height", String(h));
+      map.setAttribute("href", lensMap(w, h, r, bezel));
     };
     draw();
-    const apply = (isMoving: boolean) => {
-      const value = `url(#${isMoving ? `${id}-lite` : id}) saturate(1.5)`;
-      node.style.setProperty("backdrop-filter", value);
-      node.style.setProperty("-webkit-backdrop-filter", value);
-    };
+    const value = `url(#${id}) saturate(1.5)`;
     node.dataset.lens = "on";
-    apply(moving);
-    motionSubs.add(apply);
+    node.style.setProperty("backdrop-filter", value);
+    node.style.setProperty("-webkit-backdrop-filter", value);
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(draw);
@@ -191,9 +164,7 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf);
-      motionSubs.delete(apply);
-      full.remove();
-      lite.remove();
+      filter.remove();
       delete node.dataset.lens;
       node.style.removeProperty("backdrop-filter");
       node.style.removeProperty("-webkit-backdrop-filter");
