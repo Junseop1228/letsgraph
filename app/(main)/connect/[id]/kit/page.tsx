@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { catalog, userData } from "@/lib/data";
 import { buildPromptKit, kitToMarkdown, kitToText } from "@/lib/kit/build";
+import { planQuestions, stepsText } from "@/lib/kit/plan";
+import { allocation, planEssay } from "@/lib/kit/questions";
+import { QUESTION_TYPE_LABEL } from "@/lib/contracts/activity";
+import { EssayQuestions } from "@/components/analysis/essay-questions";
 import { Crumbs, DemoBadge, Kicker, TrustLabel } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { KitActions } from "@/components/analysis/kit-actions";
@@ -16,30 +20,39 @@ async function KitContent({ params }: Props) {
   const { repo, demo } = await userData();
   const posting = await repo.posting(id);
   if (!posting) notFound();
-  const [analysis, connection, experiences] = await Promise.all([repo.postingAnalysis(id), repo.connection(id), repo.experiences()]);
+  const [analysis, connection, experiences, activities] = await Promise.all([repo.postingAnalysis(id), repo.connection(id), repo.experiences(), repo.activities()]);
   if (!analysis || !connection) {
     return <p className="mx-auto mt-10 max-w-content-max rounded-container bg-bg-sunken p-6 text-body">공고 정리와 연결 결과가 있어야 Prompt Kit을 만들 수 있어요.</p>;
   }
   const cat = await catalog();
   const [segment, segmentDetail] = posting.segmentId ? await Promise.all([cat.segment(posting.segmentId), cat.segmentDetail(posting.segmentId)]) : [null, null];
-  const kit = buildPromptKit({ posting, analysis, segment, segmentDetail, connection, experiences });
+  const kit = buildPromptKit({ posting, analysis, segment, segmentDetail, connection, experiences, activities });
   const text = kitToText(kit);
-  const first = connection.links[0];
-  const collab = experiences.find((e) => e.competencies.includes("협업"));
-
-  const guides = [
-    {
-      t: "지원동기",
-      body: [
-        "추천 구조 · WHY-WHAT-HOW",
-        segment ? `${segment.name}이 왜 지금 이 직무가 중요한지 → 내가 그걸 어떻게 해낼지 → 그 근거가 된 내 경험` : "이 회사가 왜 지금 이 직무가 필요한지 → 내가 할 수 있는 일 → 근거 경험",
-        first ? `추천 에피소드: ${first.experienceTitle}` : "",
-        "단계별 글자 수 · 700자 기준: WHY 200 · WHAT 300 · HOW 200",
-      ],
-    },
-    { t: "직무 역량", body: ["추천 구조 · STAR(상황-과제-행동-결과)", ...connection.links.map((l) => `${l.competency}: ${l.experienceTitle}`)] },
-    { t: "협업·갈등", body: ["추천 구조 · 갈등 상황 → 내 역할 → 조율 방법 → 바뀐 점", collab ? `추천 에피소드: ${collab.title}` : "협업 경험 카드가 아직 없어요. 경험을 먼저 추가해 보세요."] },
-  ];
+  // 문항 유형별 가이드: the same plan as the <문항_가이드> in the copied kit (one main episode per question type, by theme)
+  const questions = posting.questions ?? [];
+  const guides = questions.length
+    ? planEssay(questions, experiences, activities, connection).map((p, n) => ({
+        t: `${n + 1}. ${QUESTION_TYPE_LABEL[p.question.type]}`,
+        body: [
+          p.question.text,
+          `추천 구조 · ${p.guide.structure}`,
+          `글자 수 배분: ${allocation(p.guide, p.question.maxChars)}`,
+          p.episode ? `쓸 에피소드: ${p.episode.title}` : p.activities.length ? `쓸 활동: ${p.activities.map((a) => a.title).join(", ")}` : "",
+          p.ask.length ? `직접 채울 것: ${p.ask.join(", ")}` : "",
+          `강조할 점: ${p.guide.emphasis}`,
+        ],
+      }))
+    : planQuestions(experiences, connection).map((p) => ({
+    t: p.guide.name,
+    body: [
+      `추천 구조 · ${p.guide.structure}`,
+      p.episode ? `추천 에피소드: ${p.episode.title}` : "이 유형에 맞는 에피소드가 아직 없어요. 관리 > 만들기에서 꺼내 보세요.",
+      p.guide.theme === "problem" && connection.skills?.length ? `전문성 근거 활동: ${connection.skills.map((s) => `${s.activityTitle} (${s.competency})`).join(", ")}` : "",
+      `글자 수 배분: ${stepsText(p.guide)}`,
+      `강조할 점: ${p.guide.emphasis}`,
+      `피할 것: ${p.guide.avoid}`,
+    ],
+  }));
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
@@ -58,7 +71,8 @@ async function KitContent({ params }: Props) {
 
       <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section className="space-y-3 bg-bg-page py-6 lg:pr-6 print:hidden">
-          <Kicker>문항 유형별 가이드</Kicker>
+          <EssayQuestions postingId={posting.id} saved={questions} />
+          <Kicker>{questions.length ? "문항별 가이드" : "문항 유형별 가이드"}</Kicker>
           {guides.map((g, i) => (
             <details key={g.t} open={i === 0} className="group border-b border-border">
               <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3 text-label-strong hover:bg-overlay-hover group-open:bg-bg-selected">

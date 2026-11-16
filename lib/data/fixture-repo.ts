@@ -5,6 +5,7 @@ import {
   DEMO_ANALYSES,
   DEMO_CONNECTIONS,
   DEMO_EXPERIENCES,
+  DEMO_ACTIVITIES,
   DEMO_POSTINGS,
   DEMO_WATCHED,
   INDUSTRIES,
@@ -44,6 +45,7 @@ export const fixtureUser: UserRepo = {
   posting: async (id) => DEMO_POSTINGS.find((p) => p.id === id) ?? null,
   postingAnalysis: async (id) => DEMO_ANALYSES[id] ?? null,
   experiences: async () => DEMO_EXPERIENCES,
+  activities: async () => DEMO_ACTIVITIES,
   connection: async (id) => DEMO_CONNECTIONS[id] ?? null,
   watchedCompanyIds: async () => DEMO_WATCHED,
 };

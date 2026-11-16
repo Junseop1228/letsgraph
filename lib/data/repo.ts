@@ -12,7 +12,7 @@ import type {
   JobRole,
   SegmentDetail,
 } from "@/lib/contracts/domain";
-import type { ConnectionOutput, Experience, JobPosting, PostingAnalysisOutput } from "@/lib/contracts/activity";
+import type { Activity, ConnectionOutput, Experience, JobPosting, PostingAnalysisOutput } from "@/lib/contracts/activity";
 
 export interface CatalogRepo {
   readonly source: "fixtures" | "supabase";
@@ -37,6 +37,8 @@ export interface UserRepo {
   posting(id: string): Promise<JobPosting | null>;
   postingAnalysis(postingId: string): Promise<PostingAnalysisOutput | null>;
   experiences(): Promise<Experience[]>;
+  /** 활동 (PORT-03), oldest first */
+  activities(): Promise<Activity[]>;
   connection(postingId: string): Promise<ConnectionOutput | null>;
   watchedCompanyIds(): Promise<string[]>;
 }

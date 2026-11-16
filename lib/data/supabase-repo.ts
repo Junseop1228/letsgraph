@@ -17,7 +17,7 @@ import {
   SegmentDetail,
   CompanyUpdate,
 } from "@/lib/contracts/domain";
-import { ConnectionOutput, Experience, JobPosting, PostingAnalysisOutput } from "@/lib/contracts/activity";
+import { Activity, ConnectionOutput, Experience, JobPosting, PostingAnalysisOutput } from "@/lib/contracts/activity";
 import { z } from "zod";
 
 type Row = Record<string, unknown>;
@@ -159,6 +159,7 @@ export const supabaseUser: UserRepo = {
         status: p.status,
         source: p.source,
         sourceUrl: p.source_url ?? undefined,
+        questions: Array.isArray(p.questions) && p.questions.length ? p.questions : undefined,
       }),
     );
   },
@@ -182,6 +183,28 @@ export const supabaseUser: UserRepo = {
         result: e.result,
         competencies: e.competencies ?? [],
         sourceLabel: e.source_label ?? undefined,
+        activityId: e.activity_id ?? undefined,
+        theme: e.theme ?? undefined,
+        chatLog: Array.isArray(e.chat_log) && e.chat_log.length ? e.chat_log : undefined,
+        role: e.role || undefined,
+        learning: e.learning || undefined,
+      }),
+    );
+  },
+  async activities() {
+    const { data, error } = await (await createClient()).from("activities").select("*").order("created_at", { ascending: true });
+    if (error) return []; // the table exists once 20261116000000_activities.sql is applied
+    return (data ?? []).map((a) =>
+      Activity.parse({
+        id: a.id,
+        title: a.title,
+        kind: a.kind,
+        period: a.period ?? undefined,
+        role: a.role ?? undefined,
+        dataset: a.dataset ?? undefined,
+        summary: a.summary ?? "",
+        scenes: Array.isArray(a.scenes) ? a.scenes : [],
+        sourceLabel: a.source_label ?? undefined,
       }),
     );
   },
