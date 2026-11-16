@@ -105,7 +105,16 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
     const map = el("feImage", { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: "none", result: "map" });
     filter.append(
       map,
-      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "lens" }),
+      // prism edge: red, green and blue bend by slightly different amounts, so dots and lines behind the rim get a thin
+      // colour fringe (the sparkle of real glass); the map is neutral in the middle, so the middle stays clean
+      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale, xChannelSelector: "R", yChannelSelector: "G", result: "dr" }),
+      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.9, xChannelSelector: "R", yChannelSelector: "G", result: "dg" }),
+      el("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: scale * 0.8, xChannelSelector: "R", yChannelSelector: "G", result: "db" }),
+      el("feColorMatrix", { in: "dr", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" }),
+      el("feColorMatrix", { in: "dg", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" }),
+      el("feColorMatrix", { in: "db", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" }),
+      el("feBlend", { in: "r", in2: "g", mode: "screen", result: "rg" }),
+      el("feBlend", { in: "rg", in2: "b", mode: "screen", result: "lens" }),
       el("feGaussianBlur", { in: "lens", stdDeviation: frost, result: "frost" }),
       el("feColorMatrix", { in: "map", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0", result: "mask" }),
       el("feComposite", { in: "frost", in2: "mask", operator: "in", result: "middle" }),
@@ -128,7 +137,7 @@ export function useLiquidGlass(ref: RefObject<HTMLElement | null>, { bezel, scal
       map.setAttribute("href", lensMap(w, h, r, bezel));
     };
     draw();
-    const value = `url(#${id}) saturate(1.6) brightness(1.04)`;
+    const value = `url(#${id}) saturate(1.8) brightness(1.06)`;
     node.dataset.lens = "on";
     node.style.setProperty("backdrop-filter", value);
     node.style.setProperty("-webkit-backdrop-filter", value);
