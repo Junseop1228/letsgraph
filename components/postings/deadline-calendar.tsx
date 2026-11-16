@@ -106,6 +106,12 @@ export function DeadlineCalendar({ postings, month }: { postings: JobPosting[]; 
         </div>
       </section>
       <aside className="min-w-0 space-y-5 bg-bg-sunken p-5">
+        {postings.length === 0 && (
+          <div className="rounded-container bg-bg-surface p-4">
+            <p className="text-label-strong">아직 저장한 공고가 없어요</p>
+            <p className="mt-1 text-label text-text-secondary">위에서 공고 주소를 넣으면 정리해서 마감일에 맞춰 이 달력에 놓아 드려요.</p>
+          </div>
+        )}
         <div className="rounded-container bg-bg-surface p-4">
           <p className="text-caption text-text-secondary">가장 가까운 마감</p>
           {next ? (
@@ -118,6 +124,7 @@ export function DeadlineCalendar({ postings, month }: { postings: JobPosting[]; 
           )}
           <p className="mt-2 text-caption text-text-secondary">D-day는 서울 시간 기준이에요.</p>
         </div>
+        {upcoming.some((p) => !p.deadline) && (
         <div>
           <Kicker>마감일 미정</Kicker>
           <ul className="mt-2">
@@ -129,6 +136,7 @@ export function DeadlineCalendar({ postings, month }: { postings: JobPosting[]; 
             ))}
           </ul>
         </div>
+        )}
         <div>
           <Kicker>상태 요약</Kicker>
           <div className="mt-2 grid grid-cols-3 gap-2">

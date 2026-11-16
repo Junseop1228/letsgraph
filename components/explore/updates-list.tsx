@@ -18,7 +18,7 @@ export function UpdatesList({ updates, newsQuery }: { updates: CompanyUpdate[]; 
       <ul>
         {updates.map((u, i) => (
           <li key={i} className="grid grid-cols-[auto_1fr] gap-3 border-b border-border py-3">
-            <span className="h-[22px] rounded-inner bg-bg-tonal px-2 text-data-sm leading-[22px] text-text-secondary">{u.tag}</span>
+            <span className="h-[22px] w-12 rounded-inner bg-bg-tonal text-center text-data-sm leading-[22px] text-text-secondary">{u.tag}</span>
             <span>
               <span className="block text-label-strong">{u.title}</span>
               <span className="figures block text-caption text-text-secondary">{u.date.replaceAll("-", ".")} · {u.sourceLabel}</span>

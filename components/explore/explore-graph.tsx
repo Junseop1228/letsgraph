@@ -142,6 +142,7 @@ export function ExploreGraph(p: Props) {
             companyIndustry={companyIndustry}
             label={label}
             fitPadding={wide ? FIT_WIDE : FIT_NARROW}
+            fitMinZoom={wide ? undefined : 0.55}
             controlsClassName={wide ? "bottom-4 right-4" : "left-3 top-16"}
           />
         </div>

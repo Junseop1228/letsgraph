@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { catalog, userData } from "@/lib/data";
-import { formatEok, formatEokShort, share } from "@/lib/format";
+import { formatEok, share } from "@/lib/format";
 import { Crumbs, EmptyState, Kicker, SourceLine, TrustLabel, btn } from "@/components/lg/ui";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { WatchButton } from "@/components/explore/watch-button";
@@ -82,12 +82,12 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
                   {segments.map((s, k) => {
                     const v = m.get(s) ?? 0;
                     return (
-                      <Link key={s.id} href={`/company/${c.id}/segment/${s.id}`} className="grid grid-cols-[88px_1fr_80px] items-center gap-3 rounded-inner text-label hover:bg-overlay-hover">
+                      <Link key={s.id} href={`/company/${c.id}/segment/${s.id}`} className="grid grid-cols-[88px_1fr_112px] items-center gap-3 rounded-inner text-label hover:bg-overlay-hover">
                         <span>{s.shortName}{s.calculated ? " (계산)" : ""}</span>
                         <span className="h-2.5 overflow-hidden rounded-full bg-data-track">
                           <span className="block h-full rounded-full" style={{ width: `${m.tot ? (Math.max(0, v) / m.tot) * 100 : 0}%`, background: k === 0 ? "var(--color-data-1)" : s.calculated ? "var(--color-data-3)" : "var(--color-data-2)" }} />
                         </span>
-                        <span className="figures text-right text-data">{formatEokShort(v)}</span>
+                        <span className="figures text-right text-data">{formatEok(v)}</span>
                       </Link>
                     );
                   })}

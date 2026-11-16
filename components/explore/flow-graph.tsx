@@ -53,6 +53,7 @@ type Props = {
   companyIndustry: Record<string, string>;
   label: (n: GNode) => string; // accessible description
   fitPadding?: NonNullable<FitViewOptions["padding"]>; // keep the graph clear of floating panels (e.g. the detail card)
+  fitMinZoom?: number; // smallest zoom a fit may use (phones need room for stacked stars)
   controlsClassName?: string; // where the zoom controls float
 };
 
@@ -138,7 +139,8 @@ const nodeTypes = { vertex: Vertex } satisfies NodeTypes;
 const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
-function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, controlsClassName }: Props) {
+function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, fitMinZoom, controlsClassName }: Props) {
+  const fitMin = fitMinZoom ?? FIT_MIN_ZOOM;
   const rf = useReactFlow<VNode, GEdge>();
   const zoomRef = useRef<HTMLDivElement>(null);
   useLiquidGlass(zoomRef, { bezel: 14, scale: 34, frost: 0.3 });
@@ -280,7 +282,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     if (key !== fitKeyRef.current) {
       const first = fitKeyRef.current === "";
       fitKeyRef.current = key;
-      const t = setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
+      const t = setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: fitMin, duration: reduced || first ? 0 : 450 }), reduced ? 60 : 650);
       return () => clearTimeout(t);
     }
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -306,7 +308,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     reanchor();
     simRef.current?.alpha(0.5).restart();
     setMoved(false);
-    setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 }), reduced ? 60 : 700);
+    setTimeout(() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: fitMin, duration: reduced ? 0 : 450 }), reduced ? 60 : 700);
   };
 
   const ctx = useMemo<Ctx>(
@@ -397,7 +399,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         minZoom={0.3}
         maxZoom={2.5}
         fitView
-        fitViewOptions={{ padding: fitPadding ?? 0.16, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM }}
+        fitViewOptions={{ padding: fitPadding ?? 0.16, maxZoom: 1.3, minZoom: fitMin }}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
@@ -406,7 +408,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         {moved && <button type="button" onClick={resetLayout} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">배치 되돌리기</button>}
         <button type="button" onClick={() => zoom(1)} aria-label="확대" className="hidden size-8 rounded-full text-label hover:bg-overlay-hover lg:block">+</button>
         <button type="button" onClick={() => zoom(-1)} aria-label="축소" className="hidden size-8 rounded-full text-label hover:bg-overlay-hover lg:block">−</button>
-        <button type="button" onClick={() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: FIT_MIN_ZOOM, duration: reduced ? 0 : 450 })} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">전체 보기</button>
+        <button type="button" onClick={() => void rf.fitView({ padding: padRef.current, maxZoom: 1.3, minZoom: fitMin, duration: reduced ? 0 : 450 })} className="h-8 rounded-full px-3 text-label hover:bg-overlay-hover">전체 보기</button>
       </div>
     </GraphCtx.Provider>
   );
