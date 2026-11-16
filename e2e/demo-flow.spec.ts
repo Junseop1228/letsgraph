@@ -76,6 +76,7 @@ test.describe("analysis", () => {
 
   test("FR-POST-01 데모 공고 (업로드는 연결 전)", async ({ page }) => {
     await page.goto("/postings");
+    await page.getByText("붙여넣기나 PDF로 추가해요").click(); // collapsed since audit P-4
     await page.locator("input[type=file]").setInputFiles({ name: "posting.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 demo") });
     await page.getByRole("button", { name: "공고 정리하기" }).click();
     await expect(page.locator("form p[role=alert]")).toContainText("연결되지 않았어요");
@@ -99,6 +100,10 @@ test.describe("manage", () => {
   test("POST-02 이번 달 달력", async ({ page }) => {
     await page.goto("/postings");
     await expect(page.getByText("상태 요약")).toBeVisible();
+    await expect(page.getByText("가장 가까운 마감")).toBeVisible();
+    await page.getByRole("link", { name: "다음 달" }).click();
+    await expect(page).toHaveURL(/month=\d{4}-\d{2}/);
+    await expect(page.getByRole("link", { name: "이번 달" })).toBeVisible();
   });
 
   test("PORT-02 데모 모드 대화 (활동 고르기 → 에피소드 꺼내기)", async ({ page }) => {

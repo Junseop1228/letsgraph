@@ -53,7 +53,13 @@ async function PostingContent({ params }: Props) {
       </div>
 
       {!analysis ? (
-        <p className="mt-8 rounded-container bg-bg-sunken p-6 text-body">아직 정리된 내용이 없어요. 공고 PDF를 다시 올려 주세요.</p>
+        <div className="mt-8 rounded-container bg-bg-sunken p-6">
+          <p className="text-body">{posting.source === "demo" ? "데모용 예시 공고라 정리된 내용이 없어요." : "아직 정리된 내용이 없어요."}</p>
+          <p className="mt-1 text-label text-text-secondary">
+            공고 주소나 PDF를 넣으면 이 자리에 주요 업무와 자격 요건이 정리돼요.{" "}
+            <Link href="/postings" className="text-text-primary underline underline-offset-4">공고 추가하기</Link>
+          </p>
+        </div>
       ) : (
         <div className="grid gap-px bg-border lg:grid-cols-2">
           <section className="space-y-5 bg-bg-page py-6 lg:pr-6">
