@@ -75,6 +75,7 @@ test.describe("analysis", () => {
   });
 
   test("FR-POST-01 데모 공고 (업로드는 연결 전)", async ({ page }) => {
+    test.skip(Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY), "AI key is set in .env.local: upload is live, not the keyless demo");
     await page.goto("/postings");
     await page.getByText("붙여넣기나 PDF로 추가해요").click(); // collapsed since audit P-4
     await page.locator("input[type=file]").setInputFiles({ name: "posting.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 demo") });
@@ -136,6 +137,7 @@ test.describe("manage", () => {
 
 test.describe("billing", () => {
   test("FR-ACCT-03 패스 화면 (결제 키 연결 전)", async ({ page }) => {
+    test.skip(Boolean(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY), "Toss test keys are set in .env.local: checkout is enabled");
     await page.goto("/billing");
     await expect(page.getByRole("button", { name: "시즌 패스 결제하기" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "건당 패스 결제하기" })).toBeDisabled();

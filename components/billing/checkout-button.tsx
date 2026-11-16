@@ -5,7 +5,7 @@ import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { createOrderAction } from "@/app/(main)/billing/actions";
 import { btn } from "@/components/lg/ui";
 
-export function CheckoutButton({ passType, label, enabled }: { passType: "season" | "single"; label: string; enabled: boolean }) {
+export function CheckoutButton({ passType, label, enabled, primary = true }: { passType: "season" | "single"; label: string; enabled: boolean; primary?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export function CheckoutButton({ passType, label, enabled }: { passType: "season
 
   return (
     <div className="space-y-2">
-      <button type="button" disabled={!enabled || busy} onClick={start} className={btn.primary}>
+      <button type="button" disabled={!enabled || busy} onClick={start} className={primary ? btn.primary : btn.secondary}>
         {busy ? "결제창 여는 중…" : label}
       </button>
       {!enabled && <p className="text-caption text-text-secondary">결제(테스트 모드)는 키가 연결되면 열려요.</p>}

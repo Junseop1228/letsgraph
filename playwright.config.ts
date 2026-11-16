@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { loadEnvConfig } from "@next/env";
+
+// Same env as the app build, so tests that describe the keyless demo can skip themselves when keys are set locally.
+loadEnvConfig(process.cwd());
 
 // E2E for the demo path (specs/*). Runs against a production build on port 3200 with demo data (no keys needed).
 export default defineConfig({

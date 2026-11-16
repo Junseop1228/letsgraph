@@ -14,7 +14,7 @@ export default function BillingPage() {
     <div className="mx-auto max-w-content-max px-5 py-8">
       <h1 className="text-heading-1">패스</h1>
       <p className="mt-1 max-w-reading-max text-body-lg text-text-secondary">
-        연결 결과 전체와 Prompt Kit은 패스로 열려요. 무료로도 공고 정리를 한 달에 {FREE_MONTHLY_QUOTA}번 쓸 수 있어요.
+        연결 결과 전체와 Prompt Kit은 패스로 열려요. 무료로도 AI 기능(공고 정리, 카드 만들기, 연결 결과)을 합쳐 한 달에 {FREE_MONTHLY_QUOTA}번 쓸 수 있어요.
       </p>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {(Object.keys(PASS_CATALOG) as PassType[]).map((k) => {
@@ -27,12 +27,12 @@ export default function BillingPage() {
                 <span className="text-body text-text-secondary">원 · {p.days ? `${p.days}일` : `${p.uses}회`}</span>
               </p>
               <ul className="space-y-1.5 text-body">
-                {[...p.includes, ...(k === "season" ? [`AI 기능 쿼터 월 ${SEASON_MONTHLY_QUOTA}회`] : [])].map((x) => (
+                {[...p.includes, ...(k === "season" ? [`AI 기능 월 ${SEASON_MONTHLY_QUOTA}회 (무료는 ${FREE_MONTHLY_QUOTA}회)`] : [])].map((x) => (
                   <li key={x} className="flex items-center gap-2"><Check className="size-4" aria-hidden />{x}</li>
                 ))}
               </ul>
               <div className="mt-auto">
-                <CheckoutButton passType={k} label={`${p.name} 결제하기`} enabled={enabled} />
+                <CheckoutButton passType={k} label={`${p.name} 결제하기`} enabled={enabled} primary={k === "season"} />
               </div>
             </section>
           );

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { LogoutButton } from "./logout-button";
 import { btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 
@@ -19,12 +18,9 @@ export async function AuthButton() {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Logged in: profile icon + 로그아웃 (the e-mail text link duplicated the icon, audit C-5).
+  // Logged in: profile icon only; 로그아웃 lives on 내 계정 next to the signed-in account (audit C-5, AC-1).
   return user ? (
-    <div className="flex shrink-0 items-center gap-1">
-      <AccountLink title={String(user.email ?? "")} />
-      <LogoutButton />
-    </div>
+    <AccountLink title={String(user.email ?? "")} />
   ) : (
     <div className="flex shrink-0 items-center gap-2">
       {/* the demo account page stays one click away; below sm the header only has room for 로그인 (audit C-1) */}
