@@ -2,16 +2,26 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("explore", () => {
-  test("FR-DISC-01 카드를 넘겨 관심 직무 고르기 / 대표 직무 정하기", async ({ page }) => {
+  test("FR-DISC-01 직군 고르기 / 카드를 넘겨 관심 직무 고르기 / 산업 고르기", async ({ page }) => {
     await page.goto("/explore");
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
-    for (let i = 0; i < 6; i++) {
-      await expect(page.getByText(`${String(i + 1).padStart(2, "0")} / 06`)).toBeVisible();
-      await page.getByRole("button", { name: i % 2 === 0 ? "관심 있어요" : "관심 없어요" }).click();
+    await page.getByRole("group", { name: "직군" }).getByRole("button", { name: "생산·품질" }).click();
+    await page.getByRole("button", { name: "직무 카드 넘기기" }).click();
+    // like only 품질관리; the number of 생산·품질 cards differs between the demo data and the DB
+    const card = page.locator("article[aria-label$=' 카드']");
+    for (let n = 0; n < 15 && (await card.count()); n++) {
+      const label = (await card.getAttribute("aria-label")) ?? "";
+      await page.getByRole("button", { name: label === "품질관리 카드" ? "관심 있어요" : "관심 없어요" }).click();
+      await expect.poll(async () => ((await card.count()) ? await card.getAttribute("aria-label") : null)).not.toBe(label);
     }
-    await expect(page.getByRole("heading", { name: "대표 직무를 하나 골라요" })).toBeVisible();
-    await page.getByRole("button", { name: "품질관리" }).click();
+    await expect(page.getByRole("heading", { name: "어떤 산업이 궁금하세요?" })).toBeVisible();
+    const chips = page.getByRole("group", { name: "산업" }).getByRole("button");
+    await chips.nth(1).click();
+    await expect(chips.nth(1)).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "내 그래프 보기" }).click();
     await expect(page).toHaveURL(/\/explore\/map\?job=quality/);
+    await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "lg_industries")).toBe(true);
+    await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
   });
 
   test("FR-DISC-01 처음 한 번만 자동으로", async ({ page }) => {
