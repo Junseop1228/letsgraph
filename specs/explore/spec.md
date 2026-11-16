@@ -1,6 +1,6 @@
 # 탐색 (explore)
 
-근거: SRS v1.0 FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 · 결정 2026-10-30 (그래프 = Obsidian 같은 힘 기반 그래프, 노드를 끌 수 있음), 2026-11-01 (1안 "직무별 별자리", 관심 기업 항상 표시, 별 색 통일, 글 줄이기), 2026-11-14 (앱도 프로토타입 v1.3 그래프 뷰로 되돌림), 2026-11-15 (그래프 엔진을 React Flow로 교체, 원형 꼭짓점과 업종 아이콘, 끌어 놓은 자리에 머묾, 토스식 카드 화면) · 계약: `lib/contracts/domain.ts` · 그래프 데이터: `lib/explore/graph.ts` (시험 `tests/graph.test.ts`), 배치 보조 `lib/explore/physics.ts` (시험 `tests/physics.test.ts`) · 화면: `app/(main)/explore/`, `components/explore/{explore-graph,flow-graph,industry-icon}.tsx` (예전 d3 그래프 `job-graph.tsx`는 비교용, 주소에 `&engine=d3`) · 라이브러리: React Flow(`@xyflow/react`, MIT) 그리기·확대·끌기, d3-force(ISC) 배치, bubblesets-js(MIT) 펼친 산업의 회색 면, Lucide(ISC) 업종 아이콘
+근거: SRS v1.0 FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 · 결정 2026-10-30 (그래프 = Obsidian 같은 힘 기반 그래프, 노드를 끌 수 있음), 2026-11-01 (1안 "직무별 별자리", 관심 기업 항상 표시, 별 색 통일, 글 줄이기), 2026-11-14 (앱도 프로토타입 v1.3 그래프 뷰로 되돌림), 2026-11-15 (그래프 엔진을 React Flow로 교체, 원형 꼭짓점과 업종 아이콘, 끌어 놓은 자리에 머묾, 토스식 카드 화면) · 계약: `lib/contracts/domain.ts` · 그래프 데이터: `lib/explore/graph.ts` (시험 `tests/graph.test.ts`), 배치 보조 `lib/explore/physics.ts` (시험 `tests/physics.test.ts`) · 화면: `app/(main)/explore/`, `components/explore/{explore-graph,flow-graph,industry-icon}.tsx` · 라이브러리: React Flow(`@xyflow/react`, MIT) 그리기·확대·끌기, d3-force(ISC) 배치, bubblesets-js(MIT) 펼친 산업의 회색 면, Lucide(ISC) 업종 아이콘
 
 ## Requirements
 

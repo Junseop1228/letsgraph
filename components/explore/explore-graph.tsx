@@ -12,11 +12,9 @@ import type { BusinessSegment, Company, Industry, JobLink, JobRole } from "@/lib
 import { buildGraph, type GNode } from "@/lib/explore/graph";
 import { formatEokShort } from "@/lib/format";
 import { readLikedJobs, useWatched } from "@/lib/client/local-state";
-import { JobGraph } from "@/components/explore/job-graph";
 import { FlowGraph } from "@/components/explore/flow-graph";
 import { IndustryIcon } from "@/components/explore/industry-icon";
 import { useLiquidGlass, type Lens } from "@/components/explore/use-liquid-glass";
-import { stressGraph } from "@/lib/explore/stress";
 import { track } from "@/lib/client/analytics";
 import { SourceLine, TrustLabel, btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
@@ -54,17 +52,12 @@ export function ExploreGraph(p: Props) {
   const [view, setView] = useState<"graph" | "list">("graph");
   const [vertical, setVertical] = useState(false);
   const [wide, setWide] = useState(true);
-  const [engine, setEngine] = useState<"flow" | "d3">("flow"); // engine spike: ?engine=d3 shows the old d3/SVG graph
-  const [stress, setStress] = useState(0); // engine spike: ?stress=150 draws a synthetic worst-case graph
 
   useEffect(() => {
     const liked = readLikedJobs().filter((j) => roleById.has(j) && linkedJobs.has(j));
     const list = [p.initialJob, ...liked.filter((j) => j !== p.initialJob)].slice(0, 5);
     setMyJobs(list);
     setOn(list);
-    const q = new URLSearchParams(window.location.search);
-    setEngine(q.get("engine") === "d3" ? "d3" : "flow");
-    setStress(Math.min(Number(q.get("stress")) || 0, 400));
     const narrow = window.matchMedia("(max-width: 767px)");
     const lg = window.matchMedia("(min-width: 1024px)");
     const upd = () => {
@@ -82,9 +75,9 @@ export function ExploreGraph(p: Props) {
 
   const stars = on.map((j) => roleById.get(j)).filter((r): r is JobRole => !!r);
   const data = useMemo(
-    () => (stress ? stressGraph(stress, vertical) : buildGraph({ jobs: stars, industries: p.industries, companies: p.companies, links: p.links, saved: watched.ids, expanded, vertical })),
+    () => buildGraph({ jobs: stars, industries: p.industries, companies: p.companies, links: p.links, saved: watched.ids, expanded, vertical }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [on.join(","), watched.ids.join(","), expanded, vertical, p.links, stress],
+    [on.join(","), watched.ids.join(","), expanded, vertical, p.links],
   );
 
   const indName = (id: string) => p.industries.find((i) => i.id === id)?.name ?? id;
@@ -139,20 +132,16 @@ export function ExploreGraph(p: Props) {
       {/* the graph (or the list) fills the screen */}
       {view === "graph" ? (
         <div className="absolute inset-0">
-          {engine === "d3" ? (
-            <JobGraph data={data} selectedId={selectedId} onSelect={onSelect} onBackground={() => setSel(null)} companyIndustry={companyIndustry} label={label} />
-          ) : (
-            <FlowGraph
-              data={data}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onBackground={() => setSel(null)}
-              companyIndustry={companyIndustry}
-              label={label}
-              fitPadding={wide ? FIT_WIDE : FIT_NARROW}
-              controlsClassName={wide ? "bottom-4 right-4" : "right-3 top-16"}
-            />
-          )}
+          <FlowGraph
+            data={data}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onBackground={() => setSel(null)}
+            companyIndustry={companyIndustry}
+            label={label}
+            fitPadding={wide ? FIT_WIDE : FIT_NARROW}
+            controlsClassName={wide ? "bottom-4 right-4" : "right-3 top-16"}
+          />
         </div>
       ) : (
         <div className="absolute inset-0 overflow-y-auto px-4 pb-[52vh] pt-20 lg:pb-10 lg:pl-8 lg:pr-[404px]">
