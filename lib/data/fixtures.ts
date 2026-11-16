@@ -225,4 +225,5 @@ export const DEMO_CONNECTIONS: Record<string, ConnectionOutput> = {
 };
 
 /** Companies saved by the demo user (관심 기업) */
-export const DEMO_WATCHED = ["cj", "orion", "samyang"];
+// Visitors start with no saved companies (decisions 2026-11-16, audit C-2): saving one is part of the demo.
+export const DEMO_WATCHED: string[] = [];

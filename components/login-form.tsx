@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { btn } from "@/components/lg/ui";
 
-export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
+export function LoginForm({ className, oauth, ...props }: React.ComponentPropsWithoutRef<"div"> & { oauth?: React.ReactNode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +41,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       <div className="rounded-container border border-border p-6">
         <h1 className="text-heading-2">로그인</h1>
         <p className="mt-1 text-support">관심 기업, 공고, 경험 카드를 저장하려면 로그인해요.</p>
+        {/* title first, then 간편 로그인, then e-mail (audit L-2) */}
+        {oauth && <div className="mt-5">{oauth}</div>}
         <form onSubmit={handleLogin} className="mt-5 flex flex-col gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">이메일</Label>

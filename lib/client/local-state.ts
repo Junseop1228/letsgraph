@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 const KEY_WATCHED = "lg:watched";
 const KEY_JOB = "lg:primary-job";
 const KEY_LIKED = "lg:liked-jobs";
+const WATCHED_EVENT = "lg:watched-change";
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -25,15 +26,26 @@ function write(key: string, v: unknown) {
 
 export function useWatched(initial: string[]) {
   const [ids, setIds] = useState<string[]>(initial);
-  // Sync from browser storage after hydration (server HTML uses `initial`, so this cannot be a lazy initial state).
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setIds(read(KEY_WATCHED, initial)), [initial]);
+  // Sync from browser storage after hydration (server HTML uses `initial`, so this cannot be a lazy initial state),
+  // and again when another part of the page or another tab changes the list (the header bell follows saves, audit C-2).
+  useEffect(() => {
+    const sync = () => setIds(read(KEY_WATCHED, initial));
+     
+    sync();
+    window.addEventListener(WATCHED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(WATCHED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [initial]);
   const toggle = useCallback((id: string) => {
     setIds((cur) => {
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
       write(KEY_WATCHED, next);
       return next;
     });
+    setTimeout(() => window.dispatchEvent(new Event(WATCHED_EVENT)), 0); // after the write above
   }, []);
   return { ids, has: (id: string) => ids.includes(id), toggle };
 }

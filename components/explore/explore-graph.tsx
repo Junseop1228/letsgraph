@@ -123,7 +123,8 @@ export function ExploreGraph(p: Props) {
   const cardRef = useRef<HTMLElement>(null);
   useLiquidGlass(barRef, LENS_PILL);
   useLiquidGlass(legendRef, LENS_PILL, view === "graph");
-  useLiquidGlass(cardRef, LENS_CARD);
+  // over the list the card must stay readable: no clear lens, frosted fill only (list view looked broken on phones)
+  useLiquidGlass(cardRef, LENS_CARD, view === "graph");
 
   const cardJob = sel?.job ?? stars[0]?.id ?? p.initialJob;
   const cardKey = !sel ? `job:${cardJob}` : selectedId!;
@@ -145,7 +146,7 @@ export function ExploreGraph(p: Props) {
           />
         </div>
       ) : (
-        <div className="absolute inset-0 overflow-y-auto px-4 pb-[52vh] pt-20 lg:pb-10 lg:pl-8 lg:pr-[404px]">
+        <div className="absolute inset-0 overflow-y-auto px-4 pb-[52vh] pt-20 lg:right-101 lg:pb-10 lg:pl-8 lg:pr-8">
           <ListView stars={stars} links={p.links} coById={coById} indName={indName} saved={watched.ids} onPick={(job, co) => setSel({ kind: "co", job, co })} />
         </div>
       )}
@@ -393,7 +394,7 @@ function CompanyCard({ c, job, basis, segs, saved, onToggle, backLabel, onBack }
 
 function ListView({ stars, links, coById, indName, saved, onPick }: { stars: JobRole[]; links: JobLink[]; coById: Map<string, Company>; indName: (id: string) => string; saved: string[]; onPick: (job: string, co: string) => void }) {
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-reading-max space-y-8">
       {stars.map((j) => {
         const ls = links.filter((l) => l.jobRoleId === j.id).sort((a, b) => (coById.get(b.companyId)?.revenue ?? -1) - (coById.get(a.companyId)?.revenue ?? -1));
         return (

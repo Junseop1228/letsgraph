@@ -1,3 +1,4 @@
+import { AuthLogo } from "@/components/auth/auth-logo";
 import {
   Card,
   CardContent,
@@ -8,8 +9,9 @@ import {
 
 export default function Page() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-svh w-full flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <AuthLogo />
+      <div className="w-full max-w-96">
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>

@@ -19,9 +19,13 @@ test("내비게이션 4개 (탐색·공고·관리·연결)와 각 탭 첫 화�
 });
 
 test("헤더 알림함과 내 계정", async ({ page }) => {
-  await page.goto("/explore/map?job=quality");
+  // visitors start with no saved companies (audit C-2): no badge until one is saved
+  await page.goto("/company/cj");
   await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: /알림/ }).click();
+  await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "관심 저장" }).click();
+  await expect(page.getByRole("button", { name: "관심 저장됨" })).toBeVisible();
+  await page.getByRole("button", { name: /알림 \d개 안 읽음/ }).click();
   await expect(page.getByRole("menuitem").first()).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "내 계정" }).click();
