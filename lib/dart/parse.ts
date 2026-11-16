@@ -1,7 +1,13 @@
 // Pure DART parsing/normalisation (no network). Unit-tested.
 import { XMLParser } from "fast-xml-parser";
 import { unzipSync, strFromU8 } from "fflate";
-import { DartCorpCode, type AnnualFigures, type DartAccountRow } from "@/lib/contracts/dart";
+import {
+  DartCorpCode,
+  type AnnualFigures,
+  type DartAccountRow,
+  type DartFiling,
+  type DartMultiAccountRow,
+} from "@/lib/contracts/dart";
 
 /** "1,234,567" | "-1234" | "" | "-" -> number of won, or null */
 export function parseWon(s: string | undefined | null): number | null {
@@ -83,6 +89,73 @@ export function listedOnly(items: DartCorpCode[]): DartCorpCode[] {
 /** "20260209" -> "2026-02-09" */
 export function dartDate(d: string): string {
   return /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
+}
+
+/** "[기재정정]사업보고서 (2025.12)" -> { year: 2025, month: 12 }: the fiscal period the report covers */
+export function fiscalPeriod(reportNm: string): { year: number; month: number } | null {
+  const m = /\((\d{4})\.(\d{2})\)/.exec(reportNm);
+  return m ? { year: Number(m[1]), month: Number(m[2]) } : null;
+}
+
+/**
+ * Filers that are investment vehicles rather than operating employers (SPAC, REIT, ship / infrastructure funds).
+ * They file 사업보고서 but have no business to explore or jobs to link (PROPOSED 2026-11-17, data session).
+ */
+const NON_EMPLOYER = /기업인수목적|스팩|부동산투자회사|리츠$|선박투자회사|투융자회사/;
+export function isNonEmployer(name: string): boolean {
+  return NON_EMPLOYER.test(name.replace(/\s/g, ""));
+}
+
+/** One filing per company: the latest final 사업보고서 (rcept_no starts with the filing date, so it sorts by time). */
+export function latestByCompany(filings: DartFiling[]): DartFiling[] {
+  const byCorp = new Map<string, DartFiling>();
+  for (const f of filings) {
+    const cur = byCorp.get(f.corp_code);
+    if (!cur || f.rcept_no > cur.rcept_no) byCorp.set(f.corp_code, f);
+  }
+  return [...byCorp.values()];
+}
+
+/** YYYYMMDD windows of at most `months` months covering [from, to] (list.json limit without corp_code). */
+export function dateWindows(from: Date, to: Date, months = 3): [string, string][] {
+  const ymd = (d: Date) => `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+  const out: [string, string][] = [];
+  let start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+  while (start <= end) {
+    const next = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + months, start.getUTCDate()));
+    const last = new Date(Math.min(next.getTime() - 86_400_000, end.getTime()));
+    out.push([ymd(start), ymd(last)]);
+    start = next;
+  }
+  return out;
+}
+
+const MULTI_REVENUE = ["매출액", "수익(매출액)", "영업수익", "매출"];
+const MULTI_OP = ["영업이익", "영업이익(손실)", "영업손익"];
+
+/**
+ * Up to 3 fiscal years (당기 = year, 전기, 전전기) x 연결/별도 of one company from fnlttMultiAcnt rows (억원).
+ * A year/basis with neither figure is left out.
+ */
+export function figuresFromMulti(rows: DartMultiAccountRow[], corpCode: string, year: number): AnnualFigures[] {
+  const out: AnnualFigures[] = [];
+  const mine = rows.filter((r) => r.corp_code === corpCode && (r.sj_div === "IS" || r.sj_div === "CIS"));
+  for (const fsDiv of ["CFS", "OFS"] as const) {
+    const sheet = mine.filter((r) => r.fs_div === fsDiv);
+    const find = (names: string[]) => sheet.find((r) => names.includes(r.account_nm.replace(/\s/g, "")));
+    const rev = find(MULTI_REVENUE);
+    const op = find(MULTI_OP);
+    if (!rev && !op) continue;
+    const terms = ["thstrm_amount", "frmtrm_amount", "bfefrmtrm_amount"] as const;
+    terms.forEach((term, back) => {
+      const revenue = wonToEok(parseWon(rev?.[term]));
+      const operatingIncome = wonToEok(parseWon(op?.[term]));
+      if (revenue == null && operatingIncome == null) return;
+      out.push({ corpCode, year: year - back, fsDiv, revenue, operatingIncome, rceptNo: (rev ?? op)!.rcept_no });
+    });
+  }
+  return out;
 }
 
 /** "(주)CJ 제일제당" / "주식회사 CJ제일제당" -> "cj제일제당": the key used to match a company name to DART. */

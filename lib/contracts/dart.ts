@@ -5,14 +5,21 @@ import { z } from "zod";
 export const DART_BASE = "https://opendart.fss.or.kr/api";
 
 /**
- * Daily request limit per key. OPEN (NFR-EXT-07): confirm the official figure on opendart.fss.or.kr and
- * update this constant. The collector stops at 90% of it (specs/data-pipeline E2).
+ * Daily request limit per key (NFR-EXT-07, checked 2026-11-17): the OpenDART guide says status 020 is returned
+ * "generally" after 20,000 requests a day, and a key can carry its own lower limit; actual usage is shown on
+ * opendart.fss.or.kr after login. The collector stops at 90% of it (specs/data-pipeline E2).
  */
 export const DART_DAILY_LIMIT = 20000;
 export const DART_STOP_RATIO = 0.9;
 
 /** Report codes (reprt_code) */
 export const REPRT_ANNUAL = "11011"; // 사업보고서
+/** 공시상세유형 (pblntf_detail_ty) of 사업보고서 */
+export const DETAIL_ANNUAL = "A001";
+/** list.json without corp_code accepts a window of at most 3 months */
+export const DART_LIST_WINDOW_MONTHS = 3;
+/** fnlttMultiAcnt accepts at most 100 corp codes per call (status 021 above that) */
+export const DART_MULTI_MAX = 100;
 
 /** status codes that mean "retry later" vs "do not retry" */
 export const DART_STATUS = {
@@ -74,6 +81,21 @@ export const DartAccountRow = z.object({
 });
 export const DartAccountList = Status.extend({ list: z.array(DartAccountRow).optional().default([]) });
 export type DartAccountRow = z.infer<typeof DartAccountRow>;
+
+/** fnlttMultiAcnt.json — 다중회사 주요계정: 연결(CFS)·별도(OFS) rows, each with 당기·전기·전전기 amounts */
+export const DartMultiAccountRow = z.object({
+  rcept_no: z.string(),
+  bsns_year: z.string(),
+  corp_code: z.string(),
+  fs_div: z.string(),
+  sj_div: z.string(),
+  account_nm: z.string(),
+  thstrm_amount: z.string().optional().default(""),
+  frmtrm_amount: z.string().optional().default(""),
+  bfefrmtrm_amount: z.string().optional().default(""),
+});
+export const DartMultiAccountList = Status.extend({ list: z.array(DartMultiAccountRow).optional().default([]) });
+export type DartMultiAccountRow = z.infer<typeof DartMultiAccountRow>;
 
 /** CORPCODE.xml <list> entry (inside corpCode.xml zip) */
 export const DartCorpCode = z.object({

@@ -86,8 +86,14 @@ export const supabaseCatalog: CatalogRepo = {
     const { ONBOARDING_JOB_IDS } = await import("@/lib/data/fixtures");
     return ONBOARDING_JOB_IDS.filter((id) => ids.has(id));
   },
+  // The catalogue is the reviewed set only (FR-OPS-01): DART filers collected for review stay out of every list,
+  // search and graph until a person assigns their industry. A single company page still opens by id.
   async companies() {
-    const { data } = await pub().from("companies").select("*").order("revenue", { ascending: false, nullsFirst: false });
+    const { data } = await pub()
+      .from("companies")
+      .select("*")
+      .eq("industry_reviewed", true)
+      .order("revenue", { ascending: false, nullsFirst: false });
     return (data ?? []).map(toCompany);
   },
   async company(id) {
@@ -96,7 +102,12 @@ export const supabaseCatalog: CatalogRepo = {
   },
   async searchCompanies(q) {
     if (!q.trim()) return [];
-    const { data } = await pub().from("companies").select("*").ilike("name", `%${q.trim()}%`).limit(10);
+    const { data } = await pub()
+      .from("companies")
+      .select("*")
+      .eq("industry_reviewed", true)
+      .ilike("name", `%${q.trim()}%`)
+      .limit(10);
     return (data ?? []).map(toCompany);
   },
   async jobLinks(jobRoleId) {

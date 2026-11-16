@@ -11,6 +11,9 @@ import {
   DartAccountList,
   DartCompany,
   DartFilingList,
+  DartMultiAccountList,
+  DART_MULTI_MAX,
+  DETAIL_ANNUAL,
   REPRT_ANNUAL,
 } from "@/lib/contracts/dart";
 import { annualFromAccounts, parseCorpCodeXml, unzipCorpCode } from "@/lib/dart/parse";
@@ -102,6 +105,36 @@ export class DartClient {
       "list.json",
       { corp_code: corpCode, bgn_de: bgnDe, end_de: endDe, pblntf_ty: "A", pblntf_detail_ty: "A001", page_count: "100" },
       DartFilingList,
+    );
+  }
+
+  /**
+   * One page (100) of final 사업보고서 filings of every company in a window (YYYYMMDD; at most 3 months
+   * without corp_code). Corrected reports appear once, as their latest version (last_reprt_at=Y).
+   */
+  annualFilingsPage(bgnDe: string, endDe: string, page: number) {
+    return this.json(
+      "list.json",
+      {
+        bgn_de: bgnDe,
+        end_de: endDe,
+        pblntf_ty: "A",
+        pblntf_detail_ty: DETAIL_ANNUAL,
+        last_reprt_at: "Y",
+        page_count: "100",
+        page_no: String(page),
+      },
+      DartFilingList,
+    );
+  }
+
+  /** 다중회사 주요계정: up to 100 companies, 연결·별도, 당기·전기·전전기 in one call */
+  multiAccounts(corpCodes: string[], year: number) {
+    if (corpCodes.length > DART_MULTI_MAX) throw new DartError(`at most ${DART_MULTI_MAX} corp codes per call`, "status", "021");
+    return this.json(
+      "fnlttMultiAcnt.json",
+      { corp_code: corpCodes.join(","), bsns_year: String(year), reprt_code: REPRT_ANNUAL },
+      DartMultiAccountList,
     );
   }
 

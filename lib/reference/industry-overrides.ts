@@ -1,0 +1,143 @@
+// 기업별 산업 지정 (기준표 ①의 예외; specs/data-pipeline FR-OPS-01, D 2026-11-17 산업 분류 원칙).
+// The KSIC rule in industry-map.ts gives every company a default industry. The companies below are placed by the
+// business a job seeker knows them for instead (반도체·2차전지 소부장, 그룹 지주회사, 금융지주, 게임사 등).
+// Claude review of 2026-11-17 (매출 상위 기업, 애매한 업종 코드, 지주회사 전체; web-checked where unsure).
+// Keyed by DART 고유번호; industryId null = keep the company out of the service (no business to explore).
+// Generated from a name list, then edited by hand; keep the comment groups.
+
+export type IndustryOverride = { name: string; industryId: string | null };
+
+export const INDUSTRY_OVERRIDES: Record<string, IndustryOverride> = {
+  // 반도체 소부장(소재·부품·장비)으로 알려진 기업
+  "00369657": { name: "리노공업", industryId: "semiconductor" },
+  "00252135": { name: "주성엔지니어링", industryId: "semiconductor" },
+  "01135941": { name: "원익IPS", industryId: "semiconductor" },
+  "00572905": { name: "ISC", industryId: "semiconductor" },
+  "01489648": { name: "솔브레인", industryId: "semiconductor" },
+  "00118804": { name: "동진쎄미켐", industryId: "semiconductor" },
+  "00245472": { name: "티씨케이", industryId: "semiconductor" },
+  "00411048": { name: "에스앤에스텍", industryId: "semiconductor" },
+  "01255652": { name: "레이크머티리얼즈", industryId: "semiconductor" },
+  "00468374": { name: "원익QnC", industryId: "semiconductor" },
+  "01261893": { name: "케이씨텍", industryId: "semiconductor" },
+  "01109539": { name: "와이씨", industryId: "semiconductor" },
+  "00363486": { name: "로체시스템즈", industryId: "semiconductor" },
+  "00479787": { name: "인텍플러스", industryId: "semiconductor" },
+  "00957373": { name: "펨트론", industryId: "semiconductor" },
+  "01170865": { name: "네오셈", industryId: "semiconductor" },
+  "01016479": { name: "오로스테크놀로지", industryId: "semiconductor" },
+  "01359815": { name: "한울반도체", industryId: "semiconductor" },
+  "01344363": { name: "다원넥스뷰", industryId: "semiconductor" },
+  "00765569": { name: "기가비스", industryId: "semiconductor" },
+  // 2차전지 소재·장비로 알려진 기업
+  "00129989": { name: "코스모신소재", industryId: "battery" },
+  "01011526": { name: "엔켐", industryId: "battery" },
+  "00897752": { name: "천보", industryId: "battery" },
+  "00113997": { name: "롯데에너지머티리얼즈", industryId: "battery" },
+  "01412822": { name: "솔루스첨단소재", industryId: "battery" },
+  "00177816": { name: "대주전자재료", industryId: "battery" },
+  "00439965": { name: "나노신소재", industryId: "battery" },
+  "00612294": { name: "피엔티", industryId: "battery" },
+  "01020843": { name: "원익피앤이", industryId: "battery" },
+  "00601191": { name: "하나기술", industryId: "battery" },
+  "01139035": { name: "티에스아이", industryId: "battery" },
+  "00528791": { name: "제일엠앤에스", industryId: "battery" },
+  "01144569": { name: "피엔티엠에스", industryId: "battery" },
+  // 디스플레이 장비, 전력 케이블, 생활가전
+  "00489243": { name: "동아엘텍", industryId: "electronics" },
+  "00327819": { name: "선익시스템", industryId: "electronics" },
+  "00361594": { name: "DMS", industryId: "electronics" },
+  "00362122": { name: "나래나노텍", industryId: "electronics" },
+  "01093007": { name: "LS에코에너지", industryId: "electronics" },
+  "00170558": { name: "코웨이", industryId: "electronics" },
+  // 자동차 부품(공조, 타이어, 배터리·방진)
+  "00161125": { name: "한온시스템", industryId: "automotive" },
+  "00937324": { name: "한국타이어앤테크놀로지", industryId: "automotive" },
+  "00481454": { name: "금호타이어", industryId: "automotive" },
+  "00173874": { name: "넥센타이어", industryId: "automotive" },
+  "00116949": { name: "DN오토모티브", industryId: "automotive" },
+  // 방산 전자, 조선 중간지주(엔지니어링)
+  "00339391": { name: "한화시스템", industryId: "shipbuilding-aerospace" },
+  "00164830": { name: "HD한국조선해양", industryId: "shipbuilding-aerospace" },
+  // 발전설비, 풍력, 에너지 중간지주
+  "00159616": { name: "두산에너빌리티", industryId: "energy" },
+  "00670340": { name: "씨에스윈드", industryId: "energy" },
+  "00903503": { name: "GS에너지", industryId: "energy" },
+  // 매출 비중이 가장 큰 사업이 건설
+  "00149655": { name: "삼성물산", industryId: "construction" },
+  // IT 서비스(업종 코드는 엔지니어링)
+  "00155212": { name: "포스코DX", industryId: "it" },
+  // 업종 코드가 소프트웨어로만 잡힌 게임사
+  "00261443": { name: "NC", industryId: "game" },
+  "01096341": { name: "넥슨게임즈", industryId: "game" },
+  "01067808": { name: "넵튠", industryId: "game" },
+  "00535746": { name: "컴투스홀딩스", industryId: "game" },
+  "01398151": { name: "밸로프", industryId: "game" },
+  "01042429": { name: "넥써쓰", industryId: "game" },
+  "00138367": { name: "플레이위드", industryId: "game" },
+  "01049422": { name: "썸에이지", industryId: "game" },
+  "00346911": { name: "아이톡시", industryId: "game" },
+  // 그룹 지주회사(업종 코드는 사업 업종)
+  "00160588": { name: "한화", industryId: "holding" },
+  "00117212": { name: "두산", industryId: "holding" },
+  "00109693": { name: "DL", industryId: "holding" },
+  "00377610": { name: "세아홀딩스", industryId: "holding" },
+  "00106669": { name: "세아베스틸지주", industryId: "holding" },
+  "00155319": { name: "POSCO홀딩스", industryId: "holding" },
+  "00154462": { name: "아모레퍼시픽홀딩스", industryId: "holding" },
+  "00195229": { name: "미스토홀딩스", industryId: "holding" },
+  "01004553": { name: "엘에스아이앤디", industryId: "holding" },
+  "00266952": { name: "네오위즈홀딩스", industryId: "holding" },
+  // 금융지주와 벤처캐피털(업종 코드는 지주회사·기타 금융)
+  "00688996": { name: "KB금융", industryId: "finance" },
+  "00382199": { name: "신한지주", industryId: "finance" },
+  "00547583": { name: "하나금융지주", industryId: "finance" },
+  "01350869": { name: "우리금융지주", industryId: "finance" },
+  "00860332": { name: "메리츠금융지주", industryId: "finance" },
+  "00858364": { name: "BNK금융지주", industryId: "finance" },
+  "00878915": { name: "iM금융지주", industryId: "finance" },
+  "00980122": { name: "JB금융지주", industryId: "finance" },
+  "00432102": { name: "한국금융지주", industryId: "finance" },
+  "00908021": { name: "농협금융지주", industryId: "finance" },
+  "00340096": { name: "미래에셋벤처투자", industryId: "finance" },
+  "01305249": { name: "스톤브릿지벤처스", industryId: "finance" },
+  "00598198": { name: "컴퍼니케이", industryId: "finance" },
+  "00599151": { name: "SV인베스트먼트", industryId: "finance" },
+  "00309460": { name: "HB인베스트먼트", industryId: "finance" },
+  "01497124": { name: "캡스톤파트너스", industryId: "finance" },
+  "00156895": { name: "아주IB투자", industryId: "finance" },
+  "00267942": { name: "큐캐피탈", industryId: "finance" },
+  // 제약·바이오 사업(업종 코드는 지주·화학·도매)
+  "00116824": { name: "동아제약", industryId: "bio-pharma" },
+  "00313649": { name: "현대바이오", industryId: "bio-pharma" },
+  "00554352": { name: "아이큐어", industryId: "bio-pharma" },
+  "01042359": { name: "지엘팜텍", industryId: "bio-pharma" },
+  // 화장품 매출이 중심(업종 코드는 세제·기타 화학·도매)
+  "00356370": { name: "LG생활건강", industryId: "cosmetics" },
+  "00139454": { name: "애경산업", industryId: "cosmetics" },
+  "00982023": { name: "실리콘투", industryId: "cosmetics" },
+  "00150165": { name: "브이티", industryId: "cosmetics" },
+  "01136977": { name: "마녀공장", industryId: "cosmetics" },
+  "00624998": { name: "제닉", industryId: "cosmetics" },
+  "00308559": { name: "코디", industryId: "cosmetics" },
+  "01098792": { name: "본느", industryId: "cosmetics" },
+  "01169267": { name: "세화피앤씨", industryId: "cosmetics" },
+  "01657197": { name: "바이오비쥬", industryId: "cosmetics" },
+  "00406037": { name: "CSA 코스믹", industryId: "cosmetics" },
+  "00442455": { name: "코스나인", industryId: "cosmetics" },
+  "01165739": { name: "잉글우드랩", industryId: "cosmetics" },
+  "01353024": { name: "TS트릴리온", industryId: "cosmetics" },
+  "00692254": { name: "아이패밀리에스씨", industryId: "cosmetics" },
+  "00347062": { name: "현대바이오랜드", industryId: "cosmetics" },
+  // 의류·생활용품 제조(업종 코드는 도소매)
+  "00776820": { name: "영원무역", industryId: "fashion-living" },
+  "00234412": { name: "신세계인터내셔날", industryId: "fashion-living" },
+  "00133557": { name: "PN풍년", industryId: "fashion-living" },
+  // 식품·농수산(업종 코드는 도매)
+  "00684732": { name: "풀무원식품", industryId: "food" },
+  "00698805": { name: "울진유통농업회사법인", industryId: "food" },
+  "00753573": { name: "완도전복", industryId: "food" },
+  "01578076": { name: "농업회사법인순천만가든마켓", industryId: "food" },
+  // 금융상품 발행 법인이라 사업·채용이 없음
+  "01082834": { name: "노무라인터내셔널펀딩피티이", industryId: null },
+};
