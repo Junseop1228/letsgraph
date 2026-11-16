@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { catalog } from "@/lib/data";
 import { formatEok } from "@/lib/format";
-import { Crumbs, Kicker, SourceLine, TrustLabel, btn } from "@/components/lg/ui";
+import { Crumbs, Kicker, SourceLine, TrustLabel } from "@/components/lg/ui";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { SegmentDonut } from "@/components/charts/segment-donut";
 import { UpdatesList } from "@/components/explore/updates-list";
@@ -38,16 +38,11 @@ async function SegmentPageContent({
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
-      <Crumbs items={[{ href: "/explore/map", label: "직무 맵" }, { href: `/company/${c.id}`, label: c.name }, { label: seg.name }]} />
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-heading-1">{seg.name}</h1>
-          <p className="mt-1 text-body-lg text-text-secondary">{seg.summary}</p>
-        </div>
-        <div className="flex gap-2">
-          {job && <Link href={`/explore/map?job=${job.id}`} className={btn.secondary}>직무 맵으로</Link>}
-          <Link href={`/company/${c.id}`} className={btn.primary}>기업 상세 보기 <ArrowRight className="size-4" aria-hidden /></Link>
-        </div>
+      <Crumbs items={[{ href: job ? `/explore/map?job=${job.id}` : "/explore/map", label: "직무 맵" }, { href: `/company/${c.id}`, label: c.name }, { label: seg.name }]} />
+      {/* the breadcrumb above already leads to the map and the company (audit SG-1: buttons removed) */}
+      <div className="mt-3 border-b border-border pb-6">
+        <h1 className="text-heading-1">{seg.name}</h1>
+        <p className="mt-1 text-body-lg text-text-secondary">{seg.summary}</p>
       </div>
 
       {!detail ? (
