@@ -13,6 +13,7 @@ import { buildGraph, type GNode } from "@/lib/explore/graph";
 import { formatEokShort } from "@/lib/format";
 import { readLikedJobs, useWatched } from "@/lib/client/local-state";
 import { FlowGraph } from "@/components/explore/flow-graph";
+import { DECK_AGAIN_PATH } from "@/lib/onboarding";
 import { IndustryIcon } from "@/components/explore/industry-icon";
 import { useLiquidGlass, type Lens } from "@/components/explore/use-liquid-glass";
 import { track } from "@/lib/client/analytics";
@@ -156,7 +157,7 @@ export function ExploreGraph(p: Props) {
             {roleById.get(j)?.name}
           </button>
         ))}
-        <Link href="/explore" aria-label="직무 더 고르기" className="grid size-8 shrink-0 place-items-center rounded-full text-text-secondary hover:bg-overlay-hover hover:text-text-primary">
+        <Link href={DECK_AGAIN_PATH} aria-label="직무 더 고르기" className="grid size-8 shrink-0 place-items-center rounded-full text-text-secondary hover:bg-overlay-hover hover:text-text-primary">
           <Plus className="size-4" aria-hidden />
         </Link>
         <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />

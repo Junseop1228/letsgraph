@@ -1,6 +1,6 @@
 # 탐색 (explore)
 
-근거: SRS v1.0 FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 · 결정 2026-10-30 (그래프 = Obsidian 같은 힘 기반 그래프, 노드를 끌 수 있음), 2026-11-01 (1안 "직무별 별자리", 관심 기업 항상 표시, 별 색 통일, 글 줄이기), 2026-11-14 (앱도 프로토타입 v1.3 그래프 뷰로 되돌림), 2026-11-15 (그래프 엔진을 React Flow로 교체, 원형 꼭짓점과 업종 아이콘, 끌어 놓은 자리에 머묾, 토스식 카드 화면) · 계약: `lib/contracts/domain.ts` · 그래프 데이터: `lib/explore/graph.ts` (시험 `tests/graph.test.ts`), 배치 보조 `lib/explore/physics.ts` (시험 `tests/physics.test.ts`) · 화면: `app/(main)/explore/`, `components/explore/{explore-graph,flow-graph,industry-icon}.tsx` · 라이브러리: React Flow(`@xyflow/react`, MIT) 그리기·확대·끌기, d3-force(ISC) 배치, bubblesets-js(MIT) 펼친 산업의 회색 면, Lucide(ISC) 업종 아이콘
+근거: SRS v1.0 FR-DISC-01, FR-DISC-03, FR-DISC-04, FR-MAP-03 · 결정 2026-10-30 (그래프 = Obsidian 같은 힘 기반 그래프, 노드를 끌 수 있음), 2026-11-01 (1안 "직무별 별자리", 관심 기업 항상 표시, 별 색 통일, 글 줄이기), 2026-11-14 (앱도 프로토타입 v1.3 그래프 뷰로 되돌림), 2026-11-15 (그래프 엔진을 React Flow로 교체, 원형 꼭짓점과 업종 아이콘, 끌어 놓은 자리에 머묾, 토스식 카드 화면), 2026-11-16 (직무 카드는 처음 들어왔을 때 한 번만 자동으로, 탐색 탭은 그래프) · 계약: `lib/contracts/domain.ts` · 그래프 데이터: `lib/explore/graph.ts` (시험 `tests/graph.test.ts`), 배치 보조 `lib/explore/physics.ts` (시험 `tests/physics.test.ts`) · 화면: `app/(main)/explore/`, `components/explore/{explore-graph,flow-graph,industry-icon}.tsx` · 라이브러리: React Flow(`@xyflow/react`, MIT) 그리기·확대·끌기, d3-force(ISC) 배치, bubblesets-js(MIT) 펼친 산업의 회색 면, Lucide(ISC) 업종 아이콘
 
 ## Requirements
 
@@ -18,6 +18,10 @@
 #### Scenario: 건너뛰기
 - **WHEN** 사용자가 "건너뛰고 직무 맵 보기"를 누르면
 - **THEN** 첫 직무로 그래프가 열린다
+
+#### Scenario: 처음 한 번만 자동으로
+- **WHEN** 이 브라우저로 처음 들어온 사용자가 `/` 또는 `/explore`를 열면
+- **THEN** 직무 카드가 나오고 쿠키 `lg_onboarded`가 저장된다. 그 뒤로는 `/`·`/explore`와 위쪽 "탐색" 탭이 나의 취업 그래프(`/explore/map`)를 연다(대표 직무가 없으면 품질관리). 그래프의 "직무 더 고르기"(＋)는 카드를 다시 연다(`/explore?more=1`)
 
 ### Requirement: FR-MAP-03 나의 취업 그래프 (직무별 별자리)
 시스템은 내 관심 직무마다 별 하나(가운데 = 직무, 둘레 = 그 직무를 뽑는 산업)를 힘 기반 그래프로 그려야 한다(SHALL). 같은 산업은 모든 별에서 같은 각도에 놓이고, 내 직무 여러 개가 함께 뽑는 산업은 진한 테두리와 숫자 배지로 보인다. 기업은 산업을 열었을 때만 그 별에 펼쳐지고, 관심 기업은 항상 보인다. 산업 원 안에는 업종 아이콘이 있고, 산업 원 크기는 연결 기업 수, 기업 원 크기는 매출을 나타낸다. 노드는 끌어서 옮길 수 있고, 휠·핀치로 확대·축소된다. 모든 별은 같은 색이고 글은 최소로 둔다. 그래프는 화면 전체를 쓰고, 자세한 내용은 떠 있는 카드 하나(좁은 화면에서는 아래 시트)에 나온다.

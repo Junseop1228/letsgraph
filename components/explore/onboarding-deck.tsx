@@ -6,6 +6,7 @@ import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { Check, X } from "lucide-react";
 import type { JobRole } from "@/lib/contracts/domain";
 import { savePrimaryJob } from "@/lib/client/local-state";
+import { markOnboarded } from "@/lib/onboarding";
 import { track } from "@/lib/client/analytics";
 import { btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,9 @@ export function OnboardingDeck({ jobs }: Props) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-240, 240], [-8, 8]);
   const done = i >= jobs.length;
+
+  // Shown once = seen: from now on "/", "/explore" and the 탐색 tab open the graph (specs/explore FR-DISC-01).
+  useEffect(() => markOnboarded(), []);
 
   function decide(like: boolean) {
     if (done || busy.current) return; // ignore clicks while the card is flying out

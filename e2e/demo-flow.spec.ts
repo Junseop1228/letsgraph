@@ -14,6 +14,20 @@ test.describe("explore", () => {
     await expect(page).toHaveURL(/\/explore\/map\?job=quality/);
   });
 
+  test("FR-DISC-01 처음 한 번만 자동으로", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/explore$/);
+    await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
+    await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "lg_onboarded")).toBe(true);
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/explore\/map$/);
+    await page.goto("/explore");
+    await expect(page).toHaveURL(/\/explore\/map$/);
+    await expect(page.getByRole("link", { name: "탐색" }).first()).toHaveAttribute("href", "/explore/map");
+    await page.getByRole("link", { name: "직무 더 고르기" }).click();
+    await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
+  });
+
   test("FR-MAP-03 그래프 열기 / 산업 열기 / 기업 고르기", async ({ page }) => {
     await page.goto("/explore/map?job=quality");
     await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
