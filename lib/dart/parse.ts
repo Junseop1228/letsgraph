@@ -84,3 +84,24 @@ export function listedOnly(items: DartCorpCode[]): DartCorpCode[] {
 export function dartDate(d: string): string {
   return /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;
 }
+
+/** "(주)CJ 제일제당" / "주식회사 CJ제일제당" -> "cj제일제당": the key used to match a company name to DART. */
+export function normalizeCorpName(s: string): string {
+  return s.replace(/\(주\)|㈜|주식회사|\s/g, "").toLowerCase();
+}
+
+export type CorpMatch = { ok: true; item: DartCorpCode } | { ok: false; reason: string };
+
+/**
+ * Finds the DART entry for a company name (exact name after normalising). Listed companies win over unlisted ones
+ * with the same name; anything still ambiguous is refused rather than guessed (specs/data-pipeline FR-OPS-02).
+ */
+export function findCorpCode(items: DartCorpCode[], name: string): CorpMatch {
+  const key = normalizeCorpName(name);
+  const same = items.filter((i) => normalizeCorpName(i.corp_name) === key);
+  const listed = same.filter((i) => /^\d{6}$/.test(i.stock_code.trim()));
+  const pool = listed.length ? listed : same;
+  if (pool.length === 1) return { ok: true, item: pool[0] };
+  if (!pool.length) return { ok: false, reason: `DART에서 '${name}'과 이름이 같은 회사를 찾지 못함` };
+  return { ok: false, reason: `DART에 '${name}' 이름의 회사가 ${pool.length}곳이라 고르지 않음` };
+}
