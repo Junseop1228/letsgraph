@@ -227,10 +227,11 @@ export function ActivityBoard({ activities, episodes, initialEpisodeId, initialA
                   type="button"
                   onClick={() => select({ type: "activity", id: a.id })}
                   aria-pressed={tileSelected}
-                  aria-label={`${a.title} 활동 자세히 보기`}
                   className={cn("rounded-container text-left md:w-56 md:shrink-0", focusRing, tileSelected && "ring-2 ring-border-strong ring-offset-2 ring-offset-bg-page")}
                 >
                   <ActivityTile activity={a} episodeCount={list.length} className="h-full" />
+                  {/* name = the visible tile text + this, so speech users can say what they see (axe label-content-name-mismatch) */}
+                  <span className="sr-only"> 자세히 보기</span>
                 </button>
               ) : (
                 <div className="flex flex-col gap-2 rounded-container bg-bg-sunken p-4 md:w-56 md:shrink-0">
