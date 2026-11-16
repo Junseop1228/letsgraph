@@ -2,7 +2,7 @@
 // 연결 결과 만들기 (specs/connection FR-PREM-02). Premium feature, quota-charged, AI output validated before storing.
 import { revalidatePath } from "next/cache";
 import { supabaseEnabled, userData } from "@/lib/data";
-import { AI_MODEL, aiEnabled, AiUnavailable, connect, extractQuestions } from "@/lib/ai/tasks";
+import { AI_MODEL, aiEnabled, AiUnavailable, connect, extractQuestions, matchQuestions } from "@/lib/ai/tasks";
 import { EssayQuestion, PostingAnalysisOutput } from "@/lib/contracts/activity";
 import { z } from "zod";
 import { currentPlan } from "@/lib/billing/server";
@@ -75,20 +75,93 @@ export async function parseQuestionsAction(pasted: unknown): Promise<{ questions
   }
 }
 
-/** FR-PREM-04: saves the confirmed questions on the posting (own rows only). */
-export async function saveQuestionsAction(postingId: string, questions: unknown): Promise<{ ok?: string; error?: string }> {
-  const q = Questions.safeParse(questions);
-  if (!q.success) return { error: q.error.issues[0]?.message ?? "문항 형식이 올바르지 않아요." };
-  if (!supabaseEnabled()) return { error: "데모 모드에서는 저장하지 않아요. 로그인이 연결되면 공고에 저장돼요." };
+/** Signed-in Supabase client, or the message to show. */
+async function signedInDb() {
+  if (!supabaseEnabled()) return { error: "데모 모드에서는 저장하지 않아요. 로그인이 연결되면 공고에 저장돼요." } as const;
   const { createClient } = await import("@/lib/supabase/server");
   const db = await createClient();
   const { data: claims } = await db.auth.getClaims();
-  if (!claims?.claims?.sub) return { error: "로그인하면 문항을 저장할 수 있어요." };
-  const { data, error } = await db.from("job_postings").update({ questions: q.data }).eq("id", postingId).select("id");
-  if (error || !data?.length) {
-    if (error) logAiFailure("save_questions", error);
-    return { error: "문항을 저장하지 못했어요." };
+  if (!claims?.claims?.sub) return { error: "로그인하면 문항을 저장할 수 있어요." } as const;
+  return { db } as const;
+}
+
+/** FR-PREM-05: the AI reads all questions and episodes, then matches by content. On failure the questions stay as they are. */
+async function withMatches(postingId: string, questions: EssayQuestion[]): Promise<{ questions: EssayQuestion[]; matched: boolean }> {
+  if (!aiEnabled()) return { questions, matched: false };
+  try {
+    const { repo } = await userData();
+    const [episodes, activities, analysis] = await Promise.all([repo.experiences(), repo.activities(), repo.postingAnalysis(postingId)]);
+    return { questions: await matchQuestions(questions, episodes, activities, analysis), matched: true };
+  } catch (e) {
+    logAiFailure("match_questions", e);
+    return { questions, matched: false };
   }
+}
+
+type Db = Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>;
+
+async function storeQuestions(db: Db, postingId: string, questions: EssayQuestion[]) {
+  const { data, error } = await db.from("job_postings").update({ questions }).eq("id", postingId).select("id");
+  if (error) logAiFailure("save_questions", error);
+  return !error && !!data?.length;
+}
+
+async function savedQuestions(postingId: string): Promise<EssayQuestion[]> {
+  const { repo } = await userData();
+  return (await repo.posting(postingId))?.questions ?? [];
+}
+
+/** FR-PREM-04/05: saves the confirmed questions on the posting and matches them with the episodes. */
+export async function saveQuestionsAction(postingId: string, questions: unknown): Promise<{ ok?: string; error?: string }> {
+  const q = Questions.safeParse(questions);
+  if (!q.success) return { error: q.error.issues[0]?.message ?? "문항 형식이 올바르지 않아요." };
+  const g = await signedInDb();
+  if ("error" in g) return { error: g.error };
+  const { questions: out, matched } = await withMatches(postingId, q.data);
+  if (!(await storeQuestions(g.db, postingId, out))) return { error: "문항을 저장하지 못했어요." };
   revalidatePath(`/connect/${postingId}/kit`);
-  return { ok: "문항을 저장했어요. 키트가 문항에 맞춰 바뀌었어요." };
+  return { ok: matched ? "문항을 저장하고 에피소드를 이었어요." : "문항을 저장했어요. 에피소드는 테마로 배정했어요." };
+}
+
+/** FR-PREM-05 다시 연결하기: after new episodes, match again (the user's own choices stay). */
+export async function rematchQuestionsAction(postingId: string): Promise<{ ok?: string; error?: string }> {
+  const g = await signedInDb();
+  if ("error" in g) return { error: g.error };
+  const saved = await savedQuestions(postingId);
+  if (!saved.length) return { error: "저장된 문항이 없어요." };
+  if (!aiEnabled()) return { error: "AI 키가 연결되면 다시 이어요." };
+  const { questions: out, matched } = await withMatches(postingId, saved);
+  if (!matched) return { error: "에피소드를 잇지 못했어요. 잠시 뒤 다시 눌러 주세요." };
+  if (!(await storeQuestions(g.db, postingId, out))) return { error: "저장하지 못했어요." };
+  revalidatePath(`/connect/${postingId}/kit`);
+  return { ok: "에피소드를 다시 이었어요." };
+}
+
+/**
+ * FR-PREM-05 직접 바꾸기: the user picks the episode for a question ("" = none). "auto" hands the question back to the AI.
+ * The chosen episode is taken away from other questions that the AI had given it to.
+ */
+export async function setQuestionEpisodeAction(postingId: string, questionId: string, choice: string): Promise<{ ok?: string; error?: string }> {
+  const g = await signedInDb();
+  if ("error" in g) return { error: g.error };
+  const saved = await savedQuestions(postingId);
+  if (!saved.some((x) => x.id === questionId)) return { error: "문항을 찾지 못했어요." };
+  let next: EssayQuestion[];
+  if (choice === "auto") {
+    next = saved.map((x) => (x.id === questionId ? { ...x, manual: false, episodeIds: undefined, fit: undefined, need: undefined } : x));
+    next = (await withMatches(postingId, next)).questions;
+  } else {
+    const ids = choice ? [choice] : [];
+    next = saved.map((x) =>
+      x.id === questionId
+        ? { ...x, manual: true, episodeIds: ids, fit: choice ? "직접 고른 에피소드예요." : undefined, need: undefined }
+        : !x.manual && choice && x.episodeIds?.includes(choice)
+          ? { ...x, episodeIds: x.episodeIds.filter((id) => id !== choice) }
+          : x,
+    );
+  }
+  const parsed = Questions.safeParse(next);
+  if (!parsed.success || !(await storeQuestions(g.db, postingId, parsed.data))) return { error: "저장하지 못했어요." };
+  revalidatePath(`/connect/${postingId}/kit`);
+  return { ok: choice === "auto" ? "AI 추천으로 되돌렸어요." : "에피소드를 바꿨어요." };
 }

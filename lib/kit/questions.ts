@@ -7,6 +7,7 @@ import {
   type ConnectionOutput,
   type EssayQuestionsAiOutput,
   type Experience,
+  type QuestionMatchAiOutput,
   type QuestionType,
 } from "@/lib/contracts/activity";
 import { findEpisode, QUESTION_GUIDE } from "@/lib/kit/plan";
@@ -23,6 +24,30 @@ export function cleanQuestions(raw: z.infer<typeof EssayQuestionsAiOutput>): Ess
       if (max && min && min > max) min = null;
       return EssayQuestion.parse({ id: `q${i + 1}`, text: q.text.slice(0, 1000), maxChars: max, minChars: min, type: q.type });
     });
+}
+
+const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/**
+ * AI matches -> questions (FR-PREM-05). Keeps the user's own choices (manual), drops unknown episodes, gives an episode
+ * to one question only (in question order), at most 2 per question. 경력기술서 questions are written from activities.
+ */
+export function applyMatches(questions: EssayQuestion[], raw: z.infer<typeof QuestionMatchAiOutput>, episodes: Experience[]): EssayQuestion[] {
+  const known = new Set(episodes.map((e) => e.id));
+  const used = new Set(questions.filter((x) => x.manual).flatMap((x) => x.episodeIds ?? []));
+  return questions.map((x) => {
+    if (x.manual) return x;
+    if (x.type === "career") return { ...x, episodeIds: [], fit: undefined, need: undefined };
+    const m = raw.matches.find((r) => r.questionId === x.id);
+    const ids = [...new Set(m?.episodeIds ?? [])].filter((id) => known.has(id) && !used.has(id)).slice(0, 2);
+    ids.forEach((id) => used.add(id));
+    return {
+      ...x,
+      episodeIds: ids,
+      fit: ids.length && m?.why ? cut(m.why.trim(), 200) : undefined,
+      need: !ids.length && m?.need ? cut(m.need.trim(), 150) : undefined,
+    };
+  });
 }
 
 export type EssayGuide = {
@@ -82,6 +107,8 @@ export type EssayPlan = {
   question: EssayQuestion;
   guide: EssayGuide;
   episode: Experience | null;
+  /** a second episode when the question needs two */
+  extra: Experience[];
   activities: Activity[];
   /** what the kit does not know and the coach must ask */
   ask: string[];
@@ -104,19 +131,25 @@ export function planEssay(questions: EssayQuestion[], episodes: Experience[], ac
     if (pick) used.add(pick.id);
     return pick;
   };
+  // questions already matched by content (or by the user) keep their episodes; the theme rule fills the rest
+  for (const q of questions) for (const id of q.episodeIds ?? []) used.add(id);
   return questions.map((q) => {
     const guide = ESSAY_GUIDE[q.type];
+    if (q.episodeIds !== undefined && q.type !== "career") {
+      const eps = q.episodeIds.flatMap((id) => episodes.find((e) => e.id === id) ?? []);
+      return { question: q, guide, episode: eps[0] ?? null, extra: eps.slice(1), activities: [], ask: [] };
+    }
     const free = episodes.filter((e) => !used.has(e.id));
     if (q.type === "career") {
       const work = activities.filter((a) => a.kind === "intern" || a.kind === "parttime");
-      return { question: q, guide, episode: null, activities: (work.length ? work : activities).slice(0, 4), ask: ["부서·직급", "이직 사유 (해당되면)", "회사명이 활동 이름과 다르면 정식 회사명"] };
+      return { question: q, guide, episode: null, extra: [], activities: (work.length ? work : activities).slice(0, 4), ask: ["부서·직급", "이직 사유 (해당되면)", "회사명이 활동 이름과 다르면 정식 회사명"] };
     }
     if (q.type === "achievement") {
       const withNumbers = free.filter((e) => /\d/.test(e.result) && !e.result.includes("직접 확인해서 넣어요"));
-      return { question: q, guide, episode: take(withNumbers.length ? withNumbers : free.filter((e) => !e.theme || e.theme === "problem")), activities: [], ask: [] };
+      return { question: q, guide, episode: take(withNumbers.length ? withNumbers : free.filter((e) => !e.theme || e.theme === "problem")), extra: [], activities: [], ask: [] };
     }
-    if (q.type === "other") return { question: q, guide, episode: null, activities: [], ask: [] };
+    if (q.type === "other") return { question: q, guide, episode: null, extra: [], activities: [], ask: [] };
     const fits = free.filter((e) => e.theme === q.type || (!e.theme && q.type === "problem"));
-    return { question: q, guide, episode: take(fits), activities: [], ask: [] };
+    return { question: q, guide, episode: take(fits), extra: [], activities: [], ask: [] };
   });
 }

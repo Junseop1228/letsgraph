@@ -35,8 +35,20 @@ export const EssayQuestion = z.object({
   maxChars: z.number().int().positive().max(20000).nullable(),
   minChars: z.number().int().nonnegative().max(20000).nullable(),
   type: QuestionType,
+  /**
+   * 문항 ↔ 에피소드 (FR-PREM-05): episodes matched to this question by content (AI read all questions and episodes),
+   * or chosen by the user (manual). Absent = not matched yet (theme rule applies); [] = nothing fits.
+   */
+  episodeIds: z.array(z.string()).max(2).optional(),
+  fit: z.string().max(200).optional(), // why the episode answers this question
+  need: z.string().max(150).optional(), // the scene that would answer it, when nothing fits
+  manual: z.boolean().optional(),
 });
 export type EssayQuestion = z.infer<typeof EssayQuestion>;
+/** What the AI returns when it matches questions and episodes (trimmed in lib/kit/questions.ts applyMatches). */
+export const QuestionMatchAiOutput = z.object({
+  matches: z.array(z.object({ questionId: z.string(), episodeIds: z.array(z.string()), why: z.string(), need: z.string().nullable() })),
+});
 /** What the AI reads from a pasted application form (no limits; trimmed in lib/kit/questions.ts). */
 export const EssayQuestionsAiOutput = z.object({
   questions: z.array(z.object({ text: z.string(), maxChars: z.number().nullable(), minChars: z.number().nullable(), type: QuestionType })),

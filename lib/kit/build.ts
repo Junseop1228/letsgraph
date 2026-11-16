@@ -37,7 +37,7 @@ export function buildPromptKit(i: Input): PromptKit {
   };
   for (const l of i.connection.links) add(findEpisode(i.experiences, l));
   for (const p of plan) add(p.episode);
-  for (const p of essay ?? []) add(p.episode);
+  for (const p of essay ?? []) [p.episode, ...p.extra].forEach(add);
   const number = (e: Experience) => episodes.findIndex((x) => x.id === e.id) + 1;
 
   const sections: PromptKit["sections"] = [
@@ -93,12 +93,15 @@ export function buildPromptKit(i: Input): PromptKit {
       `- 글자 수 배분: ${allocation(p.guide, q.maxChars)}`,
       q.minChars ? `- 최소 ${fmt(q.minChars)}자를 넘기도록 칸마다 분량을 안내한다` : "",
       p.episode
-        ? `- 쓸 에피소드: ${number(p.episode)}번 "${p.episode.title}"`
+        ? `- 쓸 에피소드: ${number(p.episode)}번 "${p.episode.title}"${p.extra.length ? `, 함께 쓸 에피소드: ${p.extra.map((e) => `${number(e)}번 "${e.title}"`).join(", ")}` : ""}`
         : p.activities.length
           ? `- 쓸 활동: ${p.activities.map((a) => `"${a.title}"`).join(", ")} (<경력_재료> 참고)`
-          : story
-            ? "- 이 문항에 맞는 에피소드가 아직 없어요. 지어내지 말고 나에게 질문해서 찾아라."
-            : "- 쓸 재료: 문항을 보고 <에피소드>와 <전문성_근거>에서 골라 제안하고 확인받아라.",
+          : q.need
+            ? `- 맞는 에피소드가 아직 없어요. 필요한 장면: ${q.need} 지어내지 말고 나에게 질문해서 찾아라.`
+            : story
+              ? "- 이 문항에 맞는 에피소드가 아직 없어요. 지어내지 말고 나에게 질문해서 찾아라."
+              : "- 쓸 재료: 문항을 보고 <에피소드>와 <전문성_근거>에서 골라 제안하고 확인받아라.",
+      p.episode && q.fit ? `- 이 에피소드인 이유: ${q.fit}` : "",
       (q.type === "problem" || q.type === "achievement") && skills.length ? `- 전문성 근거 활동: ${skills.map((s) => `"${s.activityTitle}" (${s.competency})`).join(", ")}` : "",
       p.ask.length ? `- 아직 모르는 것 (나에게 물어서 채워라): ${p.ask.join(", ")}` : "",
       `- 강조할 점: ${p.guide.emphasis}`,

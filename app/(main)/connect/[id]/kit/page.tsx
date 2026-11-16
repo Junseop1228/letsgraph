@@ -37,7 +37,13 @@ async function KitContent({ params }: Props) {
           p.question.text,
           `추천 구조 · ${p.guide.structure}`,
           `글자 수 배분: ${allocation(p.guide, p.question.maxChars)}`,
-          p.episode ? `쓸 에피소드: ${p.episode.title}` : p.activities.length ? `쓸 활동: ${p.activities.map((a) => a.title).join(", ")}` : "",
+          p.episode
+            ? `쓸 에피소드: ${[p.episode, ...p.extra].map((e) => e.title).join(", ")}${p.question.fit ? ` (${p.question.fit})` : ""}`
+            : p.activities.length
+              ? `쓸 활동: ${p.activities.map((a) => a.title).join(", ")}`
+              : p.question.need
+                ? `필요한 장면: ${p.question.need}`
+                : "",
           p.ask.length ? `직접 채울 것: ${p.ask.join(", ")}` : "",
           `강조할 점: ${p.guide.emphasis}`,
         ],
@@ -71,7 +77,7 @@ async function KitContent({ params }: Props) {
 
       <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section className="space-y-3 bg-bg-page py-6 lg:pr-6 print:hidden">
-          <EssayQuestions postingId={posting.id} saved={questions} />
+          <EssayQuestions postingId={posting.id} saved={questions} episodes={experiences.map((e) => ({ id: e.id, title: e.title }))} />
           <Kicker>{questions.length ? "문항별 가이드" : "문항 유형별 가이드"}</Kicker>
           {guides.map((g, i) => (
             <details key={g.t} open={i === 0} className="group border-b border-border">
