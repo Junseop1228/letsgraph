@@ -1,20 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { UserRound } from "lucide-react";
 import { MainNav, MainNavFallback } from "@/components/main-nav";
-import { AuthButton } from "@/components/auth-button";
+import { AccountLink, AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
 import { HeaderSearch } from "@/components/search/header-search";
 import { HeaderNotifications } from "@/components/header/header-notifications";
 
 function Logo() {
   return (
-    <Link href="/explore" className="flex items-center gap-2 text-heading-3">
+    // body uses overflow-wrap:anywhere (Hangul rules), so the wordmark must not wrap; below sm only the mark shows (audit C-1).
+    <Link href="/explore" aria-label="letsGraph" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-heading-3">
       {/* Final logo (team decision 2026-11-16). Dark variant swaps the black strokes for light ones. */}
       <Image src="/brand/logo-mark.png" alt="" width={32} height={32} priority className="size-8 dark:hidden" />
       <Image src="/brand/logo-mark-dark.png" alt="" width={32} height={32} priority className="hidden size-8 dark:block" />
-      letsGraph
+      <span className="hidden sm:inline">letsGraph</span>
     </Link>
   );
 }
@@ -28,11 +28,12 @@ function DemoModeNotice() {
   );
 }
 
-// Header per the teammate spec: logo, 4 tabs, search, notification bell, profile.
+// Header per the teammate spec: logo, 4 tabs, search, notification bell, account.
+// Profile icon exactly once (AuthButton, or here in demo mode). Logged in: icon + 로그아웃, no e-mail text link (audit C-5).
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-page">
-      <div className="mx-auto flex h-header-height max-w-content-max items-center gap-6 px-5">
+      <div className="mx-auto flex h-header-height max-w-content-max items-center gap-1 px-3 sm:gap-6 sm:px-5">
         <Logo />
         <Suspense fallback={<MainNavFallback />}>
           <MainNav />
@@ -41,13 +42,11 @@ export function AppHeader() {
         <Suspense>
           <HeaderSearch />
         </Suspense>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Suspense>
             <HeaderNotifications />
           </Suspense>
-          <Link href="/account" aria-label="내 계정" className="flex size-10 items-center justify-center rounded-element hover:bg-overlay-hover">
-            <UserRound className="size-5" aria-hidden />
-          </Link>
+          {!hasEnvVars && <AccountLink />}
         </div>
         {!hasEnvVars ? (
           <DemoModeNotice />

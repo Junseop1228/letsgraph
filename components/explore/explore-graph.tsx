@@ -176,8 +176,17 @@ export function ExploreGraph(p: Props) {
         <ul ref={legendRef} aria-label="그래프 읽는 법" className="lg-glass absolute bottom-4 left-4 z-10 hidden items-center gap-4 rounded-full px-4 py-2 text-caption text-text-secondary lg:flex">
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full bg-graph-job" />내 직무</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full border border-border-emphasized bg-bg-tonal" />산업</li>
+          {/* every mark the graph draws has a line here (audit M-1, M-2) */}
+          <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full bg-graph-saved" />관심 기업</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="size-2.5 rounded-full border border-graph-node" />기업 · 클수록 매출이 커요</li>
+          <li className="flex items-center gap-1.5"><i aria-hidden className="w-4 border-t-2 border-graph-node" />실제 공고</li>
           <li className="flex items-center gap-1.5"><i aria-hidden className="w-4 border-t border-dashed border-graph-node" />추정</li>
+          {myJobs.length > 1 && (
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="figures grid size-4 place-items-center rounded-full bg-bg-inverted text-data-sm text-text-inverted">2</span>
+              여러 직무가 함께 뽑는 산업
+            </li>
+          )}
         </ul>
       )}
 
@@ -287,8 +296,7 @@ function JobCard({ job, links, coById, indName, onOpen }: { job: JobRole; links:
             onClick={() => onOpen(job.id, ind)}
             lead={<span className="grid size-9 shrink-0 place-items-center rounded-full bg-bg-tonal"><IndustryIcon id={ind} className="size-4" /></span>}
             title={indName(ind)}
-            sub={`실제 공고 ${ls.filter((l) => l.basis === "posting").length}곳`}
-            value={`${ls.length}곳`}
+            sub={`기업 ${ls.length}곳 · 실제 공고 ${ls.filter((l) => l.basis === "posting").length}곳`}
           />
         ))}
       </ul>

@@ -26,6 +26,10 @@
     -webkit-font-smoothing: antialiased;
     font-synthesis: none;
   }
+  /* DESIGN.md: Pretendard only, no mono face; browsers default kbd to monospace (audit C-4) */
+  kbd {
+    font-family: inherit;
+  }
   :lang(ko) em,
   :lang(ko) i {
     font-style: normal;

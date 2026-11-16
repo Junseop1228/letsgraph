@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { MAIN_NAV } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
-const itemBase = "h-9 rounded-element px-3.5 inline-flex items-center text-label-strong transition-colors";
+// whitespace-nowrap: body uses overflow-wrap:anywhere, so narrow screens broke tab names per letter (audit C-1)
+const itemBase = "h-9 shrink-0 whitespace-nowrap rounded-element px-2 sm:px-3.5 inline-flex items-center text-label-strong transition-colors";
 
 export function MainNav() {
   const pathname = usePathname();
