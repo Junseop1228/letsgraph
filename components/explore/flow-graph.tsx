@@ -25,8 +25,8 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type ForceX, type ForceY, type Simulation, type SimulationNodeDatum } from "d3-force";
-import { BubbleSets, rect } from "bubblesets-js";
-import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
+import { BubbleSets, line as bsLine, rect } from "bubblesets-js";
+import { groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
 import { BriefcaseBusiness } from "lucide-react";
 import { IndustryIcon } from "@/components/explore/industry-icon";
@@ -39,11 +39,10 @@ type VNode = Node<VData, "vertex">;
 type LineData = { kind: GLink["kind"]; width: number; x1: number; y1: number; x2: number; y2: number };
 type PathData = { d: string };
 type LineEdge = Edge<LineData, "line">;
-type BridgeEdge = Edge<PathData, "bridge">;
 type PlaneEdge = Edge<PathData, "plane">;
-type GEdge = LineEdge | BridgeEdge | PlaneEdge;
+type GEdge = LineEdge | PlaneEdge;
 type SimNode = GNode & SimulationNodeDatum & { bx?: number; by?: number }; // bx/by = layout anchor before user moves
-type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"] };
+type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"]; dim?: boolean };
 
 type Props = {
   data: GraphData;
@@ -62,9 +61,7 @@ const VSCALE = 1.2;
 const radius = (g: GNode) => g.r * VSCALE;
 // Label type role per vertex kind (px must match the classes in Vertex).
 const LABEL_PX: Record<GNode["type"], number> = { center: 16, ind: 14, co: 13 };
-// Stars spread a little wider than graph.ts targets so labels fit (targets scaled around each star centre).
-const SCALE: Record<GNode["type"], number> = { center: 1, ind: 1.12, co: 1.3 };
-const DIST: Record<GLink["kind"], number> = { "job-ind": RING * 1.12, "ind-co": 118, "ind-co-est": 118 };
+// Link length = the distance between the two layout targets, so the springs keep the layout of lib/explore/graph.ts instead of pulling the fan in.
 const STR: Record<GLink["kind"], number> = { "job-ind": 0.25, "ind-co": 0.45, "ind-co-est": 0.45 };
 // Fit never zooms below this, so 13px labels stay >= 12px on screen (DESIGN: labels never below 12px); pinch/wheel can still go further.
 const FIT_MIN_ZOOM = 0.92;
@@ -77,16 +74,6 @@ function footprint(g: GNode): Box {
   return { w: Math.max(2 * r, lw), h: 2 * r + 2 * lh };
 }
 
-function bridgePath(s: SimNode, t: SimNode, sign: 1 | -1): string {
-  const sx = s.x ?? 0, sy = s.y ?? 0, tx = t.x ?? 0, ty = t.y ?? 0;
-  const mx = (sx + tx) / 2, my = (sy + ty) / 2, dx = tx - sx, dy = ty - sy;
-  const len = Math.hypot(dx, dy) || 1;
-  let px = -dy / len, py = dx / len;
-  if (py * sign < 0) { px = -px; py = -py; }
-  const off = Math.min(150, len * 0.3);
-  return `M${sx},${sy} Q${mx + px * off},${my + py * off} ${tx},${ty}`;
-}
-
 // ---- vertex + edge renderers -------------------------------------------------------------------
 type Ctx = { select: (id: string) => void; hover: (id: string | null) => void; dragged: RefObject<boolean> };
 const GraphCtx = createContext<Ctx | null>(null);
@@ -95,7 +82,6 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
   const ctx = useContext(GraphCtx)!;
   const g = data.g;
   const d = radius(g) * 2;
-  const shared = g.type === "ind" && (g.shared ?? 0) > 1;
   return (
     <button
       type="button"
@@ -103,7 +89,7 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       aria-description={data.aria} // name = the visible label (WCAG 2.5.3 label in name); details go in the description
       aria-expanded={g.type === "ind" ? !!g.expanded : undefined}
       style={{ width: d, height: d } as CSSProperties}
-      className={cn("gv", `gv-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", shared && "is-shared", g.expanded && "is-expanded")}
+      className={cn("gv", `gv-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", g.expanded && "is-expanded")}
       onClick={() => {
         if (ctx.dragged.current) return; // the pointer-up that ends a drag is not a click
         ctx.select(id);
@@ -116,7 +102,6 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       <span className={cn("gv-label", g.type === "center" ? "text-body font-bold" : g.type === "ind" ? "text-label-strong" : cn("text-caption", g.saved ? "font-semibold" : "font-medium"))}>{g.label}</span>
       {g.type === "center" && <BriefcaseBusiness aria-hidden className="gv-icon" strokeWidth={1.75} style={{ width: d * 0.5, height: d * 0.5 }} />}
       {g.type === "ind" && <IndustryIcon id={g.ref} className="gv-icon" style={{ width: d * 0.5, height: d * 0.5 }} />}
-      {shared && <span className="gv-badge figures" aria-hidden>{g.shared}</span>}
       {/* React Flow only draws edges between nodes that have handles; ours are invisible (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
       <Handle type="source" position={Position.Bottom} isConnectable={false} className="ghandle" />
@@ -128,15 +113,12 @@ const LineEdgeView = memo(function LineEdgeView({ data }: EdgeProps<LineEdge>) {
   const d = data!;
   return <path className={cn("ge", d.kind)} d={`M${d.x1},${d.y1}L${d.x2},${d.y2}`} style={{ strokeWidth: d.width }} />;
 });
-const BridgeEdgeView = memo(function BridgeEdgeView({ data }: EdgeProps<BridgeEdge>) {
-  return <path className="gbridge" d={data!.d} />;
-});
 const PlaneEdgeView = memo(function PlaneEdgeView({ data }: EdgeProps<PlaneEdge>) {
   return <path className="gplane" d={data!.d} />;
 });
 
 const nodeTypes = { vertex: Vertex } satisfies NodeTypes;
-const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
+const edgeTypes = { line: LineEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
 function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, fitMinZoom, controlsClassName }: Props) {
@@ -193,12 +175,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
   // (re)build the simulation whenever the graph data changes (stars toggled, industry opened, company saved)
   useEffect(() => {
-    const centre = new Map(data.nodes.filter((n) => n.type === "center").map((n) => [n.job, n]));
     const sn: SimNode[] = data.nodes.map((n) => {
-      const c = centre.get(n.job);
-      const k = SCALE[n.type];
-      const bx = c ? c.tx + (n.tx - c.tx) * k : n.tx;
-      const by = c ? c.ty + (n.ty - c.ty) * k : n.ty;
+      const bx = n.tx, by = n.ty; // graph.ts targets are final, no per-type rescale (a company block must stay tight, D 2026-11-17)
       const o = offsetOf(n);
       const tx = bx + o.x, ty = by + o.y;
       const old = posRef.current.get(n.id);
@@ -214,7 +192,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     simNodesRef.current = sn;
     const links: SimLink[] = data.links.flatMap((l) => {
       const s = byId.get(l.source), t = byId.get(l.target);
-      return s && t ? [{ source: s, target: t, kind: l.kind }] : [];
+      return s && t ? [{ source: s, target: t, kind: l.kind, dim: l.dim }] : [];
     });
     linksRef.current = links;
     linkWRef.current = new Map(data.links.map((l) => [`${l.source}>${l.target}`, l.w]));
@@ -237,19 +215,33 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         const h = 2 * r + LABEL_PX[n.type] * 1.4 + 4;
         return rect((n.x ?? 0) - half - pad, (n.y ?? 0) - r - pad, half * 2 + pad * 2, h + pad * 2);
       };
-      const bs = new BubbleSets();
-      bs.pushMember(...sn.filter(isMember).map((n) => box(n, 10)));
-      bs.pushNonMember(...sn.filter((n) => !isMember(n) && n.job === expandedInd.job).map((n) => box(n, 4)));
-      planeRef.current = bs.compute().sample(8).simplify(0).bSplines().simplify(0).toString();
+      // One plane around the opened industry and its companies (D 2026-11-17: it must never fall apart into pieces).
+      const members = sn.filter(isMember);
+      const mb = members.map((n) => box(n, 10));
+      const touches = (r: ReturnType<typeof rect>) => mb.some((m) => m.x < r.x + r.width && r.x < m.x + m.width && m.y < r.y + r.height && r.y < m.y + m.height);
+      // a neighbour whose box touches a member would cut the plane open, so it is left out of the non-members
+      const non = sn.filter((n) => !isMember(n) && n.job === expandedInd.job).map((n) => box(n, 4)).filter((r) => !touches(r));
+      const ex = expandedInd;
+      const outline = (withNon: boolean) => {
+        const bs = new BubbleSets();
+        bs.pushMember(...members.map((n) => box(n, 10)));
+        if (withNon) bs.pushNonMember(...non);
+        // the industry -> company lines hold the plane together
+        bs.pushEdge(...members.filter((n) => n.type === "co").map((n) => bsLine(ex.x ?? 0, ex.y ?? 0, n.x ?? 0, n.y ?? 0)));
+        return bs.compute();
+      };
+      let path = outline(true);
+      if (path.length === 0) path = outline(false); // never leave an opened industry without its plane
+      planeRef.current = path.sample(8).simplify(0).bSplines().simplify(0).toString();
     };
 
     sim
       .nodes(sn)
-      .force("link", forceLink<SimNode, SimLink>(links).distance((l) => DIST[l.kind]).strength((l) => STR[l.kind]))
-      .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -80)).distanceMax(220))
+      .force("link", forceLink<SimNode, SimLink>(links).distance((l) => Math.hypot(l.target.tx - l.source.tx, l.target.ty - l.source.ty) || 1).strength((l) => STR[l.kind]))
+      .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -40)).distanceMax(220))
       .force("collide", forceRectCollide<SimNode>(footprint, 6, 0.6))
-      .force("x", (forceXRef.current = forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))))
-      .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))));
+      .force("x", (forceXRef.current = forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.5 : 0.55))))
+      .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.5 : 0.55))));
     sim.alphaDecay(reduced ? 0.12 : 0.03);
     sim.on("tick", () => {
       for (const n of sn) posRef.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, vx: n.vx ?? 0, vy: n.vy ?? 0 });
@@ -328,13 +320,11 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
   // hover / selection classes on top of the simulated positions
   const shown = useMemo(
-    () => nodes.map((n) => ({ ...n, className: cn(lit?.has(n.id) && "lit", n.id === selectedId && "sel") })),
+    () => nodes.map((n) => ({ ...n, className: cn(lit?.has(n.id) && "lit", n.id === selectedId && "sel", n.data.g.dim && "dim") })),
     [nodes, lit, selectedId],
   );
 
-  const hoveredId = lit ? [...lit][0] : null; // groupOf puts the hovered node first
   const edges = useMemo<GEdge[]>(() => {
-    const byId = byIdRef.current;
     const out: GEdge[] = [];
     const ex = data.nodes.find((n) => n.type === "ind" && n.expanded);
     if (ex && planeRef.current) out.push({ id: "plane", source: ex.id, target: ex.id, type: "plane", data: { d: planeRef.current }, selectable: false, focusable: false });
@@ -345,25 +335,15 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         source: l.source.id,
         target: l.target.id,
         type: "line",
-        className: lit && lit.has(l.source.id) && lit.has(l.target.id) ? "lit" : undefined,
+        className: cn(lit && lit.has(l.source.id) && lit.has(l.target.id) && "lit", l.dim && "dim") || undefined,
         // one thin line for every link (D 2026-11-17, "실선을 쓰지 말자"): posting evidence is told in words on the cards
         data: { kind: l.kind, width: w, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
         selectable: false,
         focusable: false,
       });
     }
-    const hovered = hoveredId ? byId.get(hoveredId) : null;
-    const litRef = hovered ? (hovered.type === "co" ? `co:${hovered.ref}` : hovered.ref) : null;
-    const selRef = !selectedId ? null : selectedId.startsWith("ind:") ? selectedId.split(":")[2] : selectedId.startsWith("co:") ? `co:${selectedId.split(":")[2]}` : null;
-    for (const b of data.bridges) {
-      const s = byId.get(b.source), t = byId.get(b.target);
-      if (!s || !t) continue;
-      const on = b.ref === litRef || b.ref === selRef;
-      if (!on) continue; // hidden bridges are not rendered at all (they were most of the edges in big graphs)
-      out.push({ id: `b:${b.source}~${b.target}`, source: b.source, target: b.target, type: "bridge", className: "on", data: { d: bridgePath(s, t, b.sign) }, selectable: false, focusable: false });
-    }
     return out;
-  }, [frame, data, lit, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [frame, data, lit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const zoom = (dir: 1 | -1) => (dir > 0 ? rf.zoomIn({ duration: reduced ? 0 : 200 }) : rf.zoomOut({ duration: reduced ? 0 : 200 }));
 

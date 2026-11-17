@@ -21,6 +21,19 @@
 4. `.env.local`의 `DATA_SOURCE=supabase`로 바꾸면 화면이 DB를 읽어요.
 5. DB 타입 만들기(선택): `npm run db:types` → `lib/database.types.ts`
 
+## Vercel에 배포하기
+
+1. Vercel에서 Add New → Project로 GitHub 저장소 `letsgraph`를 가져와요. Next.js는 자동으로 잡혀요. 함수 지역은 `vercel.json`이 서울(`icn1`)로 정해요. Supabase 팀 프로젝트가 서울이라서 DB 왕복이 짧아져요.
+2. Environment Variables에 값을 넣어요. 값은 저장소나 채팅에 올리지 않아요.
+   - 꼭 필요: `DATA_SOURCE=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
+   - 기능별: `DART_API_KEY`(공시 첫 조회 분석), `GOOGLE_GENERATIVE_AI_API_KEY`(AI 기능), `NEXT_PUBLIC_TOSS_CLIENT_KEY` + `TOSS_SECRET_KEY`(테스트 결제), `ADMIN_EMAILS`(관리자 메뉴), `NEXT_PUBLIC_POSTHOG_KEY`(선택)
+   - 넣지 않는 값: `SEED_TOKEN`(없으면 `/api/dev/*`가 모두 403으로 잠겨요), `SUPABASE_DB_PASSWORD`(Supabase CLI 전용)
+3. `NEXT_PUBLIC_*`와 `DATA_SOURCE`는 빌드할 때 코드에 박혀요. 바꾸면 다시 배포해야 해요.
+4. Supabase 대시보드의 Authentication → URL Configuration에 배포 주소를 Site URL과 Redirect URLs(`https://<배포 주소>/**`)로 추가해요. 구글 로그인이 돌아올 주소예요.
+5. 배포가 끝나면 `/api/health`에서 `source`가 `supabase`인지, 회사 수가 나오는지 확인해요.
+6. Vercel은 DB 마이그레이션을 실행하지 않아요. 새 마이그레이션이 든 PR을 병합하면 팀 DB에 `db push`를 따로 해요.
+7. 요금제는 Hobby(무료)예요. 함수 실행 시간은 최대 300초라서(`maxDuration = 300`), 오래 걸리는 데이터 수집은 로컬에서 돌려요.
+
 ## 디자인만 바꾸기
 
 색, 글자 크기, 모서리 같은 값은 코드에 직접 쓰지 않고 토큰으로만 써요.
