@@ -13,7 +13,7 @@ import { DartClient } from "@/lib/dart/client";
 import { analyzeMany, coreSet } from "@/lib/dart/analyze";
 import { aiEnabled } from "@/lib/ai/tasks";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const token = process.env.SEED_TOKEN;
