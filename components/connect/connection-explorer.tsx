@@ -25,7 +25,7 @@ type Props = { evidence: EvidencePoint[]; activities: Activity[]; episodes: Expe
 const focusRing = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /** Three squares, filled by strength (the same filled/hollow language as the S·T·A·R marks and the job map). */
-export function StrengthMeter({ strength, className }: { strength: EvidenceStrength; className?: string }) {
+export function StrengthMeter({ strength, className, strong = false }: { strength: EvidenceStrength; className?: string; strong?: boolean }) {
   const n = STRENGTH_LEVEL[strength];
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
@@ -34,7 +34,7 @@ export function StrengthMeter({ strength, className }: { strength: EvidenceStren
           <i key={i} className={cn("size-2.5 rounded-inner", i <= n ? "bg-graph-division" : "border border-graph-division")} />
         ))}
       </span>
-      <span className="text-caption text-text-secondary">{STRENGTH_LABEL[strength]}</span>
+      <span className={cn("text-caption", strong ? "text-text-primary" : "text-text-secondary")}>{STRENGTH_LABEL[strength]}</span>
     </span>
   );
 }
@@ -105,8 +105,8 @@ export function ConnectionExplorer({ evidence, activities, episodes }: Props) {
                       >
                         <span className="text-label-strong break-keep">{e.requirement}</span>
                         <span className="flex w-full flex-wrap items-center justify-between gap-2">
-                          <StrengthMeter strength={e.strength} />
-                          {e.cardTitle ? <span className="truncate text-caption text-text-secondary">{e.cardTitle}</span> : null}
+                          <StrengthMeter strength={e.strength} strong={selected} />
+                          {e.cardTitle ? <span className={cn("truncate text-caption", selected ? "text-text-primary" : "text-text-secondary")}>{e.cardTitle}</span> : null}
                         </span>
                       </button>
                     </li>

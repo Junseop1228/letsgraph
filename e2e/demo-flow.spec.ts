@@ -102,7 +102,7 @@ test.describe("analysis", () => {
     await expect(page.getByText("추천 근거").first()).toBeVisible();
     // pick a competency -> its card -> details and the reason
     await page.getByRole("button", { name: /주도성/ }).click();
-    await page.getByRole("button", { name: /재고 폐기 줄이기/ }).click();
+    await page.getByRole("button", { name: /카드를 눌러 상세 보기/ }).click(); // the recommended card in the right panel
     await expect(page.getByText("감보다 기록이 설득력이 있다는 걸 배웠어요.")).toBeVisible();
     // a competency with no card says so and leads to 만들기
     await page.getByRole("button", { name: /도전/ }).click();
@@ -147,7 +147,7 @@ test.describe("manage", () => {
   test("PORT-03 카드 보드와 에피소드 자세히", async ({ page }) => {
     await page.goto("/manage?tab=cards");
     await expect(page.getByRole("list", { name: "카페 아르바이트 에피소드" })).toBeVisible();
-    await page.getByRole("button", { name: /재고 폐기 줄이기/ }).click();
+    await page.getByRole("button", { name: /카드를 눌러 상세 보기/ }).click(); // the recommended card in the right panel
     const detail = page.getByRole("complementary", { name: "자세히" });
     await expect(detail.getByRole("heading", { name: "재고 폐기 줄이기" })).toBeVisible();
     await expect(detail.getByText("감보다 기록이 설득력이 있다는 걸 배웠어요.")).toBeVisible();
