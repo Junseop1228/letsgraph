@@ -12,6 +12,7 @@ import type {
   SegmentDetail,
 } from "@/lib/contracts/domain";
 import type { Activity, Experience, JobPosting, PostingAnalysisOutput, ConnectionOutput } from "@/lib/contracts/activity";
+import { DEMO_EVIDENCE } from "@/lib/data/fixtures-evidence";
 
 export const INDUSTRIES: Industry[] = [
   { id: "food", name: "식품" },
@@ -220,7 +221,7 @@ export const DEMO_CONNECTIONS: Record<string, ConnectionOutput> = {
     skills: [
       { competency: "데이터 분석", activityId: "act-contest", activityTitle: "교내 데이터 분석 공모전", reason: "서울시 상권 공공 데이터를 전처리해 분석 보고서를 낸 활동이에요. 품질관리의 검사 데이터에서 기준을 벗어난 값을 찾아내는 일과 이어져요." },
     ],
-    gaps: ["도전"],
+    gaps: ["도전"], evidence: DEMO_EVIDENCE,
   },
 };
 

@@ -15,7 +15,7 @@ test("내비게이션 4개 (탐색·공고·관리·연결)와 각 탭 첫 화�
   await nav.getByRole("link", { name: "연결" }).click();
   await page.getByRole("link", { name: /CJ제일제당 · 품질관리 신입/ }).click();
   await expect(page).toHaveURL(/\/connect\/demo-cj-quality$/);
-  await expect(page.getByText("연결 근거")).toBeVisible();
+  await expect(page.getByText("추천 근거").first()).toBeVisible();
 });
 
 test("헤더 알림함과 내 계정", async ({ page }) => {

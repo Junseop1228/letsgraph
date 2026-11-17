@@ -8,6 +8,7 @@ import { z } from "zod";
 import { currentPlan } from "@/lib/billing/server";
 import type { ActionState } from "@/app/(main)/postings/actions";
 import { logAiFailure } from "@/lib/ai/clamp";
+import { cardsKey } from "@/lib/connect/freshness";
 import { linkPosting } from "@/lib/posting/segment";
 
 export async function connectAction(postingId: string, _prev: ActionState): Promise<ActionState> {
@@ -48,7 +49,7 @@ export async function connectAction(postingId: string, _prev: ActionState): Prom
   try {
     const out = await connect(analysis, episodes, activities, context);
     const { createAdminClient } = await import("@/lib/supabase/admin");
-    await createAdminClient().from("connections").upsert({ posting_id: postingId, user_id: uid, output: out, model: AI_MODEL });
+    await createAdminClient().from("connections").upsert({ posting_id: postingId, user_id: uid, output: { ...out, basis: cardsKey(episodes, activities) }, model: AI_MODEL });
     await db.from("quota_usage").insert({ user_id: uid, feature: "connection" });
   } catch (e) {
     logAiFailure("connect", e);
@@ -90,8 +91,10 @@ async function withMatches(postingId: string, questions: EssayQuestion[]): Promi
   if (!aiEnabled()) return { questions, matched: false };
   try {
     const { repo } = await userData();
-    const [episodes, activities, analysis] = await Promise.all([repo.experiences(), repo.activities(), repo.postingAnalysis(postingId)]);
-    return { questions: await matchQuestions(questions, episodes, activities, analysis), matched: true };
+    const [episodes, activities, analysis, connection] = await Promise.all([repo.experiences(), repo.activities(), repo.postingAnalysis(postingId), repo.connection(postingId)]);
+    const basis = cardsKey(episodes);
+    const matched = await matchQuestions(questions, episodes, activities, analysis, connection);
+    return { questions: matched.map((q) => ({ ...q, basis })), matched: true };
   } catch (e) {
     logAiFailure("match_questions", e);
     return { questions, matched: false };

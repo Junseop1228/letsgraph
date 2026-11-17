@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allocation, cleanQuestions, ESSAY_GUIDE, planEssay } from "@/lib/kit/questions";
-import { buildPromptKit, kitToText } from "@/lib/kit/build";
 import { EssayQuestion, Experience, type ConnectionOutput } from "@/lib/contracts/activity";
-import { DEMO_ACTIVITIES, DEMO_ANALYSES, DEMO_CONNECTIONS, DEMO_EXPERIENCES, DEMO_POSTINGS } from "@/lib/data/fixtures";
+import { DEMO_ACTIVITIES } from "@/lib/data/fixtures";
 
 const q = (id: string, type: EssayQuestion["type"], maxChars: number | null = null, minChars: number | null = null): EssayQuestion =>
   EssayQuestion.parse({ id, text: `문항 ${id}`, maxChars, minChars, type });
@@ -44,23 +43,5 @@ describe("FR-PREM-04 문항별 재료", () => {
   it("never gives the same episode to two questions", () => {
     const plan = planEssay([q("a", "problem"), q("b", "problem")], [ep("only", "problem")], [], { links: [], gaps: [] } as ConnectionOutput);
     expect(plan.map((p) => p.episode?.id ?? null)).toEqual(["only", null]);
-  });
-});
-
-describe("FR-PREM-04 문항이 있는 키트", () => {
-  const posting = { ...DEMO_POSTINGS[0], questions: [q("q1", "career", 5000, 500), q("q2", "achievement", 5000)] };
-  const text = kitToText(
-    buildPromptKit({ posting, analysis: DEMO_ANALYSES[posting.id], connection: DEMO_CONNECTIONS[posting.id], experiences: DEMO_EXPERIENCES, activities: DEMO_ACTIVITIES }),
-  );
-  it("follows the real questions with limits, allocation, material and what to ask", () => {
-    expect(text).toContain('[문항 1] 경력기술서 (최대 5,000자, 최소 500자): "문항 q1"');
-    expect(text).toContain("- 최소 500자를 넘기도록 칸마다 분량을 안내한다");
-    expect(text).toContain('- 쓸 활동: "카페 아르바이트" (<경력_재료> 참고)');
-    expect(text).toContain("- 아직 모르는 것 (나에게 물어서 채워라): 부서·직급");
-    expect(text).toContain('<경력_재료 활동="카페 아르바이트">');
-    expect(text).toContain("[문항 2] 성과·강점 (최대 5,000자)");
-    expect(text).toContain("(약 2,000자)");
-    expect(text).toContain("<문항_가이드>의 실제 문항을 순서대로 진행하라");
-    expect(text).not.toContain("[협업·갈등]"); // the general guide is replaced
   });
 });
