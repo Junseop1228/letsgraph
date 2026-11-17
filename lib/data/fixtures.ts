@@ -66,12 +66,15 @@ export const COMPANIES: Company[] = [
 const L = (jobRoleId: string, basis: "posting" | "estimated", ids: string[]): JobLink[] =>
   ids.map((companyId) => ({ jobRoleId, companyId, basis }));
 
-/** OPEN (specs/data-pipeline): real link basis. Demo links follow prototype v3. */
+/**
+ * Demo links (prototype v3). All 'estimated': a 'posting' link needs a confirmed posting (POST-07 job_link_evidence),
+ * and the demo data has none (2026-11-17: the 4 demo 'posting' links were not real evidence).
+ */
 export const JOB_LINKS: JobLink[] = [
-  ...L("quality", "posting", ["cj", "nongshim", "ottogi"]),
+  ...L("quality", "estimated", ["cj", "nongshim", "ottogi"]),
   ...L("quality", "estimated", ["orion", "samyang", "dongwon", "daesang", "cjfresh", "celltrion", "sbl", "amore", "kolmar"]),
   ...L("production-mgmt", "estimated", ["cj", "nongshim", "ottogi", "orion", "samyang", "dongwon", "daesang", "celltrion", "sbl", "kolmar"]),
-  ...L("overseas-sales", "posting", ["samyang"]),
+  ...L("overseas-sales", "estimated", ["samyang"]),
   ...L("overseas-sales", "estimated", ["orion", "cj", "nongshim", "dongwon", "celltrion", "amore", "kolmar"]),
 ];
 

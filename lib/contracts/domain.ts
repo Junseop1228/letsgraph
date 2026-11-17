@@ -48,6 +48,8 @@ export const JobLink = z.object({
   jobRoleId: z.string(),
   companyId: z.string(),
   basis: z.enum(["posting", "estimated"]),
+  /** confirmed postings behind a 'posting' link (specs/posting POST-07 job_link_evidence): rows and the latest check */
+  evidence: z.object({ count: z.number().int(), lastSeen: z.string() }).optional(),
 });
 export type JobLink = z.infer<typeof JobLink>;
 

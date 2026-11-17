@@ -3,9 +3,12 @@ import { expect, test } from "@playwright/test";
 test("FR-CORP-04 기업 검색으로 기업 상세 열기", async ({ page }) => {
   await page.goto("/postings");
   await page.waitForLoadState("networkidle");
-  await page.keyboard.press("Control+K");
   const input = page.getByPlaceholder("직무나 기업 이름");
-  await expect(input).toBeVisible();
+  // Ctrl+K does nothing until the header search has hydrated (was flaky): press again until the dialog is open
+  await expect(async () => {
+    if (!(await input.isVisible())) await page.keyboard.press("Control+K");
+    await expect(input).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await input.fill("CJ제일");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/company\/cj$/);
@@ -23,7 +26,11 @@ test("FR-CORP-04 직무 검색으로 그래프 열기", async ({ page }) => {
 test("FR-CORP-04 결과 없음", async ({ page }) => {
   await page.goto("/explore/map?job=quality");
   await page.waitForLoadState("networkidle");
-  await page.keyboard.press("Control+K");
-  await page.getByPlaceholder("직무나 기업 이름").fill("없는회사이름");
+  const input = page.getByPlaceholder("직무나 기업 이름");
+  await expect(async () => {
+    if (!(await input.isVisible())) await page.keyboard.press("Control+K");
+    await expect(input).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  await input.fill("없는회사이름");
   await expect(page.getByText("찾는 직무나 기업이 없어요.")).toBeVisible();
 });
