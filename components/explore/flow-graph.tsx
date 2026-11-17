@@ -39,9 +39,8 @@ type VNode = Node<VData, "vertex">;
 type LineData = { kind: GLink["kind"]; width: number; x1: number; y1: number; x2: number; y2: number };
 type PathData = { d: string };
 type LineEdge = Edge<LineData, "line">;
-type BridgeEdge = Edge<PathData, "bridge">;
 type PlaneEdge = Edge<PathData, "plane">;
-type GEdge = LineEdge | BridgeEdge | PlaneEdge;
+type GEdge = LineEdge | PlaneEdge;
 type SimNode = GNode & SimulationNodeDatum & { bx?: number; by?: number }; // bx/by = layout anchor before user moves
 type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"] };
 
@@ -77,16 +76,6 @@ function footprint(g: GNode): Box {
   return { w: Math.max(2 * r, lw), h: 2 * r + 2 * lh };
 }
 
-function bridgePath(s: SimNode, t: SimNode, sign: 1 | -1): string {
-  const sx = s.x ?? 0, sy = s.y ?? 0, tx = t.x ?? 0, ty = t.y ?? 0;
-  const mx = (sx + tx) / 2, my = (sy + ty) / 2, dx = tx - sx, dy = ty - sy;
-  const len = Math.hypot(dx, dy) || 1;
-  let px = -dy / len, py = dx / len;
-  if (py * sign < 0) { px = -px; py = -py; }
-  const off = Math.min(150, len * 0.3);
-  return `M${sx},${sy} Q${mx + px * off},${my + py * off} ${tx},${ty}`;
-}
-
 // ---- vertex + edge renderers -------------------------------------------------------------------
 type Ctx = { select: (id: string) => void; hover: (id: string | null) => void; dragged: RefObject<boolean> };
 const GraphCtx = createContext<Ctx | null>(null);
@@ -95,7 +84,6 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
   const ctx = useContext(GraphCtx)!;
   const g = data.g;
   const d = radius(g) * 2;
-  const shared = g.type === "ind" && (g.shared ?? 0) > 1;
   return (
     <button
       type="button"
@@ -103,7 +91,7 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       aria-description={data.aria} // name = the visible label (WCAG 2.5.3 label in name); details go in the description
       aria-expanded={g.type === "ind" ? !!g.expanded : undefined}
       style={{ width: d, height: d } as CSSProperties}
-      className={cn("gv", `gv-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", shared && "is-shared", g.expanded && "is-expanded")}
+      className={cn("gv", `gv-${g.type}`, g.saved && "is-saved", (g.basis === "estimated" || g.noData) && "is-est", g.expanded && "is-expanded")}
       onClick={() => {
         if (ctx.dragged.current) return; // the pointer-up that ends a drag is not a click
         ctx.select(id);
@@ -116,7 +104,6 @@ const Vertex = memo(function Vertex({ id, data }: NodeProps<VNode>) {
       <span className={cn("gv-label", g.type === "center" ? "text-body font-bold" : g.type === "ind" ? "text-label-strong" : cn("text-caption", g.saved ? "font-semibold" : "font-medium"))}>{g.label}</span>
       {g.type === "center" && <BriefcaseBusiness aria-hidden className="gv-icon" strokeWidth={1.75} style={{ width: d * 0.5, height: d * 0.5 }} />}
       {g.type === "ind" && <IndustryIcon id={g.ref} className="gv-icon" style={{ width: d * 0.5, height: d * 0.5 }} />}
-      {shared && <span className="gv-badge figures" aria-hidden>{g.shared}</span>}
       {/* React Flow only draws edges between nodes that have handles; ours are invisible (edges use simulated centres) */}
       <Handle type="target" position={Position.Top} isConnectable={false} className="ghandle" />
       <Handle type="source" position={Position.Bottom} isConnectable={false} className="ghandle" />
@@ -128,15 +115,12 @@ const LineEdgeView = memo(function LineEdgeView({ data }: EdgeProps<LineEdge>) {
   const d = data!;
   return <path className={cn("ge", d.kind)} d={`M${d.x1},${d.y1}L${d.x2},${d.y2}`} style={{ strokeWidth: d.width }} />;
 });
-const BridgeEdgeView = memo(function BridgeEdgeView({ data }: EdgeProps<BridgeEdge>) {
-  return <path className="gbridge" d={data!.d} />;
-});
 const PlaneEdgeView = memo(function PlaneEdgeView({ data }: EdgeProps<PlaneEdge>) {
   return <path className="gplane" d={data!.d} />;
 });
 
 const nodeTypes = { vertex: Vertex } satisfies NodeTypes;
-const edgeTypes = { line: LineEdgeView, bridge: BridgeEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
+const edgeTypes = { line: LineEdgeView, plane: PlaneEdgeView } satisfies EdgeTypes;
 
 // ---- engine ------------------------------------------------------------------------------------
 function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, label, fitPadding, fitMinZoom, controlsClassName }: Props) {
@@ -332,9 +316,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     [nodes, lit, selectedId],
   );
 
-  const hoveredId = lit ? [...lit][0] : null; // groupOf puts the hovered node first
   const edges = useMemo<GEdge[]>(() => {
-    const byId = byIdRef.current;
     const out: GEdge[] = [];
     const ex = data.nodes.find((n) => n.type === "ind" && n.expanded);
     if (ex && planeRef.current) out.push({ id: "plane", source: ex.id, target: ex.id, type: "plane", data: { d: planeRef.current }, selectable: false, focusable: false });
@@ -352,18 +334,8 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         focusable: false,
       });
     }
-    const hovered = hoveredId ? byId.get(hoveredId) : null;
-    const litRef = hovered ? (hovered.type === "co" ? `co:${hovered.ref}` : hovered.ref) : null;
-    const selRef = !selectedId ? null : selectedId.startsWith("ind:") ? selectedId.split(":")[2] : selectedId.startsWith("co:") ? `co:${selectedId.split(":")[2]}` : null;
-    for (const b of data.bridges) {
-      const s = byId.get(b.source), t = byId.get(b.target);
-      if (!s || !t) continue;
-      const on = b.ref === litRef || b.ref === selRef;
-      if (!on) continue; // hidden bridges are not rendered at all (they were most of the edges in big graphs)
-      out.push({ id: `b:${b.source}~${b.target}`, source: b.source, target: b.target, type: "bridge", className: "on", data: { d: bridgePath(s, t, b.sign) }, selectable: false, focusable: false });
-    }
     return out;
-  }, [frame, data, lit, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [frame, data, lit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const zoom = (dir: 1 | -1) => (dir > 0 ? rf.zoomIn({ duration: reduced ? 0 : 200 }) : rf.zoomOut({ duration: reduced ? 0 : 200 }));
 
