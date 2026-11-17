@@ -18,12 +18,13 @@ describe("FR-MAP-03 나의 취업 그래프 (직무별 별자리)", () => {
     }
   });
 
-  it("shared industries get a count and a bridge between stars", () => {
+  it("an industry two stars share is drawn once per star and nothing links the stars (D 2026-11-17)", () => {
     const g = buildGraph({ ...base, jobs: [role("quality"), role("overseas-sales")], expanded: null });
     const food = g.nodes.filter((n) => n.type === "ind" && n.ref === "food");
     expect(food).toHaveLength(2);
-    expect(food.every((n) => n.shared === 2)).toBe(true);
-    expect(g.bridges.some((b) => b.ref === "food")).toBe(true);
+    expect("bridges" in g).toBe(false);
+    const starOf = (id: string) => g.nodes.find((n) => n.id === id)!.job;
+    expect(g.links.every((l) => starOf(l.source) === starOf(l.target))).toBe(true);
   });
 
   it("companies only when an industry is opened; saved companies always", () => {

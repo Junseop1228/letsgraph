@@ -1,7 +1,7 @@
 // 나의 취업 그래프 "직무별 별자리" (specs/explore FR-MAP-03; decisions 2026-10-30, 2026-11-01, 2026-11-14).
 // Pure data -> graph builder ported from prototype v1.3 (graph.jsx buildGraph), adapted to JobLink data:
 // one star per liked job, each industry at the same fixed angle in every star, companies only when an
-// industry is opened (saved companies always), bridges between the same industry / company across stars.
+// industry is opened (saved companies always). Nothing links one star to another (D 2026-11-17: no shared-industry tag, no cross-star line).
 import type { Company, Industry, JobLink, JobRole } from "@/lib/contracts/domain";
 
 export const RING = 108; // job -> industry distance
@@ -49,15 +49,13 @@ export type GNode = {
   ty: number;
   count?: number; // industry: linked companies in this star
   postings?: number; // industry: companies with a real posting
-  shared?: number; // industry: how many of my jobs hire here
   basis?: "posting" | "estimated";
   saved?: boolean;
   noData?: boolean;
   expanded?: boolean;
 };
 export type GLink = { source: string; target: string; kind: "job-ind" | "ind-co" | "ind-co-est"; w: number };
-export type GBridge = { source: string; target: string; ref: string; sign: 1 | -1 };
-export type GraphData = { nodes: GNode[]; links: GLink[]; bridges: GBridge[] };
+export type GraphData = { nodes: GNode[]; links: GLink[] };
 
 type Input = {
   jobs: JobRole[]; // stars, in order (max 5)
@@ -90,13 +88,12 @@ export function buildGraph(i: Input): GraphData {
     }
     jobInds.set(j.id, m);
   }
-  const shareCount: Record<string, number> = {};
-  for (const m of jobInds.values()) for (const ind of m.keys()) shareCount[ind] = (shareCount[ind] ?? 0) + 1;
-  const angles = industryAngles(i.industries.filter((ind) => shareCount[ind.id]));
+  const present = new Set<string>();
+  for (const m of jobInds.values()) for (const ind of m.keys()) present.add(ind);
+  const angles = industryAngles(i.industries.filter((ind) => present.has(ind.id)));
 
   const nodes: GNode[] = [];
   const links: GLink[] = [];
-  const bridges: GBridge[] = [];
   const A = anchors(jobs.length, i.vertical);
 
   jobs.forEach((j, k) => {
@@ -111,7 +108,7 @@ export function buildGraph(i: Input): GraphData {
       const isEx = exJob === j.id && exInd === ind.id;
       const count = Math.max(i.totals?.[ind.id] ?? 0, ls.length);
       nodes.push({
-        id, type: "ind", ref: ind.id, job: j.id, label: ind.name, count, postings, shared: shareCount[ind.id],
+        id, type: "ind", ref: ind.id, job: j.id, label: ind.name, count, postings,
         r: industryRadius(count), tx: cx + Math.cos(ang) * RING, ty: cy + Math.sin(ang) * RING, expanded: isEx,
       });
       // one thin line style for every link (D 2026-11-17): evidence is told in words on the cards, not by line weight
@@ -134,23 +131,7 @@ export function buildGraph(i: Input): GraphData {
     }
   });
 
-  // bridges between the same industry in different stars (shown on hover / selection)
-  for (const ind of i.industries) {
-    const holders = jobs.filter((j) => jobInds.get(j.id)?.has(ind.id));
-    const sign = Math.sin(rad(angles[ind.id])) >= 0 ? 1 : -1;
-    for (let a = 0; a < holders.length; a++)
-      for (let b = a + 1; b < holders.length; b++)
-        bridges.push({ source: `ind:${holders[a].id}:${ind.id}`, target: `ind:${holders[b].id}:${ind.id}`, ref: ind.id, sign });
-  }
-  // the same company in several stars
-  const coStars = new Map<string, string[]>();
-  for (const n of nodes) if (n.type === "co") coStars.set(n.ref, [...(coStars.get(n.ref) ?? []), n.id]);
-  for (const [co, ids] of coStars) {
-    const c = coById.get(co)!;
-    const sign = Math.sin(rad(angles[c.industryId])) >= 0 ? 1 : -1;
-    for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) bridges.push({ source: ids[a], target: ids[b], ref: `co:${co}`, sign });
-  }
-  return { nodes, links, bridges };
+  return { nodes, links };
 }
 
 /** Which nodes light up together on hover (prototype v1.3 groupOf). */
