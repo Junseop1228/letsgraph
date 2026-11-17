@@ -5,7 +5,9 @@
 import { revalidatePath } from "next/cache";
 import { supabaseEnabled } from "@/lib/data";
 import { aiEnabled, AiUnavailable, extractActivities } from "@/lib/ai/tasks";
-import { activityFromPdf, chatReply, draftActivity, draftEpisode, suggestEpisodes, type ChatTurn } from "@/lib/ai/chat";
+import { activityFromPdf, activityFromRepo, chatReply, draftActivity, draftEpisode, suggestEpisodes, type ChatTurn } from "@/lib/ai/chat";
+import { parseActivityLink } from "@/lib/activity/link";
+import { readRepo, RepoReadError } from "@/lib/github/repo";
 import { logAiFailure } from "@/lib/ai/clamp";
 import { gate } from "@/lib/billing/gate";
 import { Activity, ActivityOutput, ChatLog, EpisodeTheme, ExperienceOutput, type EpisodeSuggestion } from "@/lib/contracts/activity";
@@ -159,16 +161,19 @@ export async function saveActivityAction(draft: unknown): Promise<{ activity?: A
   if (!supabaseEnabled()) return { activity: { ...d.data, id: `demo-${Date.now()}`, sourceLabel: "경험 대화" }, ok: "데모 모드라 저장하지 않고 이어서 진행해요." };
   const { db, uid } = await signedIn();
   if (!uid) return { error: "로그인하면 활동을 저장할 수 있어요." };
+  const parsedLink = d.data.link ? parseActivityLink(d.data.link) : null;
+  const link = parsedLink && "link" in parsedLink ? parsedLink.link.url : null; // PORT-06: allowed sites only
+  const label = parsedLink && "link" in parsedLink ? `GitHub ${parsedLink.link.owner}/${parsedLink.link.repo}` : "경험 대화";
   const { data, error } = await db
     .from("activities")
-    .insert({ user_id: uid, title: d.data.title, kind: d.data.kind, period: d.data.period ?? null, role: d.data.role ?? null, dataset: d.data.dataset ?? null, summary: d.data.summary, scenes: d.data.scenes ?? [], source_label: "경험 대화" })
+    .insert({ user_id: uid, title: d.data.title, kind: d.data.kind, period: d.data.period ?? null, role: d.data.role ?? null, dataset: d.data.dataset ?? null, summary: d.data.summary, scenes: d.data.scenes ?? [], link_url: link, source_label: label })
     .select("id")
     .single();
   if (error || !data) {
     logAiFailure("save_activity", error);
     return { error: "활동을 저장하지 못했어요." };
   }
-  return { activity: { ...d.data, id: data.id, sourceLabel: "경험 대화" }, ok: "활동을 저장했어요. 이제 에피소드를 꺼내 볼게요." };
+  return { activity: { ...d.data, link: link ?? undefined, id: data.id, sourceLabel: label }, ok: "활동을 저장했어요. 이제 에피소드를 꺼내 볼게요." };
 }
 
 /** 에피소드 초안 from the stage-2 conversation. */
@@ -236,4 +241,54 @@ export async function saveEpisodeAction(draft: unknown, activityId: string, log:
     return { error: "에피소드를 저장하지 못했어요." };
   }
   return { ok: "에피소드를 저장했어요.", id: row?.id };
+}
+
+/**
+ * 활동 카드 초안 from a GitHub repository (PORT-06), for the chat's stage 1. Only GitHub repository addresses are
+ * accepted for now. Spends one experience_extraction quota on success; nothing from the repository is stored but the link.
+ */
+export async function activityFromRepoAction(url: string): Promise<{ draft?: ActivityOutput; error?: string }> {
+  const p = parseActivityLink(String(url ?? ""));
+  if ("error" in p) return { error: p.error };
+  if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요. 지금은 활동을 글로 소개해 주세요." };
+  if (!supabaseEnabled()) return { error: "로그인이 연결되면 저장소로 활동을 정리할 수 있어요. 지금은 글로 소개해 주세요." };
+  const g = await gate("experience_extraction", "/manage?tab=chat");
+  if ("error" in g) return { error: g.error };
+  try {
+    const draft = await activityFromRepo(await readRepo(p.link));
+    await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
+    return { draft };
+  } catch (e) {
+    if (e instanceof RepoReadError) return { error: e.message };
+    logAiFailure("activity_repo", e);
+    return { error: e instanceof AiUnavailable ? e.message : "저장소에서 활동을 정리하지 못했어요. 글로 소개해 주세요." };
+  }
+}
+
+/** 카드 탭 "GitHub 주소로 만들기" (PORT-06): one activity card from a repository, saved right away with its link. */
+export async function importActivityFromRepoAction(_prev: { error?: string; ok?: string } | undefined, form: FormData): Promise<{ error?: string; ok?: string }> {
+  const p = parseActivityLink(String(form.get("url") ?? ""));
+  if ("error" in p) return { error: p.error };
+  if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요." };
+  const g = await gate("experience_extraction", "/manage?tab=cards");
+  if ("error" in g) return { error: g.error };
+  let a: ActivityOutput;
+  try {
+    a = await activityFromRepo(await readRepo(p.link));
+  } catch (e) {
+    if (e instanceof RepoReadError) return { error: e.message };
+    logAiFailure("import_activity_repo", e);
+    return { error: e instanceof AiUnavailable ? e.message : "저장소에서 활동을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
+  }
+  const { error } = await g.db.from("activities").insert({
+    user_id: g.uid, title: a.title, kind: a.kind, period: a.period ?? null, role: a.role ?? null, dataset: a.dataset ?? null, summary: a.summary,
+    scenes: a.scenes ?? [], link_url: p.link.url, source_label: `GitHub ${p.link.owner}/${p.link.repo}`,
+  });
+  if (error) {
+    logAiFailure("import_activity_repo_save", error);
+    return { error: "활동 카드를 저장하지 못했어요." };
+  }
+  await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
+  revalidatePath("/manage");
+  return { ok: `"${a.title}" 활동 카드를 만들었어요. 맡은 역할은 저장소만으로 알 수 없어서 비워 뒀어요. 대화에서 에피소드를 꺼내며 채워 보세요.` };
 }

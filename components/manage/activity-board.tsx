@@ -93,6 +93,11 @@ function ActivityDetail({ a, count, onDeleted }: { a: Activity; count: number; o
       <dl className="space-y-3">
         {a.role ? <Field label="맡은 역할" value={a.role} /> : null}
         {a.dataset ? <Field label="사용한 데이터" value={a.dataset} /> : null}
+        {a.link ? (
+          <a href={a.link} target="_blank" rel="noreferrer" className="block truncate text-label underline underline-offset-2">
+            GitHub 저장소 {a.link.replace("https://github.com/", "")}
+          </a>
+        ) : null}
         <Field label="요약" value={a.summary} />
       </dl>
       {a.scenes?.length ? (

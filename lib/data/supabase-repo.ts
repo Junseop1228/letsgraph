@@ -306,6 +306,7 @@ export const supabaseUser: UserRepo = {
         dataset: a.dataset ?? undefined,
         summary: a.summary ?? "",
         scenes: Array.isArray(a.scenes) ? a.scenes : [],
+        link: a.link_url ?? undefined, // PORT-06
         sourceLabel: a.source_label ?? undefined,
       }),
     );
