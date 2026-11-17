@@ -39,7 +39,7 @@ export default function RootLayout({
         >
           <AnalyticsInit />
           {children}
-          <Toaster position="bottom-center" toastOptions={{ style: { background: "var(--color-bg-inverted)", color: "var(--color-text-inverted)", border: 0, borderRadius: "var(--radius-element)" } }} />
+          <Toaster position="bottom-center" mobileOffset={{ bottom: "calc(var(--spacing-tab-bar-height) + 16px)" }} toastOptions={{ style: { background: "var(--color-bg-inverted)", color: "var(--color-text-inverted)", border: 0, borderRadius: "var(--radius-element)" } }} />
         </ThemeProvider>
       </body>
     </html>
