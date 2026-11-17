@@ -286,5 +286,7 @@ export const PromptKit = z.object({
   title: z.string(),
   createdAt: z.string(),
   sections: z.array(PromptKitSection),
+  /** what was left out and why (SAFE-01: sentences that read like instructions to an AI) */
+  notes: z.array(z.string()).optional(),
 });
 export type PromptKit = z.infer<typeof PromptKit>;

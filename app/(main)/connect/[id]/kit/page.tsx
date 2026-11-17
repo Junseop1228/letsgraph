@@ -56,6 +56,7 @@ async function KitContent({ params }: Props) {
 
       <div className="print:hidden">
         <CareerNotice notice={notice} />
+        {kit.notes?.length ? <StaleNotice>{kit.notes.join(" ")}</StaleNotice> : null}
         {stale ? (
           <StaleNotice action={<Link href={`/connect/${id}`} className={cn(btn.secondary, btn.sm)}>지원 근거 다시 찾기</Link>}>
             지원 근거를 찾은 뒤 활동이나 에피소드가 바뀌었어요. 이 키트는 예전 카드 기준이에요.
