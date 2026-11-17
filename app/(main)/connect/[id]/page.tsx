@@ -1,3 +1,4 @@
+import { LoginPrompt } from "@/components/lg/login-prompt";
 import { connection as requestTime } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -20,7 +21,8 @@ type Props = { params: Promise<{ id: string }> };
 async function ConnectionContent({ params }: Props) {
   await requestTime(); // request-time render: uses today's date and the user's data
   const { id } = await params;
-  const { repo, demo } = await userData();
+  const { repo, demo, guest } = await userData();
+  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 시즌 패스로 쓸 수 있어요." />;
   const posting = await repo.posting(id);
   if (!posting) notFound();
   const [analysis, experiences, connection, activities] = await Promise.all([repo.postingAnalysis(id), repo.experiences(), repo.connection(id), repo.activities()]);

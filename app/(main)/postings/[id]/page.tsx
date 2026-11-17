@@ -1,3 +1,4 @@
+import { LoginPrompt } from "@/components/lg/login-prompt";
 import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -17,7 +18,8 @@ type Props = { params: Promise<{ id: string }> };
 async function PostingContent({ params }: Props) {
   await connection(); // request-time render: uses today's date and the user's data
   const { id } = await params;
-  const { repo: user } = await userData();
+  const { repo: user, guest } = await userData();
+  if (guest) return <LoginPrompt next="/postings" title="로그인하면 내 공고가 여기에 모여요" text="공고를 올리면 AI가 주요 업무와 자격 요건을 정리하고 마감일을 달력에 모아 줘요. 로그인하면 공고 정리는 무제한이에요." />;
   const posting = await user.posting(id);
   if (!posting) notFound();
   const analysis = await user.postingAnalysis(id);

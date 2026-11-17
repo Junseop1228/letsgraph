@@ -15,12 +15,26 @@ export async function catalog(): Promise<CatalogRepo> {
   return supabaseCatalog;
 }
 
-/** User data. Without Supabase (or when signed out) the demo user's data is returned and `demo` is true. */
-export async function userData(): Promise<{ repo: UserRepo; demo: boolean }> {
-  if (!supabaseEnabled()) return { repo: fixtureUser, demo: true };
+/** Signed-out visitors (with the account store on): nothing personal, not even demo data (2026-11-18). */
+const guestUser: UserRepo = {
+  postings: async () => [],
+  posting: async () => null,
+  postingAnalysis: async () => null,
+  experiences: async () => [],
+  activities: async () => [],
+  connection: async () => null,
+  watchedCompanyIds: async () => [],
+};
+
+/**
+ * User data. Without Supabase (local development, automated tests) the demo user's data is returned and `demo` is
+ * true. Signed out with Supabase on: empty data and `guest` is true, so personal pages ask to log in (LoginPrompt).
+ */
+export async function userData(): Promise<{ repo: UserRepo; demo: boolean; guest: boolean }> {
+  if (!supabaseEnabled()) return { repo: fixtureUser, demo: true, guest: false };
   const { createClient } = await import("@/lib/supabase/server");
   const { data } = await (await createClient()).auth.getClaims();
-  if (!data?.claims) return { repo: fixtureUser, demo: true };
+  if (!data?.claims) return { repo: guestUser, demo: false, guest: true };
   const { supabaseUser } = await import("@/lib/data/supabase-repo");
-  return { repo: supabaseUser, demo: false };
+  return { repo: supabaseUser, demo: false, guest: false };
 }
