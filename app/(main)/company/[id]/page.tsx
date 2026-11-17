@@ -10,6 +10,8 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { WatchButton } from "@/components/explore/watch-button";
 import { TermTip } from "@/components/lg/term-tip";
 import { UpdatesList } from "@/components/explore/updates-list";
+import { BuildDetail } from "@/components/company/build-detail";
+import { aiEnabled } from "@/lib/ai/tasks";
 
 
 
@@ -31,6 +33,10 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
   const total = segments.reduce((t, s) => t + (s.revenue ?? 0), 0);
   const opTotal = segments.reduce((t, s) => t + Math.max(0, s.operatingIncome ?? 0), 0);
   const top = [...segments].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))[0];
+  const aiMade = segments.some((s) => s.aiGenerated);
+  const basis = c.basisNote ? ` · ${c.basisNote}` : "";
+  // 처음 볼 때 만들기 (specs/data-pipeline FR-OPS-03): a DART company in the live catalogue, keys present
+  const canBuild = repo.source === "supabase" && !!c.corpCode && aiEnabled() && !!process.env.DART_API_KEY;
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
@@ -58,17 +64,21 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
 
       {!c.hasDetail || segments.length === 0 ? (
         <div className="mt-8">
-          <EmptyState
-            title="상세 정보 준비 중이에요"
-            body="이 기업의 사업 부문 정보는 아직 정리되지 않았어요. 공시 수집과 미리 분석이 끝나면 여기에 나와요."
-            action={<Link href="/explore/map" className={btn.secondary}>직무 맵으로</Link>}
-          />
+          {canBuild ? (
+            <BuildDetail companyId={c.id} />
+          ) : (
+            <EmptyState
+              title="상세 정보 준비 중이에요"
+              body="이 기업의 사업 부문 정보는 아직 정리되지 않았어요. 공시 수집과 미리 분석이 끝나면 여기에 나와요."
+              action={<Link href="/explore/map" className={btn.secondary}>직무 맵으로</Link>}
+            />
+          )}
         </div>
       ) : (
         <>
           <div className="grid gap-px border-b border-border bg-border md:grid-cols-2">
             <section className="space-y-4 bg-bg-page py-6 pr-6">
-              <Kicker right={<span className="figures text-caption text-text-secondary">FY{c.fiscalYear} · {c.basisNote}</span>}>사업부 구조</Kicker>
+              <Kicker right={aiMade ? <TrustLabel p={{ kind: "ai" }} /> : <span className="figures text-caption text-text-secondary">FY{c.fiscalYear}{basis}</span>}>사업부 구조</Kicker>
               <div>
                 <h2 className="text-heading-2">돈은 어디서 버나요?</h2>
                 {top && <p className="mt-1 text-body text-text-secondary">매출의 {Math.round(share(top.revenue ?? 0, total))}%가 {top.name}에서 나와요.</p>}
@@ -93,8 +103,15 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
                   })}
                 </div>
               ))}
-              {c.source && <SourceLine p={c.source} />}
-              <p className="text-caption text-text-secondary">그 외 = 전사 − 식품 − 바이오로 계산한 값이에요. 사업부를 누르면 돈 버는 흐름이 나와요.</p>
+              {aiMade ? (
+                <SourceLine p={{ kind: "ai", label: `${c.fiscalYear ?? "최근"} 사업보고서의 사업 부문을 AI가 정리했어요` }} />
+              ) : (
+                c.source && <SourceLine p={c.source} />
+              )}
+              <p className="text-caption text-text-secondary">
+                {segments.some((s) => s.calculated) ? "(계산) = 전사 수치에서 다른 사업부를 빼서 계산한 값이에요. " : ""}
+                사업부를 누르면 돈 버는 흐름이 나와요.
+              </p>
             </section>
 
             <section className="space-y-4 bg-bg-page py-6 md:pl-6">
@@ -118,8 +135,8 @@ async function CompanyPageContent({ params }: { params: Promise<{ id: string }> 
           {detail && (
             <div className="grid gap-px bg-border md:grid-cols-2">
               <section className="space-y-3 bg-bg-page py-6 pr-6">
-                <Kicker right={<span className="text-caption text-text-secondary">억원 · {c.basisNote}</span>}>재무 추이</Kicker>
-                <TrendChart points={detail.trend} />
+                <Kicker right={<span className="text-caption text-text-secondary">억원{basis}</span>}>재무 추이</Kicker>
+                {detail.trend.length ? <TrendChart points={detail.trend} /> : <p className="text-body text-text-secondary">연도별 매출·영업이익이 아직 없어요.</p>}
                 <SourceLine p={detail.trendSource} />
               </section>
               <section className="bg-bg-page py-6 md:pl-6">

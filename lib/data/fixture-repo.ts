@@ -52,6 +52,12 @@ export const fixtureCatalog: CatalogRepo = {
   segment: async (id) => SEGMENTS.find((s) => s.id === id) ?? null,
   segmentDetail: async (id) => SEGMENT_DETAILS.find((d) => d.segmentId === id) ?? null,
   companyDetail: async (companyId) => COMPANY_DETAILS.find((d) => d.companyId === companyId) ?? null,
+  recentUpdates: async (limit) =>
+    COMPANY_DETAILS.flatMap((d) =>
+      d.updates.map((update) => ({ companyId: d.companyId, companyName: COMPANIES.find((c) => c.id === d.companyId)?.name ?? d.companyId, update })),
+    )
+      .sort((a, b) => b.update.date.localeCompare(a.update.date))
+      .slice(0, limit),
 };
 
 export const fixtureUser: UserRepo = {
