@@ -95,6 +95,8 @@ export const PostingAnalysisOutput = z.object({
   cautions: z.array(z.string()).max(5), // 작성 주의사항 (e.g. 희망 근무지 기재)
   /** 경력 요건 (specs/posting POST-06). Absent in analyses made before 2026-11-17 (read from the text instead). */
   career: z.object({ level: z.enum(["new", "experienced", "any", "unknown"]), minYears: z.number().int().min(0).max(30).nullable() }).optional(),
+  /** 직무 (POST-07): one of lib/reference/jobs.ts, or null when the posting does not make it clear */
+  jobRoleId: z.string().max(60).nullable().optional(),
 });
 export type PostingAnalysisOutput = z.infer<typeof PostingAnalysisOutput>;
 export type Competency = z.infer<typeof Competency>;

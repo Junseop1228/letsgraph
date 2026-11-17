@@ -1,11 +1,14 @@
 "use server";
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { gate } from "@/lib/billing/gate";
 import { AI_MODEL, AiUnavailable, analyzePosting, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
 import { PostingTextInput, PostingUrlInput } from "@/lib/contracts/activity";
 import { checkPostingUrl } from "@/lib/posting/url";
 import { linkPosting } from "@/lib/posting/segment";
+import { recordJobEvidence } from "@/lib/posting/job-evidence";
+import { JOBS } from "@/lib/reference/jobs";
 import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
 export type ActionState = { error?: string; ok?: string } | undefined;
@@ -46,12 +49,14 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
     return { error: e instanceof AiUnavailable ? e.message : "공고를 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   const link = await linkPosting(out); // POST-05: catalogue company and division, when clear
+  const jobRoleId = out.jobRoleId && JOBS.some((j) => j.id === out.jobRoleId) ? out.jobRoleId : null; // POST-07
   const { data: posting, error } = await db
     .from("job_postings")
     .insert({
       user_id: uid,
       company_id: link.companyId,
       segment_id: link.segmentId,
+      job_role_id: jobRoleId,
       company_name: out.companyName,
       title: out.title,
       deadline: out.deadline,
@@ -65,6 +70,11 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
   // posting_analyses is written with the server key (users have read-only access to AI results)
   const { createAdminClient } = await import("@/lib/supabase/admin");
   await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: AI_MODEL });
+  // POST-07: confirm on the web that the company posts this job, after the response (the user does not wait)
+  if (jobRoleId && link.companyId) {
+    const companyId = link.companyId;
+    after(() => recordJobEvidence({ jobRoleId, companyId, segmentId: link.segmentId, companyName: out.companyName, title: out.title, submittedUrl: sourceUrl ?? null }));
+  }
   redirect(`/postings/${posting.id}`);
 }
 
