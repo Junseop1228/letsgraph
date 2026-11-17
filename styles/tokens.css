@@ -33,6 +33,10 @@
   --ds-me: #3a9d66;
   --ds-me-muted: #e9f6ee;
   --ds-text-me: #1e6b45;
+  --ds-sun: #d9772f;
+  --ds-sun-muted: #fff1e6;
+  --ds-moon: #0083ee;
+  --ds-moon-muted: #e6f2fe;
   --ds-success: #30a46c;
   --ds-success-muted: #e6f6eb;
   --ds-text-success: #193b2d;
@@ -107,6 +111,10 @@
   --ds-me: #5cb98a;
   --ds-me-muted: #15301f;
   --ds-text-me: #7fd7a6;
+  --ds-sun: #e59a5c;
+  --ds-sun-muted: #3a2412;
+  --ds-moon: #0083ee;
+  --ds-moon-muted: #0b2440;
   --ds-success: #30a46c;
   --ds-success-muted: #132d21;
   --ds-text-success: #3dd68c;
@@ -175,6 +183,10 @@
   --color-me: var(--ds-me);
   --color-me-muted: var(--ds-me-muted);
   --color-text-me: var(--ds-text-me);
+  --color-sun: var(--ds-sun);
+  --color-sun-muted: var(--ds-sun-muted);
+  --color-moon: var(--ds-moon);
+  --color-moon-muted: var(--ds-moon-muted);
   --color-success: var(--ds-success);
   --color-success-muted: var(--ds-success-muted);
   --color-text-success: var(--ds-text-success);

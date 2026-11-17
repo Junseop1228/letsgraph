@@ -7,6 +7,7 @@ import { hasEnvVars } from "@/lib/utils";
 import { HeaderSearch } from "@/components/search/header-search";
 import { HeaderNotifications } from "@/components/header/header-notifications";
 import { AdminLink } from "@/components/header/admin-link";
+import { ThemeToggle } from "@/components/header/theme-toggle";
 
 function Logo() {
   return (
@@ -29,7 +30,7 @@ function DemoModeNotice() {
   );
 }
 
-// Header per the teammate spec: logo, 4 tabs, search, notification bell, account.
+// Header per the teammate spec: logo, 4 tabs, search, theme button (COL-9), notification bell, account.
 // Profile icon exactly once (AuthButton, or here in demo mode). Logged in: icon + 로그아웃, no e-mail text link (audit C-5).
 export function AppHeader() {
   return (
@@ -49,6 +50,7 @@ export function AppHeader() {
           <HeaderSearch />
         </Suspense>
         <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle />
           <Suspense>
             <HeaderNotifications />
           </Suspense>
