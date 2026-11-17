@@ -54,6 +54,8 @@ function toSegment(r: Row, jobRoleIds: string[]): BusinessSegment {
     calculated: !!r.calculated,
     summary: r.summary ?? "",
     jobRoleIds,
+    // seed rows keep the column default (true) but have no 사업보고서 접수번호
+    aiGenerated: !!r.ai_generated && !!r.source_rcept_no,
   });
 }
 
@@ -207,6 +209,18 @@ export const supabaseCatalog: CatalogRepo = {
       updates: await updatesFor(companyId),
       newsQuery: data.news_query ?? "",
     });
+  },
+  async recentUpdates(limit) {
+    const { data } = await pub()
+      .from("company_updates")
+      .select("company_id, tag, title, date, kind, source_label, companies(name)")
+      .order("date", { ascending: false })
+      .limit(limit);
+    return (data ?? []).map((u) => ({
+      companyId: String(u.company_id),
+      companyName: String((u.companies as { name?: string } | null)?.name ?? u.company_id),
+      update: CompanyUpdate.parse({ tag: u.tag, title: u.title, date: u.date, kind: u.kind, sourceLabel: u.source_label }),
+    }));
   },
 };
 

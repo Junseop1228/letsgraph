@@ -7,6 +7,7 @@ import type {
   BusinessSegment,
   Company,
   CompanyDetail,
+  CompanyUpdate,
   Industry,
   JobFamily,
   JobLink,
@@ -44,6 +45,8 @@ export interface CatalogRepo {
   segment(id: string): Promise<BusinessSegment | null>;
   segmentDetail(id: string): Promise<SegmentDetail | null>;
   companyDetail(companyId: string): Promise<CompanyDetail | null>;
+  /** newest filings / IR items of every company, for the header bell (one query; there are thousands of companies) */
+  recentUpdates(limit: number): Promise<{ companyId: string; companyName: string; update: CompanyUpdate }[]>;
 }
 
 /** Per-user data. In fixture mode this returns the demo user's data. */

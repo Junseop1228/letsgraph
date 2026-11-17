@@ -152,6 +152,19 @@ export class DartClient {
     return null;
   }
 
+  /** 공시서류원본파일: the filing as a zip of XML documents (B1/B2 input, lib/dart/document.ts). One call. */
+  async document(rceptNo: string): Promise<Uint8Array> {
+    const res = await this.raw("document.xml", { rcept_no: rceptNo });
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf[0] !== 0x50 || buf[1] !== 0x4b) {
+      // not a zip: DART answers errors (no file, key, limit) as a small XML or JSON body with a status code
+      const body = new TextDecoder().decode(buf.slice(0, 400));
+      const status = body.match(/<status>(\d+)<\/status>|"status"\s*:\s*"(\d+)"/);
+      throw new DartError(`document.xml: ${body.replace(/\s+/g, " ").slice(0, 160)}`, "status", status?.[1] ?? status?.[2]);
+    }
+    return buf;
+  }
+
   /** Full company list (corpCode.xml zip) */
   async corpCodes() {
     const res = await this.raw("corpCode.xml", {});

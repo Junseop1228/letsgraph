@@ -12,7 +12,8 @@ test.describe("explore", () => {
     for (let n = 0; n < 15 && (await card.count()); n++) {
       const label = (await card.getAttribute("aria-label")) ?? "";
       await page.getByRole("button", { name: label === "품질관리 카드" ? "관심 있어요" : "관심 없어요" }).click();
-      await expect.poll(async () => ((await card.count()) ? await card.getAttribute("aria-label") : null)).not.toBe(label);
+      // the last card leaves the page between count() and getAttribute(): read with a short timeout (was flaky)
+      await expect.poll(async () => ((await card.count()) ? await card.getAttribute("aria-label", { timeout: 300 }).catch(() => null) : null)).not.toBe(label);
     }
     await expect(page.getByRole("heading", { name: "어떤 산업이 궁금하세요?" })).toBeVisible();
     const chips = page.getByRole("group", { name: "산업" }).getByRole("button");
@@ -66,7 +67,8 @@ test.describe("explore", () => {
     const cookies = async () => (await page.context().cookies()).map((c) => `${c.name}=${c.value}`);
     await expect.poll(cookies).toContain("lg_company_type=mid");
     // the graph is drawn again with the new condition; the star I had on stays
-    await expect(page.getByRole("button", { name: /조건 바꾸기: 중견/ })).toBeVisible();
+    // the server re-selects companies (live DB: a few seconds)
+    await expect(page.getByRole("button", { name: /조건 바꾸기: 중견/ })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/조건을 (바꿨어요|조금 넓혀서 보여드려요)/).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
     await expect(page.locator("[aria-label='나의 취업 그래프'] [data-gn]")).not.toHaveCount(0);
@@ -99,6 +101,9 @@ test.describe("company", () => {
   });
 
   test("FR-CORP-01 상세 정보가 없는 기업 (EX-02)", async ({ page }) => {
+    // with the live catalogue and keys, a company without segments is analysed on first view (FR-OPS-03), so this
+    // keyless notice only shows in the demo data (CI)
+    test.skip(process.env.DATA_SOURCE === "supabase" && !!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !!process.env.DART_API_KEY, "first-view analysis with keys");
     await page.goto("/company/orion");
     await expect(page.getByText("상세 정보 준비 중이에요")).toBeVisible();
   });

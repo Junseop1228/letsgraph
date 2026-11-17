@@ -62,6 +62,8 @@ export const BusinessSegment = z.object({
   calculated: z.boolean().default(false), // derived by subtraction, not disclosed directly
   summary: z.string(), // one sentence: how this segment makes money
   jobRoleIds: z.array(z.string()),
+  /** made by the B1/B2 extraction from a 사업보고서 (shown with an AI label); hand-made demo rows = false */
+  aiGenerated: z.boolean().optional(),
 });
 export type BusinessSegment = z.infer<typeof BusinessSegment>;
 

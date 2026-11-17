@@ -55,7 +55,7 @@ async function SegmentPageContent({
               {detail.flow.map((f, i) => {
                 const last = i === detail.flow.length - 1;
                 return (
-                  <li key={f.key} className={cn("space-y-1 p-4", last ? "bg-bg-inverted text-text-inverted" : "border-b border-border md:border-b-0 md:border-r")}>
+                  <li key={`${i}-${f.key}`} className={cn("space-y-1 p-4", last ? "bg-bg-inverted text-text-inverted" : "border-b border-border md:border-b-0 md:border-r")}>
                     <p className={cn("text-caption", last ? "text-text-inverted-secondary" : "text-text-secondary")}>{f.key}</p>
                     {f.figure != null ? <p className="figures text-figure-hero">{formatEok(f.figure)}</p> : <p className="text-heading-3">{f.title}</p>}
                     <p className={cn("text-caption", last ? "text-text-inverted-secondary" : "text-text-secondary")}>{f.detail}</p>
@@ -68,13 +68,17 @@ async function SegmentPageContent({
 
           <div className="grid gap-px border-b border-border bg-border md:grid-cols-2">
             <section className="space-y-4 bg-bg-page py-6 pr-6">
-              <Kicker right={<span className="figures text-caption text-text-secondary">FY{c.fiscalYear} · {c.basisNote}</span>}>회사 전체 매출 중 이 사업부</Kicker>
+              <Kicker right={<span className="figures text-caption text-text-secondary">FY{c.fiscalYear}{c.basisNote ? ` · ${c.basisNote}` : ""}</span>}>회사 전체 매출 중 이 사업부</Kicker>
               <SegmentDonut segments={segments} focusId={seg.id} />
-              {c.source && <SourceLine p={c.source} />}
+              {seg.aiGenerated ? <SourceLine p={detail.flowSource} /> : c.source && <SourceLine p={c.source} />}
             </section>
             <section className="space-y-3 bg-bg-page py-6 md:pl-6">
               <Kicker right={<span className="text-caption text-text-secondary">억원 · 실선 매출 · 점선 영업이익</span>}>매출·이익 추이</Kicker>
-              <TrendChart points={detail.trend} title={`${seg.shortName} 매출`} />
+              {detail.trend.length ? (
+                <TrendChart points={detail.trend} title={`${seg.shortName} 매출`} />
+              ) : (
+                <p className="text-body text-text-secondary">이 사업부의 연도별 매출·영업이익은 사업보고서에 따로 나오지 않아요.</p>
+              )}
               <SourceLine p={detail.trendSource} />
             </section>
           </div>
