@@ -7,9 +7,11 @@
 //    it (newest at the bottom), and the right panel keeps the 대화 기록 of the activity's episodes.
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { FileText, Paperclip, Send } from "lucide-react";
+import { FileText, FolderGit2, Paperclip, Send } from "lucide-react";
+import { findLink, parseActivityLink } from "@/lib/activity/link";
 import {
   activityFromPdfAction,
+  activityFromRepoAction,
   draftActivityAction,
   draftEpisodeAction,
   saveActivityAction,
@@ -43,7 +45,7 @@ const isSavedId = (key: string) => /^[0-9a-f-]{36}$/i.test(key);
 const THEMES = Object.keys(EPISODE_THEME_LABEL) as EpisodeTheme[];
 const OPEN_ACTIVITY: ChatTurn = {
   role: "assistant",
-  text: "어떤 활동에서 에피소드를 꺼내 볼까요? 오른쪽에서 저장한 활동을 고르거나, 활동을 글로 소개하거나 PDF로 올려 주세요.",
+  text: "어떤 활동에서 에피소드를 꺼내 볼까요? 오른쪽에서 저장한 활동을 고르거나, 활동을 글로 소개하거나, PDF를 올리거나 GitHub 저장소 주소를 붙여넣어 주세요.",
 };
 const openEpisode = (a: Activity, again = false): ChatTurn => ({
   role: "assistant",
@@ -61,6 +63,26 @@ function parseFileTurn(text: string) {
   const body = text.slice(FILE_PREFIX.length);
   const m = body.match(/^(.*) \(([\d.]+(?:MB|KB))\)$/);
   return m ? { name: m[1], size: m[2] } : { name: body, size: "" };
+}
+
+/** A GitHub repository read in stage 1 (PORT-06): a user turn with this prefix, shown as a block. */
+const REPO_PREFIX = "GitHub 저장소: ";
+const isRepoTurn = (t: ChatTurn) => t.role === "user" && t.text.startsWith(REPO_PREFIX);
+
+function RepoBlock({ text, reading }: { text: string; reading: boolean }) {
+  return (
+    <div className="flex items-center gap-3 rounded-container border border-border-emphasized bg-bg-surface p-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-element bg-bg-tonal" aria-hidden>
+        <FolderGit2 className="size-5 text-text-secondary" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-label-strong">{text.slice(REPO_PREFIX.length)}</span>
+        <span className={cn("block text-support", reading ? "text-text-ai" : "text-text-secondary")}>
+          GitHub 저장소{reading ? ", 저장소를 읽는 중…" : ""}
+        </span>
+      </span>
+    </div>
+  );
 }
 
 function FileBlock({ text, reading }: { text: string; reading: boolean }) {
@@ -225,9 +247,35 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
     setNote(null);
   }
 
+  /** Stage 1 (PORT-06): a GitHub repository address is read into an activity draft; any other address is refused. */
+  function readLink(text: string, url: string) {
+    const p = parseActivityLink(url);
+    if ("error" in p) {
+      setTurns((t) => [...t, { role: "user", text }, { role: "assistant", text: p.error }]);
+      return;
+    }
+    setTurns((t) => [...t, { role: "user", text: `${REPO_PREFIX}${p.link.owner}/${p.link.repo}` }]);
+    start(async () => {
+      const r = await activityFromRepoAction(p.link.url);
+      if (r.error) {
+        setNote(r.error);
+        setTurns((t) => [...t, { role: "assistant", text: `이 저장소에서는 활동을 정리하지 못했어요. ${r.error} 활동을 글로 소개해 주셔도 돼요.` }]);
+      } else {
+        setActivityDraft(r.draft!);
+        setTurns((t) => [...t, { role: "assistant", text: "저장소에서 활동을 정리했어요. 맡은 역할은 저장소만으로는 알 수 없어서 비워 뒀어요. 오른쪽 초안을 확인하고 저장해 주세요." }]);
+      }
+    });
+  }
+
   function send(say?: string, pickedTheme?: EpisodeTheme) {
     const text = (say ?? input).trim();
     if (!text || pending) return;
+    const url = !activity && say === undefined ? findLink(text) : null;
+    if (url) {
+      setInput("");
+      readLink(text, url);
+      return;
+    }
     const useTheme = pickedTheme ?? theme;
     if (pickedTheme) setTheme(pickedTheme);
     const next = [...turns, { role: "user" as const, text }];
@@ -327,6 +375,8 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
                 <p className={cn("mb-1 text-caption", t.role === "assistant" ? "text-text-ai" : "text-right text-text-secondary")}>{t.role === "assistant" ? "AI 코치" : "나"}</p>
                 {isFileTurn(t) ? (
                   <FileBlock text={t.text} reading={pending && i === turns.length - 1} />
+                ) : isRepoTurn(t) ? (
+                  <RepoBlock text={t.text} reading={pending && i === turns.length - 1} />
                 ) : (
                   <p className={cn("whitespace-pre-line rounded-container px-4 py-3 text-body", t.role === "user" ? "bg-bg-tonal" : "border-l-[3px] border-ai bg-bg-page pl-4")}>{t.text}</p>
                 )}
@@ -443,7 +493,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
                 <Kicker right={activityDraft ? <TrustLabel p={{ kind: "ai", text: "AI 요약" }} /> : undefined}>새 활동</Kicker>
                 {!activityDraft ? (
                   <>
-                    <p className="text-body text-text-secondary">대화로 소개하거나 클립 버튼으로 PDF를 올리면 활동 카드 초안을 만들어요.</p>
+                    <p className="text-body text-text-secondary">대화로 소개하거나, 클립 버튼으로 PDF를 올리거나, GitHub 저장소 주소를 붙여넣으면 활동 카드 초안을 만들어요.</p>
                     <button type="button" onClick={makeActivityDraft} disabled={pending || answers < 1} className={btn.secondary}>
                       활동 카드 만들기
                     </button>
@@ -457,6 +507,11 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
                     <p className="text-heading-3">{activityDraft.title}</p>
                     {activityDraft.role ? <p className="text-body"><span className="text-label text-text-secondary">맡은 역할 </span>{activityDraft.role}</p> : null}
                     {activityDraft.dataset ? <p className="text-body"><span className="text-label text-text-secondary">사용한 데이터 </span>{activityDraft.dataset}</p> : null}
+                    {activityDraft.link ? (
+                      <a href={activityDraft.link} target="_blank" rel="noreferrer" className="block truncate text-label underline underline-offset-2">
+                        GitHub 저장소 {activityDraft.link.replace("https://github.com/", "")}
+                      </a>
+                    ) : null}
                     <p className="text-body text-text-secondary">{activityDraft.summary || "요약이 비어 있어요"}</p>
                     {activityDraft.scenes?.length ? (
                       <div className="space-y-1">

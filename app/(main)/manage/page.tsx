@@ -8,6 +8,7 @@ import { PdfUpload } from "@/components/analysis/pdf-upload";
 import { ExperienceChat } from "@/components/manage/experience-chat";
 import { ActivityBoard } from "@/components/manage/activity-board";
 import { importActivitiesAction } from "@/app/(main)/manage/chat-actions";
+import { RepoImport } from "@/components/manage/repo-import";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "관리 · letsGraph" };
@@ -20,14 +21,14 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 type SP = { tab?: string; ep?: string; act?: string; activity?: string; log?: string };
 
-/** 활동 카드 만들기 (PORT-03): on top of the board, folded once there are activities. PDF on the left, chat on the right. */
+/** 활동 카드 만들기 (PORT-03, PORT-06): on top of the board, folded once there are activities. PDF and GitHub on the left, chat on the right. */
 function CreateActivity({ open }: { open: boolean }) {
   return (
     <details open={open} className="group mt-6 rounded-container bg-bg-sunken">
       <summary className="flex min-h-row-height cursor-pointer list-none items-center justify-between gap-3 rounded-container px-5 py-3 hover:bg-overlay-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="text-heading-3">활동 카드 만들기</span>
-          <span className="text-support text-text-secondary">PDF를 올리거나 AI와 대화로 만들어요</span>
+          <span className="text-support text-text-secondary">PDF나 GitHub 저장소로, 또는 AI와 대화로 만들어요</span>
         </span>
         <span className="flex shrink-0 items-center gap-1 text-label text-text-secondary">
           <span className="group-open:hidden">펼치기</span>
@@ -36,15 +37,21 @@ function CreateActivity({ open }: { open: boolean }) {
         </span>
       </summary>
       <div className="grid gap-4 border-t border-border px-5 py-5 md:grid-cols-5">
-        <section className="space-y-2 md:col-span-3" aria-labelledby="create-pdf">
-          <h2 id="create-pdf" className="text-label-strong">PDF로 만들기</h2>
-          <PdfUpload
-            action={importActivitiesAction}
-            label="포트폴리오·자기소개서 PDF"
-            hint="PDF 속 활동마다 활동 카드를 만들어요. 에피소드는 만들기에서 AI와 꺼내요. 10MB까지."
-            submit="활동 카드 만들기"
-          />
-        </section>
+        <div className="space-y-5 md:col-span-3">
+          <section className="space-y-2" aria-labelledby="create-pdf">
+            <h2 id="create-pdf" className="text-label-strong">PDF로 만들기</h2>
+            <PdfUpload
+              action={importActivitiesAction}
+              label="포트폴리오·자기소개서 PDF"
+              hint="PDF 속 활동마다 활동 카드를 만들어요. 에피소드는 만들기에서 AI와 꺼내요. 10MB까지."
+              submit="활동 카드 만들기"
+            />
+          </section>
+          <section className="space-y-2 border-t border-border pt-5" aria-labelledby="create-repo">
+            <h2 id="create-repo" className="text-label-strong">GitHub 주소로 만들기</h2>
+            <RepoImport />
+          </section>
+        </div>
         <section className="flex flex-col gap-3 rounded-container border border-border bg-bg-surface p-4 md:col-span-2" aria-labelledby="create-chat">
           <h2 id="create-chat" className="text-label-strong">대화로 만들기</h2>
           <p className="text-body text-text-secondary">파일이 없어도 돼요. AI 코치가 무슨 활동이었는지, 맡은 역할과 사용한 데이터를 하나씩 물어요.</p>

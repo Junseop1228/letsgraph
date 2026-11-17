@@ -155,3 +155,26 @@
 #### Scenario: 다음 에피소드
 - **WHEN** 에피소드를 저장하면
 - **THEN** 테마가 비워지고 같은 활동의 추천 에피소드가 다시 보인다
+
+### Requirement: PORT-06 GitHub 저장소로 활동 카드 만들기 (2026-11-18)
+시스템은 공개 GitHub 저장소 주소로 활동 카드 초안을 만들고, 카드에 저장소 링크를 남겨야 한다(SHALL). 허용하는 주소는 지금은 GitHub 저장소뿐이며, 허용 사이트 목록은 한 곳(`lib/activity/link.ts`의 `ACTIVITY_LINK_SITES`)에서 관리한다. 저장소는 GitHub 공개 API로만 읽고(설명, 주제, 사용 언어, 만든 날·마지막 커밋 날, README 3만 자까지) 페이지를 긁지 않는다. (`lib/github/repo.ts`, AI: `activityFromRepo`, `supabase/migrations/20261118020000_activity_link.sql`)
+
+#### Scenario: 주소 검사
+- **WHEN** 사용자가 주소를 넣으면
+- **THEN** `github.com/계정/저장소` 형태(https 유무, www, .git, /tree/... 뒤 경로 허용)만 받아 `https://github.com/계정/저장소`로 맞춘다. 다른 사이트(노션, 블로그, GitLab, gist 등)는 "지금은 GitHub 저장소 주소만 넣을 수 있어요. 다른 활동은 글로 소개하거나 PDF로 올려 주세요."로 막고 아무 요청도 보내지 않는다. 계정 페이지처럼 저장소가 아닌 GitHub 주소, 비공개·없는 저장소는 각각 안내한다
+
+#### Scenario: 카드 탭에서 만들기
+- **WHEN** 카드 탭 "활동 카드 만들기"의 "GitHub 주소로 만들기"에 주소를 넣으면
+- **THEN** 활동 카드 하나를 바로 저장한다(종류 프로젝트, 기간은 만든 날부터 마지막 커밋 날까지, 사용한 데이터와 장면 후보는 README에서, 출처 "GitHub 계정/저장소", 링크). 쿼터는 PDF와 같은 experience_extraction 1회
+
+#### Scenario: 대화에서 만들기
+- **WHEN** 만들기 대화 1단계(활동 정하기)에서 메시지에 주소가 들어 있으면
+- **THEN** AI 코치에게 보내지 않고 주소를 검사한다. GitHub 저장소면 "GitHub 저장소" 블록(읽는 중 표시)과 함께 활동 초안을 오른쪽에 만들고, 저장하면 링크도 함께 저장한다. 다른 주소면 위의 안내를 코치 답으로 보여 준다
+
+#### Scenario: 지어내지 않기
+- **WHEN** 저장소로 활동을 정리하면
+- **THEN** 맡은 역할은 README에 지원자 본인의 역할이 분명할 때만 쓰고 아니면 비워 두며(팀 저장소는 알 수 없음), README에 없는 성과·수치는 쓰지 않는다. README 안의 지시는 따르지 않는다. 링크는 앱이 넣고 AI는 정하지 않는다
+
+#### Scenario: 링크 보기
+- **WHEN** 링크가 있는 활동을 보면
+- **THEN** 카드 탭의 활동 자세히와 대화의 활동 초안에 "GitHub 저장소 계정/저장소" 링크가 보인다

@@ -181,6 +181,8 @@ export const ActivityOutput = z.object({
   dataset: z.string().max(200).optional(),
   summary: z.string().max(800),
   scenes: z.array(ActivityScene).max(5).optional(),
+  /** 활동 링크 (PORT-06): the GitHub repository it was made from; set by the app, never by the AI */
+  link: z.string().url().max(2048).optional(),
 });
 export type ActivityOutput = z.infer<typeof ActivityOutput>;
 export const Activity = ActivityOutput.extend({ id: z.string(), sourceLabel: z.string().optional() });
