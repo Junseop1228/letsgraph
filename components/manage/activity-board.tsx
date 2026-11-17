@@ -240,11 +240,11 @@ export function ActivityBoard({ activities, episodes, initialEpisodeId, initialA
                 </div>
               )}
               <div className="relative min-w-0 flex-1">
-                {/* the edge from the activity to its episodes; cards sit on it */}
-                <span aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 hidden h-px bg-graph-edge md:block" />
+                {/* the edge from the activity to its episodes: a short stub before each episode card, so it ends at the last card */}
+                
                 <ul className="relative flex snap-x gap-3 overflow-x-auto pb-2 md:pl-6 md:scroll-pl-6" aria-label={`${label} 에피소드`}>
                   {list.map((e) => (
-                    <li key={e.id} className="shrink-0 snap-start">
+                    <li key={e.id} className="relative shrink-0 snap-start before:absolute before:right-full before:top-1/2 before:hidden before:h-px before:w-3 before:bg-graph-edge first:before:w-6 md:before:block">
                       <EpisodeCard e={e} selected={selection?.type === "episode" && selection.id === e.id} onSelect={() => select({ type: "episode", id: e.id })} />
                     </li>
                   ))}
@@ -258,7 +258,7 @@ export function ActivityBoard({ activities, episodes, initialEpisodeId, initialA
                         )}
                       >
                         <Plus className="size-4" aria-hidden />
-                        {list.length ? "에피소드 더 찾기" : a.scenes?.length ? `장면 후보 ${a.scenes.length}개로 시작` : "첫 에피소드 찾기"}
+                        {list.length ? "에피소드 더 찾기" : "첫 에피소드 꺼내기"}
                       </Link>
                     </li>
                   ) : null}

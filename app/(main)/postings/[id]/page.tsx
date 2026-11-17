@@ -7,6 +7,8 @@ import { catalog, userData } from "@/lib/data";
 import { dDay, formatEok } from "@/lib/format";
 import { POSTING_STATUS_LABEL } from "@/lib/contracts/activity";
 import { Crumbs, DemoBadge, Kicker, TrustLabel, btn } from "@/components/lg/ui";
+import { CareerNotice } from "@/components/analysis/notices";
+import { careerNotice, careerRequirement } from "@/lib/posting/career";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 
 type Props = { params: Promise<{ id: string }> };
@@ -52,6 +54,7 @@ async function PostingContent({ params }: Props) {
         </div>
       </div>
 
+      {analysis ? <CareerNotice notice={careerNotice(careerRequirement(analysis, posting.title))} /> : null}
       {!analysis ? (
         <div className="mt-8 rounded-container bg-bg-sunken p-6">
           <p className="text-body">{posting.source === "demo" ? "데모용 예시 공고라 정리된 내용이 없어요." : "아직 정리된 내용이 없어요."}</p>

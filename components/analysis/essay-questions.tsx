@@ -13,7 +13,7 @@ import { btn, Kicker, TrustLabel } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 
 type EpisodeOption = { id: string; title: string };
-type Props = { postingId: string; saved: EssayQuestion[]; episodes: EpisodeOption[] };
+type Props = { postingId: string; saved: EssayQuestion[]; episodes: EpisodeOption[]; stale?: boolean };
 const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
 const limits = (q: EssayQuestion) => [q.maxChars ? `최대 ${fmt(q.maxChars)}자` : "", q.minChars ? `최소 ${fmt(q.minChars)}자` : ""].filter(Boolean).join(", ");
 
@@ -95,7 +95,7 @@ function QuestionRow({ q, n, onType, onRemove, children }: { q: EssayQuestion; n
   );
 }
 
-export function EssayQuestions({ postingId, saved, episodes }: Props) {
+export function EssayQuestions({ postingId, saved, episodes, stale = false }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<"view" | "paste" | "check">(saved.length ? "view" : "paste");
   const [text, setText] = useState("");
@@ -146,6 +146,11 @@ export function EssayQuestions({ postingId, saved, episodes }: Props) {
 
       {mode === "view" && (
         <>
+          {stale ? (
+            <p role="note" className="rounded-element border border-dashed border-border-emphasized px-3 py-2 text-support text-text-secondary">
+              문항을 이은 뒤 에피소드가 바뀌었어요. “에피소드 다시 잇기”를 누르면 지금 카드로 다시 이어요.
+            </p>
+          ) : null}
           <ol className="divide-y divide-border rounded-container border border-border bg-bg-surface">
             {saved.map((q, i) => (
               <QuestionRow key={q.id} q={q} n={i + 1}>

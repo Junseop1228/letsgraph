@@ -97,15 +97,22 @@ test.describe("analysis", () => {
     await expect(page.locator("form p[role=alert]")).toContainText("연결되지 않았어요");
   });
 
-  test("FR-PREM-02 연결 결과 / 빈 역량", async ({ page }) => {
+  test("FR-PREM-02 지원 근거 / 근거 없는 조건", async ({ page }) => {
     await page.goto("/connect/demo-cj-quality");
-    await expect(page.getByText("연결 근거")).toBeVisible();
-    await expect(page.getByText("빈 역량: 도전")).toBeVisible();
+    await expect(page.getByText("추천 근거").first()).toBeVisible();
+    // pick a competency -> its card -> details and the reason
+    await page.getByRole("button", { name: /주도성/ }).click();
+    await page.getByRole("button", { name: /카드를 눌러 상세 보기/ }).click(); // the recommended card in the right panel
+    await expect(page.getByText("감보다 기록이 설득력이 있다는 걸 배웠어요.")).toBeVisible();
+    // a competency with no card says so and leads to 만들기
+    await page.getByRole("button", { name: /도전/ }).click();
+    await expect(page.getByText("이 조건을 보여 줄 카드가 아직 없어요.")).toBeVisible();
+    await expect(page.getByRole("link", { name: /에피소드 꺼내러 가기/ })).toBeVisible();
   });
 
   test("FR-PREM-03 Kit 열기", async ({ page }) => {
     await page.goto("/connect/demo-cj-quality/kit");
-    await expect(page.getByRole("heading", { name: "Prompt Kit 완성" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "지원 근거 키트" })).toBeVisible();
     await expect(page.locator("pre")).toContainText("<공고 출처=\"데모용 예시 공고\">");
     await expect(page.getByRole("button", { name: /복사/ })).toBeVisible();
   });

@@ -43,6 +43,7 @@ export const EssayQuestion = z.object({
   fit: z.string().max(200).optional(), // why the episode answers this question
   need: z.string().max(150).optional(), // the scene that would answer it, when nothing fits
   manual: z.boolean().optional(),
+  basis: z.string().max(40).optional(), // fingerprint of the episodes the matching read
 });
 export type EssayQuestion = z.infer<typeof EssayQuestion>;
 /** What the AI returns when it matches questions and episodes (trimmed in lib/kit/questions.ts applyMatches). */
@@ -92,6 +93,8 @@ export const PostingAnalysisOutput = z.object({
   preferred: z.array(z.string()).max(8),
   competencies: z.array(Competency).min(1).max(8),
   cautions: z.array(z.string()).max(5), // 작성 주의사항 (e.g. 희망 근무지 기재)
+  /** 경력 요건 (specs/posting POST-06). Absent in analyses made before 2026-11-17 (read from the text instead). */
+  career: z.object({ level: z.enum(["new", "experienced", "any", "unknown"]), minYears: z.number().int().min(0).max(30).nullable() }).optional(),
 });
 export type PostingAnalysisOutput = z.infer<typeof PostingAnalysisOutput>;
 export type Competency = z.infer<typeof Competency>;
@@ -215,6 +218,44 @@ export const ConnectionPoint = z.object({
   reason: z.string().max(300), // why this experience shows this competency
   context: z.string().max(200).optional(), // segment / business context used
 });
+/**
+ * 지원 근거 (specs/connection FR-PREM-02, 2026-11-17): one condition of the posting (핵심 역량, 자격 요건 or 우대 사항)
+ * with the activity or episode that best proves it, how strongly, what is missing and what to do next.
+ */
+export const RequirementKind = z.enum(["competency", "qualification", "preferred"]);
+export type RequirementKind = z.infer<typeof RequirementKind>;
+export const REQUIREMENT_KIND_LABEL: Record<RequirementKind, string> = { competency: "핵심 역량", qualification: "자격 요건", preferred: "우대 사항" };
+export const EvidenceStrength = z.enum(["strong", "medium", "weak", "none"]);
+export type EvidenceStrength = z.infer<typeof EvidenceStrength>;
+export const STRENGTH_LABEL: Record<EvidenceStrength, string> = { strong: "근거 강함", medium: "근거 보통", weak: "근거 약함", none: "근거 없음" };
+export const EvidencePoint = z.object({
+  requirement: z.string().min(1).max(200),
+  kind: RequirementKind,
+  cardType: z.enum(["activity", "episode", "none"]),
+  cardId: z.string().optional(),
+  cardTitle: z.string().max(80).optional(),
+  strength: EvidenceStrength,
+  reason: z.string().max(300),
+  missing: z.string().max(200).optional(), // what the card does not show
+  next: z.string().max(150).optional(), // what to do (a scene to take out in 만들기, or check the requirement)
+});
+export type EvidencePoint = z.infer<typeof EvidencePoint>;
+/** What the AI returns (no limits; trimmed in lib/connect/evidence.ts). */
+export const EvidenceAiOutput = z.object({
+  evidence: z.array(
+    z.object({
+      requirement: z.string(),
+      kind: RequirementKind,
+      cardType: z.enum(["activity", "episode", "none"]),
+      cardId: z.string().nullable(),
+      strength: EvidenceStrength,
+      reason: z.string(),
+      missing: z.string().nullable(),
+      next: z.string().nullable(),
+    }),
+  ),
+});
+
 /** 전문성 연결: a job-skill competency (can the applicant do it?) proven by a whole activity. */
 export const SkillPoint = z.object({
   competency: z.string(),
@@ -226,6 +267,9 @@ export type SkillPoint = z.infer<typeof SkillPoint>;
 export const ConnectionOutput = z.object({
   links: z.array(ConnectionPoint).max(12), // 행동 역량 ↔ 에피소드 (how did they do it?)
   skills: z.array(SkillPoint).max(8).optional(), // 직무 전문성 ↔ 활동; absent in results made before 2026-11-16
+  basis: z.string().max(40).optional(), // fingerprint of the cards it was made from (lib/connect/freshness.ts)
+  /** 지원 근거 for every condition; links, skills and gaps are derived from it for the competencies. */
+  evidence: z.array(EvidencePoint).max(24).optional(),
   gaps: z.array(z.string()).max(8), // competencies with no activity or episode yet
 });
 export type ConnectionOutput = z.infer<typeof ConnectionOutput>;
