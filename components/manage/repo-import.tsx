@@ -2,6 +2,7 @@
 // 카드 탭 "GitHub 주소로 만들기" (specs/portfolio PORT-06): a public repository address -> one activity card with its link.
 // Only GitHub repository addresses are accepted for now; anything else is refused before any request.
 import { useActionState } from "react";
+import Link from "next/link";
 import { importActivityFromRepoAction } from "@/app/(main)/manage/chat-actions";
 import { btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function RepoImport() {
           {state.ok}
         </p>
       ) : null}
+      {state?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>시즌 패스 보기</Link> : null}
     </form>
   );
 }

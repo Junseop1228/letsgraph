@@ -20,7 +20,6 @@ export async function connectAction(postingId: string, _prev: ActionState): Prom
   if (!uid) return { error: "로그인이 필요해요." };
   const plan = await currentPlan(db);
   if (plan.plan !== "premium") return { error: "연결 결과는 패스가 있으면 볼 수 있어요." }; // EX-05
-  if (plan.remaining <= 0) return { error: "이번 달 쿼터를 다 썼어요." }; // EX-04
 
   const { repo } = await userData();
   const [{ data: a }, episodes, activities, { data: posting }] = await Promise.all([

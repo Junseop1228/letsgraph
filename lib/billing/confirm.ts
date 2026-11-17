@@ -65,10 +65,15 @@ export async function confirmAndGrant(q: TossSuccessQuery, fetchImpl: typeof fet
 
   // grant (one pass per order: passes.order_id is unique)
   const def = PASS_CATALOG[order.pass_type as PassType];
-  const expires = def.days ? new Date(Date.now() + def.days * 86400000).toISOString() : null;
+  if (!def) {
+    // an order for a pass type that no longer exists (the single pass, dropped 2026-11-18): an operator settles it
+    await setStatus(order.id, "paid", "grant_failed", { failure_reason: `unknown pass type ${order.pass_type}`.slice(0, 200) });
+    return { ok: false, status: "grant_failed", message: "결제는 됐고 패스 지급을 확인하고 있어요. 곧 처리해 드릴게요." };
+  }
+  const expires = new Date(Date.now() + def.days * 86400000).toISOString();
   const { error } = await db
     .from("passes")
-    .upsert({ user_id: order.user_id, pass_type: order.pass_type, order_id: order.id, expires_at: expires, uses_left: def.uses ?? null }, { onConflict: "order_id", ignoreDuplicates: true });
+    .upsert({ user_id: order.user_id, pass_type: order.pass_type, order_id: order.id, expires_at: expires, uses_left: null }, { onConflict: "order_id", ignoreDuplicates: true });
   if (error) {
     await setStatus(order.id, "paid", "grant_failed", { failure_reason: error.message.slice(0, 200) });
     return { ok: false, status: "grant_failed", message: "결제는 됐고 패스 지급을 확인하고 있어요. 곧 처리해 드릴게요." };

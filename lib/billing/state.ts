@@ -1,7 +1,6 @@
 // Pure payment state machine and quota rules (specs/billing). No I/O here, so it is unit-tested directly.
 import {
-  FREE_MONTHLY_QUOTA,
-  SEASON_MONTHLY_QUOTA,
+  FREE_LIMITS,
   TRANSITIONS,
   type PaymentEvent,
   type PaymentStatus,
@@ -40,29 +39,36 @@ export function newOrderId(now: Date = new Date(), rand: () => number = Math.ran
 }
 
 export type Plan = "free" | "premium";
+export type LimitedFeature = keyof typeof FREE_LIMITS;
+/** The features that need a check before they start. */
+export type GatedFeature = "posting_analysis" | LimitedFeature | "connection";
+export type Access = { ok: true; remaining: number | null } | { ok: false; reason: "pass" | "limit"; message: string };
 
-/** Monthly quota for a plan (LLM-cost features only). */
-export function monthlyQuota(plan: Plan): number {
-  return plan === "premium" ? SEASON_MONTHLY_QUOTA : FREE_MONTHLY_QUOTA;
+export const isLimited = (f: GatedFeature): f is LimitedFeature => f in FREE_LIMITS;
+
+/** What is left of a free limit; never negative. */
+export function freeRemaining(f: LimitedFeature, usedEver: number): number {
+  return Math.max(0, FREE_LIMITS[f] - Math.max(0, usedEver));
 }
 
-/** Remaining quota; never negative. */
-export function remainingQuota(plan: Plan, usedThisMonth: number): number {
-  return Math.max(0, monthlyQuota(plan) - Math.max(0, usedThisMonth));
+const LIMIT_MESSAGE: Record<LimitedFeature, string> = {
+  activity_save: `무료로 저장할 수 있는 활동 ${FREE_LIMITS.activity_save}개를 다 썼어요. 시즌 패스가 있으면 무제한으로 저장할 수 있어요.`,
+  episode_save: `무료로 저장할 수 있는 에피소드 ${FREE_LIMITS.episode_save}개를 다 썼어요. 시즌 패스가 있으면 무제한으로 꺼낼 수 있어요.`,
+};
+
+/**
+ * Who may do what (specs/billing BILL-01, 2026-11-18). Signed-in only (the caller sends visitors to log in).
+ * Season pass: everything, no limits. Free: 공고 등록 without limit, a few saved activities and episodes in total,
+ * no 연결 / 프롬프트 키트. `remaining` is null when there is no limit.
+ */
+export function access(plan: Plan, feature: GatedFeature, usedEver = 0): Access {
+  if (plan === "premium" || feature === "posting_analysis") return { ok: true, remaining: null };
+  if (feature === "connection") return { ok: false, reason: "pass", message: "연결 결과와 프롬프트 키트는 시즌 패스가 있으면 쓸 수 있어요." };
+  const remaining = freeRemaining(feature, usedEver);
+  return remaining > 0 ? { ok: true, remaining } : { ok: false, reason: "limit", message: LIMIT_MESSAGE[feature] };
 }
 
-/** Whether a quota-charged request may start (EX-04). Failed AI runs are not counted by the caller (EX-03). */
-export function canSpend(plan: Plan, usedThisMonth: number): boolean {
-  return remainingQuota(plan, usedThisMonth) > 0;
-}
-
-/** Plan from passes: an active season pass or an unused single pass makes the user premium. */
-export function planFromPasses(
-  passes: { type: "season" | "single"; expiresAt?: string | null; usesLeft?: number | null }[],
-  now: Date = new Date(),
-): Plan {
-  const active = passes.some((p) =>
-    p.type === "season" ? !!p.expiresAt && new Date(p.expiresAt) > now : (p.usesLeft ?? 0) > 0,
-  );
-  return active ? "premium" : "free";
+/** Plan from passes: an active season pass makes the user premium. Other pass types (the old single pass) count for nothing. */
+export function planFromPasses(passes: { type: string; expiresAt?: string | null }[], now: Date = new Date()): Plan {
+  return passes.some((p) => p.type === "season" && !!p.expiresAt && new Date(p.expiresAt) > now) ? "premium" : "free";
 }

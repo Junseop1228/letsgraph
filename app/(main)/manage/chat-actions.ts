@@ -9,7 +9,7 @@ import { activityFromPdf, activityFromRepo, chatReply, draftActivity, draftEpiso
 import { parseActivityLink } from "@/lib/activity/link";
 import { readRepo, RepoReadError } from "@/lib/github/repo";
 import { logAiFailure } from "@/lib/ai/clamp";
-import { gate } from "@/lib/billing/gate";
+import { gate, recordUse } from "@/lib/billing/gate";
 import { Activity, ActivityOutput, ChatLog, EpisodeTheme, ExperienceOutput, type EpisodeSuggestion } from "@/lib/contracts/activity";
 
 const History = ChatLog;
@@ -32,12 +32,6 @@ const DEMO = {
   ],
 };
 
-async function signedIn() {
-  const { createClient } = await import("@/lib/supabase/server");
-  const db = await createClient();
-  const { data: claims } = await db.auth.getClaims();
-  return { db, uid: claims?.claims?.sub as string | undefined };
-}
 
 function readPdf(form: FormData): File | string {
   const f = form.get("file");
@@ -52,7 +46,7 @@ export async function sendChatAction(
   history: ChatTurn[],
   activity: unknown = null,
   theme: unknown = null,
-): Promise<{ reply?: string; betterTheme?: EpisodeTheme; error?: string; demo?: boolean }> {
+): Promise<{ reply?: string; betterTheme?: EpisodeTheme; error?: string; pay?: boolean; demo?: boolean }> {
   const h = History.safeParse(history);
   if (!h.success) return { error: "대화가 너무 길어요. 지금까지를 카드로 정리한 뒤 이어 주세요." };
   const a = ActivityOutput.nullable().safeParse(activity);
@@ -62,6 +56,10 @@ export async function sendChatAction(
     const script = a.data ? DEMO.episode : DEMO.activity;
     const asked = h.data.filter((x) => x.role === "assistant").length - 1; // the opening message is not scripted
     return { reply: script[Math.min(Math.max(0, asked), script.length - 1)], demo: true };
+  }
+  if (supabaseEnabled()) {
+    const g = await gate(a.data ? "episode_save" : "activity_save", "/manage?tab=chat");
+    if ("error" in g) return { error: g.error, pay: g.pay };
   }
   try {
     const out = await chatReply(h.data, a.data, t.data);
@@ -77,6 +75,7 @@ export async function suggestEpisodesAction(activity: unknown): Promise<{ sugges
   const a = ActivityOutput.safeParse(activity);
   if (!a.success) return { suggestions: [] };
   if (!aiEnabled()) return { suggestions: [], demo: true };
+  if (supabaseEnabled() && "error" in (await gate("episode_save", "/manage?tab=chat"))) return { suggestions: [] };
   try {
     return { suggestions: await suggestEpisodes(a.data) };
   } catch (e) {
@@ -86,7 +85,7 @@ export async function suggestEpisodesAction(activity: unknown): Promise<{ sugges
 }
 
 /** 활동 카드 초안 from the stage-1 conversation. */
-export async function draftActivityAction(history: ChatTurn[]): Promise<{ draft?: ActivityOutput; error?: string; demo?: boolean }> {
+export async function draftActivityAction(history: ChatTurn[]): Promise<{ draft?: ActivityOutput; error?: string; pay?: boolean; demo?: boolean }> {
   const h = History.safeParse(history);
   if (!h.success) return { error: "대화를 읽지 못했어요." };
   const said = h.data.filter((t) => t.role === "user").map((t) => t.text.trim());
@@ -97,6 +96,10 @@ export async function draftActivityAction(history: ChatTurn[]): Promise<{ draft?
       draft: { title: (said[0] ?? "새 활동").slice(0, 40), kind: "other", period: said[1]?.slice(0, 40), role: said[2]?.slice(0, 200), summary: said.join(" ").slice(0, 800) },
     };
   }
+  if (supabaseEnabled()) {
+    const g = await gate("activity_save", "/manage?tab=chat");
+    if ("error" in g) return { error: g.error, pay: g.pay };
+  }
   try {
     return { draft: await draftActivity(h.data) };
   } catch (e) {
@@ -106,16 +109,15 @@ export async function draftActivityAction(history: ChatTurn[]): Promise<{ draft?
 }
 
 /** 활동 카드 초안 from a PDF. Spends one experience_extraction quota on success; the file is not stored. */
-export async function activityFromPdfAction(form: FormData): Promise<{ draft?: ActivityOutput; error?: string }> {
+export async function activityFromPdfAction(form: FormData): Promise<{ draft?: ActivityOutput; error?: string; pay?: boolean }> {
   const f = readPdf(form);
   if (typeof f === "string") return { error: f };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 PDF에서 활동을 정리해요. 지금은 활동을 글로 소개해 주세요." };
   if (!supabaseEnabled()) return { error: "로그인이 연결되면 PDF로 활동을 정리할 수 있어요. 지금은 글로 소개해 주세요." };
-  const g = await gate("experience_extraction", "/manage?tab=chat");
-  if ("error" in g) return { error: g.error };
+  const g = await gate("activity_save", "/manage?tab=chat");
+  if ("error" in g) return { error: g.error, pay: g.pay };
   try {
     const draft = await activityFromPdf(new Uint8Array(await f.arrayBuffer()));
-    await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
     return { draft };
   } catch (e) {
     logAiFailure("activity_pdf", e);
@@ -127,11 +129,11 @@ export async function activityFromPdfAction(form: FormData): Promise<{ draft?: A
  * 카드 탭 "PDF로 활동 카드 만들기" (FR-PREM-01): one activity card per activity in the PDF, with scene candidates.
  * No episodes are made here; they are taken out in the chat. One experience_extraction quota; the file is not stored.
  */
-export async function importActivitiesAction(_prev: { error?: string; ok?: string } | undefined, form: FormData): Promise<{ error?: string; ok?: string }> {
+export async function importActivitiesAction(_prev: { error?: string; pay?: boolean; ok?: string } | undefined, form: FormData): Promise<{ error?: string; pay?: boolean; ok?: string }> {
   const f = readPdf(form);
   if (typeof f === "string") return { error: f };
-  const g = await gate("experience_extraction", "/manage?tab=cards");
-  if ("error" in g) return { error: g.error };
+  const g = await gate("activity_save", "/manage?tab=cards");
+  if ("error" in g) return { error: g.error, pay: g.pay };
   let out;
   try {
     out = await extractActivities(new Uint8Array(await f.arrayBuffer()));
@@ -140,27 +142,32 @@ export async function importActivitiesAction(_prev: { error?: string; ok?: strin
     return { error: e instanceof AiUnavailable ? e.message : "PDF에서 활동을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }
   if (!out.activities.length) return { error: "PDF에서 활동을 찾지 못했어요. 프로젝트나 활동이 적힌 파일인지 확인해 주세요." };
-  const rows = out.activities.map((a) => ({
+  const all = out.activities.map((a) => ({
     user_id: g.uid, title: a.title, kind: a.kind, period: a.period ?? null, role: a.role ?? null, dataset: a.dataset ?? null, summary: a.summary,
     scenes: a.scenes ?? [], source_label: f.name.slice(0, 80),
   }));
+  const rows = g.remaining === null ? all : all.slice(0, g.remaining); // free: only what is left of the limit
   const { error } = await g.db.from("activities").insert(rows);
   if (error) {
     logAiFailure("import_activities_save", error);
     return { error: "활동 카드를 저장하지 못했어요." };
   }
-  await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
+  await recordUse(g.db, g.uid, "activity_save", rows.length);
   revalidatePath("/manage");
+  if (rows.length < all.length) {
+    return { ok: `PDF에서 활동 ${all.length}개를 찾았는데, 무료로는 ${rows.length}개까지만 저장했어요. 시즌 패스가 있으면 모두 저장할 수 있어요.`, pay: true };
+  }
   return { ok: `활동 카드 ${rows.length}개를 만들었어요. 활동 줄 끝에서 에피소드를 꺼내 보세요. 원본 파일은 저장하지 않아요.` };
 }
 
 /** Saves the activity. In demo mode it is not saved, but a temporary activity is returned so the flow continues. */
-export async function saveActivityAction(draft: unknown): Promise<{ activity?: Activity; ok?: string; error?: string }> {
+export async function saveActivityAction(draft: unknown): Promise<{ activity?: Activity; ok?: string; error?: string; pay?: boolean }> {
   const d = ActivityOutput.safeParse(draft);
   if (!d.success) return { error: "활동 카드 내용이 올바르지 않아요." };
   if (!supabaseEnabled()) return { activity: { ...d.data, id: `demo-${Date.now()}`, sourceLabel: "경험 대화" }, ok: "데모 모드라 저장하지 않고 이어서 진행해요." };
-  const { db, uid } = await signedIn();
-  if (!uid) return { error: "로그인하면 활동을 저장할 수 있어요." };
+  const g = await gate("activity_save", "/manage?tab=chat", false);
+  if ("error" in g) return { error: g.error, pay: g.pay };
+  const { db, uid } = g;
   const parsedLink = d.data.link ? parseActivityLink(d.data.link) : null;
   const link = parsedLink && "link" in parsedLink ? parsedLink.link.url : null; // PORT-06: allowed sites only
   const label = parsedLink && "link" in parsedLink ? `GitHub ${parsedLink.link.owner}/${parsedLink.link.repo}` : "경험 대화";
@@ -173,11 +180,12 @@ export async function saveActivityAction(draft: unknown): Promise<{ activity?: A
     logAiFailure("save_activity", error);
     return { error: "활동을 저장하지 못했어요." };
   }
+  await recordUse(db, uid, "activity_save");
   return { activity: { ...d.data, link: link ?? undefined, id: data.id, sourceLabel: label }, ok: "활동을 저장했어요. 이제 에피소드를 꺼내 볼게요." };
 }
 
 /** 에피소드 초안 from the stage-2 conversation. */
-export async function draftEpisodeAction(history: ChatTurn[], activity: unknown, theme: unknown = null): Promise<{ draft?: ExperienceOutput; error?: string; demo?: boolean }> {
+export async function draftEpisodeAction(history: ChatTurn[], activity: unknown, theme: unknown = null): Promise<{ draft?: ExperienceOutput; error?: string; pay?: boolean; demo?: boolean }> {
   const h = History.safeParse(history);
   const a = ActivityOutput.safeParse(activity);
   const t = Theme.safeParse(theme);
@@ -201,6 +209,10 @@ export async function draftEpisodeAction(history: ChatTurn[], activity: unknown,
       },
     };
   }
+  if (supabaseEnabled()) {
+    const g = await gate("episode_save", "/manage?tab=chat");
+    if ("error" in g) return { error: g.error, pay: g.pay };
+  }
   try {
     return { draft: await draftEpisode(h.data, a.data, t.data) };
   } catch (e) {
@@ -210,13 +222,14 @@ export async function draftEpisodeAction(history: ChatTurn[], activity: unknown,
 }
 
 /** Saves an episode under its activity (the activity must be the user's own), with the conversation that made it. */
-export async function saveEpisodeAction(draft: unknown, activityId: string, log: unknown = []): Promise<{ ok?: string; error?: string; id?: string }> {
+export async function saveEpisodeAction(draft: unknown, activityId: string, log: unknown = []): Promise<{ ok?: string; error?: string; pay?: boolean; id?: string }> {
   const d = ExperienceOutput.safeParse(draft);
   if (!d.success) return { error: "에피소드 내용이 올바르지 않아요." };
   const chatLog = ChatLog.safeParse(log);
   if (!supabaseEnabled()) return { ok: "데모 모드라 저장하지 않아요. 로그인이 연결되면 카드에 쌓여요." };
-  const { db, uid } = await signedIn();
-  if (!uid) return { error: "로그인하면 에피소드를 저장할 수 있어요." };
+  const g = await gate("episode_save", "/manage?tab=chat", false);
+  if ("error" in g) return { error: g.error, pay: g.pay };
+  const { db, uid } = g;
   const { data: owner } = await db.from("activities").select("id, title").eq("id", activityId).maybeSingle(); // RLS: own rows only
   if (!owner) return { error: "활동을 찾지 못했어요. 활동을 다시 골라 주세요." };
   const e = d.data;
@@ -247,16 +260,15 @@ export async function saveEpisodeAction(draft: unknown, activityId: string, log:
  * 활동 카드 초안 from a GitHub repository (PORT-06), for the chat's stage 1. Only GitHub repository addresses are
  * accepted for now. Spends one experience_extraction quota on success; nothing from the repository is stored but the link.
  */
-export async function activityFromRepoAction(url: string): Promise<{ draft?: ActivityOutput; error?: string }> {
+export async function activityFromRepoAction(url: string): Promise<{ draft?: ActivityOutput; error?: string; pay?: boolean }> {
   const p = parseActivityLink(String(url ?? ""));
   if ("error" in p) return { error: p.error };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요. 지금은 활동을 글로 소개해 주세요." };
   if (!supabaseEnabled()) return { error: "로그인이 연결되면 저장소로 활동을 정리할 수 있어요. 지금은 글로 소개해 주세요." };
-  const g = await gate("experience_extraction", "/manage?tab=chat");
-  if ("error" in g) return { error: g.error };
+  const g = await gate("activity_save", "/manage?tab=chat");
+  if ("error" in g) return { error: g.error, pay: g.pay };
   try {
     const draft = await activityFromRepo(await readRepo(p.link));
-    await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
     return { draft };
   } catch (e) {
     if (e instanceof RepoReadError) return { error: e.message };
@@ -266,12 +278,12 @@ export async function activityFromRepoAction(url: string): Promise<{ draft?: Act
 }
 
 /** 카드 탭 "GitHub 주소로 만들기" (PORT-06): one activity card from a repository, saved right away with its link. */
-export async function importActivityFromRepoAction(_prev: { error?: string; ok?: string } | undefined, form: FormData): Promise<{ error?: string; ok?: string }> {
+export async function importActivityFromRepoAction(_prev: { error?: string; pay?: boolean; ok?: string } | undefined, form: FormData): Promise<{ error?: string; pay?: boolean; ok?: string }> {
   const p = parseActivityLink(String(form.get("url") ?? ""));
   if ("error" in p) return { error: p.error };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요." };
-  const g = await gate("experience_extraction", "/manage?tab=cards");
-  if ("error" in g) return { error: g.error };
+  const g = await gate("activity_save", "/manage?tab=cards");
+  if ("error" in g) return { error: g.error, pay: g.pay };
   let a: ActivityOutput;
   try {
     a = await activityFromRepo(await readRepo(p.link));
@@ -288,7 +300,7 @@ export async function importActivityFromRepoAction(_prev: { error?: string; ok?:
     logAiFailure("import_activity_repo_save", error);
     return { error: "활동 카드를 저장하지 못했어요." };
   }
-  await g.db.from("quota_usage").insert({ user_id: g.uid, feature: "experience_extraction" });
+  await recordUse(g.db, g.uid, "activity_save");
   revalidatePath("/manage");
   return { ok: `"${a.title}" 활동 카드를 만들었어요. 맡은 역할은 저장소만으로 알 수 없어서 비워 뒀어요. 대화에서 에피소드를 꺼내며 채워 보세요.` };
 }

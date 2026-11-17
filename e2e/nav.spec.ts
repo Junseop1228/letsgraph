@@ -30,7 +30,7 @@ test("헤더 알림함과 내 계정", async ({ page }) => {
   await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "내 계정" }).click();
   await expect(page.getByRole("heading", { name: "내 계정" })).toBeVisible();
-  await expect(page.getByText("이번 달 남은 쿼터")).toBeVisible();
+  await expect(page.getByText("무료로 남은 저장")).toBeVisible();
 });
 
 test("옛 주소는 새 탭으로 이동", async ({ page }) => {

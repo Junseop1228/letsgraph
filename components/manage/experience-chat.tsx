@@ -472,7 +472,12 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
               <Send className="size-4" aria-hidden />
             </button>
           </form>
-          {note && <p role="status" className="mt-2 text-caption text-text-secondary">{note}</p>}
+          {note && (
+            <p role="status" className="mt-2 flex flex-wrap items-center gap-2 text-caption text-text-secondary">
+              {note}
+              {/시즌 패스/.test(note) ? <Link href="/billing" className="text-label underline underline-offset-2">시즌 패스 보기</Link> : null}
+            </p>
+          )}
         </section>
 
         <aside className="space-y-6 bg-bg-sunken p-5 lg:min-h-0 lg:overflow-y-auto">

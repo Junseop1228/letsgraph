@@ -1,7 +1,7 @@
 // Scenario names follow specs/billing/spec.md.
 import { describe, expect, it } from "vitest";
 import { PaymentStatus, TRANSITIONS, TossSuccessQuery } from "@/lib/contracts/billing";
-import { amountMatches, canSpend, newOrderId, planFromPasses, remainingQuota, transition } from "@/lib/billing/state";
+import { access, amountMatches, freeRemaining, newOrderId, planFromPasses, transition } from "@/lib/billing/state";
 
 describe("FR-ACCT-03 패스 구매", () => {
   it("정상 결제: created -> pending -> confirming -> paid -> granted", () => {
@@ -52,20 +52,31 @@ describe("FR-ACCT-03 패스 구매", () => {
   });
 });
 
-describe("BILL-01 쿼터 차감", () => {
-  it("쿼터 소진 (EX-04): free users stop at the monthly limit", () => {
-    expect(remainingQuota("free", 0)).toBe(3);
-    expect(canSpend("free", 2)).toBe(true);
-    expect(canSpend("free", 3)).toBe(false);
-    expect(remainingQuota("free", 10)).toBe(0);
+describe("BILL-01 무료 한도 (2026-11-18)", () => {
+  it("공고 등록은 무료도 무제한, 연결·프롬프트 키트는 시즌 패스만", () => {
+    expect(access("free", "posting_analysis", 999)).toEqual({ ok: true, remaining: null });
+    expect(access("free", "connection")).toMatchObject({ ok: false, reason: "pass" });
+    expect(access("premium", "connection")).toEqual({ ok: true, remaining: null });
   });
 
-  it("premium comes from an active season pass or an unused single pass", () => {
+  it("활동·에피소드 저장은 무료로 각각 평생 3번, 다 쓰면 결제 안내 (EX-04)", () => {
+    expect(freeRemaining("activity_save", 0)).toBe(3);
+    expect(access("free", "activity_save", 2)).toEqual({ ok: true, remaining: 1 });
+    expect(access("free", "activity_save", 3)).toMatchObject({ ok: false, reason: "limit" });
+    expect(access("free", "episode_save", 10)).toMatchObject({ ok: false, reason: "limit" });
+    expect(freeRemaining("episode_save", 10)).toBe(0);
+  });
+
+  it("시즌 패스가 있으면 한도 없음", () => {
+    expect(access("premium", "activity_save", 50)).toEqual({ ok: true, remaining: null });
+    expect(access("premium", "episode_save", 50)).toEqual({ ok: true, remaining: null });
+  });
+
+  it("premium comes from an active season pass only; old single passes count for nothing", () => {
     const now = new Date("2026-11-14T00:00:00Z");
     expect(planFromPasses([], now)).toBe("free");
     expect(planFromPasses([{ type: "season", expiresAt: "2026-12-01T00:00:00Z" }], now)).toBe("premium");
     expect(planFromPasses([{ type: "season", expiresAt: "2026-11-01T00:00:00Z" }], now)).toBe("free");
-    expect(planFromPasses([{ type: "single", usesLeft: 1 }], now)).toBe("premium");
-    expect(planFromPasses([{ type: "single", usesLeft: 0 }], now)).toBe("free");
+    expect(planFromPasses([{ type: "single", expiresAt: null }], now)).toBe("free");
   });
 });
