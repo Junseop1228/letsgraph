@@ -8,6 +8,8 @@ import { PostingTextInput, PostingUrlInput } from "@/lib/contracts/activity";
 import { checkPostingUrl } from "@/lib/posting/url";
 import { linkPosting } from "@/lib/posting/segment";
 import { recordJobEvidence } from "@/lib/posting/job-evidence";
+import { mayCheckEvidence } from "@/lib/posting/creator";
+import { seoulDayStart } from "@/lib/billing/state";
 import { JOBS } from "@/lib/reference/jobs";
 import { fetchPostingFromUrl, PostingFetchError, type FetchedPosting } from "@/lib/posting/fetch";
 
@@ -71,9 +73,11 @@ async function analyzeAndSave(db: Db, uid: string, src: PostingSource, sourceUrl
   const { createAdminClient } = await import("@/lib/supabase/admin");
   await createAdminClient().from("posting_analyses").insert({ posting_id: posting.id, user_id: uid, output: out, model: AI_MODEL });
   // POST-07: confirm on the web that the company posts this job, after the response (the user does not wait)
-  if (jobRoleId && link.companyId) {
+  // SAFE-03: a person's postings feed shared data at most EVIDENCE_DAILY_LIMIT times a day (the posting itself is always saved)
+  const { count: today } = await db.from("job_postings").select("id", { count: "exact", head: true }).gte("created_at", seoulDayStart());
+  if (jobRoleId && link.companyId && mayCheckEvidence(today ?? 0)) {
     const companyId = link.companyId;
-    after(() => recordJobEvidence({ jobRoleId, companyId, segmentId: link.segmentId, companyName: out.companyName, title: out.title, submittedUrl: sourceUrl ?? null }));
+    after(() => recordJobEvidence({ jobRoleId, companyId, segmentId: link.segmentId, companyName: out.companyName, title: out.title, submittedUrl: sourceUrl ?? null, creatorUid: uid }));
   }
   redirect(`/postings/${posting.id}`);
 }

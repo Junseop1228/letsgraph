@@ -25,6 +25,7 @@
 | 경험(포트폴리오) | `portfolio/` | FR-PREM-01, PORT-02 | 작성됨 · 경험 대화, PDF 경험 추출 구현 · 카드 고치기·지우기, docx·pptx·GitHub 입력 구현 전 |
 | 연결 | `connection/` | FR-PREM-02 | 작성됨 · 구현 |
 | Prompt Kit | `prompt-kit/` | FR-PREM-03 | 작성됨 · 구현 |
+| 안전 (프롬프트 인젝션, 공용 데이터, 비용) | `safety/` | SAFE-01~ | 작성됨 · 구현 중 |
 | 측정 | `measurement/` | FR-OPS-04 | 작성됨 · 이벤트 4개 연결 (PostHog 키가 없으면 꺼짐) |
 
 ## SRS v1.0 이후 바뀐 것 (요약)

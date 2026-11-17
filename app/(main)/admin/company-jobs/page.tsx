@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { JOBS } from "@/lib/reference/jobs";
 import { CompanyJobsImporter } from "@/components/admin/company-jobs-importer";
 import { DeleteImport } from "@/components/admin/delete-import";
+import { AdminTabs } from "@/components/admin/admin-tabs";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 
 export const metadata = { title: "관리자 · 회사 직무 · LetsGraph" };
@@ -35,9 +36,12 @@ async function AdminCompanyJobs() {
 
   return (
     <div className="mx-auto max-w-content-max space-y-10 px-5 py-8">
-      <div>
-        <p className="text-caption text-text-secondary">관리자</p>
-        <h1 className="mt-1 text-heading-1">회사 직무</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-caption text-text-secondary">관리자</p>
+          <h1 className="mt-1 text-heading-1">회사 직무</h1>
+        </div>
+        <AdminTabs current="/admin/company-jobs" />
       </div>
       <CompanyJobsImporter jobs={JOBS.map((j) => ({ id: j.id, name: j.name }))} />
       <section className="space-y-3" aria-labelledby="imported-title">

@@ -1,5 +1,6 @@
 // Pure payment state machine and quota rules (specs/billing). No I/O here, so it is unit-tested directly.
 import {
+  DAILY_AI_LIMITS,
   FREE_LIMITS,
   TRANSITIONS,
   type PaymentEvent,
@@ -71,4 +72,19 @@ export function access(plan: Plan, feature: GatedFeature, usedEver = 0): Access 
 /** Plan from passes: an active season pass makes the user premium. Other pass types (the old single pass) count for nothing. */
 export function planFromPasses(passes: { type: string; expiresAt?: string | null }[], now: Date = new Date()): Plan {
   return passes.some((p) => p.type === "season" && !!p.expiresAt && new Date(p.expiresAt) > now) ? "premium" : "free";
+}
+
+/** Start of today in Korean time (UTC+9, no daylight saving), as an ISO timestamp in UTC. */
+export function seoulDayStart(now: Date = new Date()): string {
+  const kst = new Date(now.getTime() + 9 * 3600_000);
+  return new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) - 9 * 3600_000).toISOString();
+}
+
+/** 하루 AI 상한 (SAFE-04): may one more AI call start today? A free user who hits it is offered the pass. */
+export function dailyAccess(plan: Plan, usedToday: number): { ok: true; left: number } | { ok: false; message: string; pay: boolean } {
+  const left = Math.max(0, DAILY_AI_LIMITS[plan] - Math.max(0, usedToday));
+  if (left > 0) return { ok: true, left };
+  return plan === "free"
+    ? { ok: false, pay: true, message: `오늘은 AI 코치를 많이 썼어요. 내일 다시 이어 갈 수 있어요. 시즌 패스가 있으면 하루 ${DAILY_AI_LIMITS.premium}번까지 쓸 수 있어요.` }
+    : { ok: false, pay: false, message: "오늘은 AI 코치를 많이 썼어요. 내일 다시 이어 갈 수 있어요." };
 }

@@ -5,7 +5,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
 import { aiEnabled } from "@/lib/ai/tasks";
-import { access, isLimited, planFromPasses, type GatedFeature, type Plan } from "@/lib/billing/state";
+import { access, dailyAccess, isLimited, planFromPasses, seoulDayStart, type GatedFeature, type Plan } from "@/lib/billing/state";
 
 type Gate =
   | { error: string; pay?: true }
@@ -14,8 +14,10 @@ type Gate =
 /**
  * @param next where to come back after logging in
  * @param needsAi false for plain saves (no AI call), so they work without an AI key
+ * @param daily true for the AI calls of the 경험 대화 and card making: today's AI calls must not be used up (SAFE-04);
+ *   the caller records each successful call with recordUse(db, uid, "ai_call")
  */
-export async function gate(feature: GatedFeature, next = "/postings", needsAi = true): Promise<Gate> {
+export async function gate(feature: GatedFeature, next = "/postings", needsAi = true, daily = false): Promise<Gate> {
   if (!supabaseEnabled()) return { error: "아직 계정 저장소가 연결되지 않았어요. 지금은 데모 공고로 흐름을 볼 수 있어요." };
   if (needsAi && !aiEnabled()) return { error: "AI 키가 아직 연결되지 않았어요. 지금은 데모 공고로 흐름을 볼 수 있어요." };
   const { createClient } = await import("@/lib/supabase/server");
@@ -30,11 +32,16 @@ export async function gate(feature: GatedFeature, next = "/postings", needsAi = 
   const plan = planFromPasses((passes ?? []).map((p) => ({ type: String(p.pass_type), expiresAt: p.expires_at as string | null })));
   const a = access(plan, feature, used);
   if (!a.ok) return { error: a.message, pay: true }; // EX-04 / EX-05: offer the season pass
+  if (daily) {
+    const { count } = await db.from("quota_usage").select("id", { count: "exact", head: true }).eq("feature", "ai_call").gte("created_at", seoulDayStart());
+    const d = dailyAccess(plan, count ?? 0);
+    if (!d.ok) return d.pay ? { error: d.message, pay: true } : { error: d.message };
+  }
   return { db, uid, feature, plan, remaining: a.remaining };
 }
 
 /** Records uses of a limited feature (one row each). Failed AI runs are never recorded (EX-03). */
-export async function recordUse(db: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>, uid: string, feature: GatedFeature, times = 1) {
+export async function recordUse(db: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>, uid: string, feature: GatedFeature | "ai_call", times = 1) {
   if (times <= 0) return;
   await db.from("quota_usage").insert(Array.from({ length: times }, () => ({ user_id: uid, feature })));
 }

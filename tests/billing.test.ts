@@ -1,7 +1,7 @@
 // Scenario names follow specs/billing/spec.md.
 import { describe, expect, it } from "vitest";
 import { PaymentStatus, TRANSITIONS, TossSuccessQuery } from "@/lib/contracts/billing";
-import { access, amountMatches, freeRemaining, newOrderId, planFromPasses, transition } from "@/lib/billing/state";
+import { access, amountMatches, dailyAccess, freeRemaining, newOrderId, planFromPasses, seoulDayStart, transition } from "@/lib/billing/state";
 
 describe("FR-ACCT-03 패스 구매", () => {
   it("정상 결제: created -> pending -> confirming -> paid -> granted", () => {
@@ -78,5 +78,18 @@ describe("BILL-01 무료 한도 (2026-11-18)", () => {
     expect(planFromPasses([{ type: "season", expiresAt: "2026-12-01T00:00:00Z" }], now)).toBe("premium");
     expect(planFromPasses([{ type: "season", expiresAt: "2026-11-01T00:00:00Z" }], now)).toBe("free");
     expect(planFromPasses([{ type: "single", expiresAt: null }], now)).toBe("free");
+  });
+});
+
+describe("SAFE-04 하루 AI 상한", () => {
+  it("a day starts at midnight Korean time", () => {
+    expect(seoulDayStart(new Date("2026-11-18T14:59:00Z"))).toBe("2026-11-17T15:00:00.000Z"); // 23:59 KST on the 18th
+    expect(seoulDayStart(new Date("2026-11-18T15:00:00Z"))).toBe("2026-11-18T15:00:00.000Z"); // 00:00 KST on the 19th
+  });
+  it("free users get 40 calls a day and are offered the pass; pass holders get 200", () => {
+    expect(dailyAccess("free", 39)).toEqual({ ok: true, left: 1 });
+    expect(dailyAccess("free", 40)).toMatchObject({ ok: false, pay: true });
+    expect(dailyAccess("premium", 199)).toEqual({ ok: true, left: 1 });
+    expect(dailyAccess("premium", 200)).toMatchObject({ ok: false, pay: false });
   });
 });

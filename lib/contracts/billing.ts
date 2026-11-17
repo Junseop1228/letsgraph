@@ -60,7 +60,14 @@ export const PASS_CATALOG: Record<PassType, { name: string; price: number; days:
 export const FREE_LIMITS = { activity_save: 3, episode_save: 3 } as const;
 
 /** What quota_usage records. activity_save / episode_save count the free limits; the others are kept for usage stats. */
-export const QuotaFeature = z.enum(["posting_analysis", "experience_extraction", "connection", "prompt_kit", "activity_save", "episode_save"]);
+/**
+ * 하루 AI 상한 (specs/safety SAFE-04): AI calls of the 경험 대화 and card making (coach replies, drafts, suggestions,
+ * reading a PDF or a repository) per day, Korean time. Keeps a chat without saves from running up the AI bill.
+ * PROPOSED numbers: change them here only.
+ */
+export const DAILY_AI_LIMITS = { free: 40, premium: 200 } as const;
+
+export const QuotaFeature = z.enum(["posting_analysis", "experience_extraction", "connection", "prompt_kit", "activity_save", "episode_save", "ai_call"]);
 export type QuotaFeature = z.infer<typeof QuotaFeature>;
 
 /** Toss Payments success redirect query (successUrl?paymentKey=&orderId=&amount=) */

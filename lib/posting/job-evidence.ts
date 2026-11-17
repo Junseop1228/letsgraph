@@ -8,6 +8,7 @@ import { aiEnabled, verifyPostingOnWeb } from "@/lib/ai/tasks";
 import { logAiFailure } from "@/lib/ai/clamp";
 import { decideEvidence, isJobBoard, domainOf } from "@/lib/posting/evidence-check";
 import { JOBS } from "@/lib/reference/jobs";
+import { creatorHash } from "@/lib/posting/creator";
 
 export type EvidenceInput = {
   jobRoleId: string;
@@ -16,6 +17,8 @@ export type EvidenceInput = {
   companyName: string;
   title: string;
   submittedUrl: string | null;
+  /** the person whose posting it was; only a keyed hash of it is stored (SAFE-03) */
+  creatorUid?: string;
 };
 
 export async function recordJobEvidence(i: EvidenceInput): Promise<"recorded" | "not-found" | "skipped"> {
@@ -41,6 +44,7 @@ export async function recordJobEvidence(i: EvidenceInput): Promise<"recorded" | 
       source_domain: evidence.domain,
       source_url: evidence.url ?? null,
       method: evidence.method,
+      creator_hash: i.creatorUid ? creatorHash(i.creatorUid, process.env.EVIDENCE_HASH_SECRET) : null,
     });
     if (ins.error && ins.error.code !== "23505") throw ins.error; // 23505 = already recorded
     const link = await db.from("job_links").upsert({ job_role_id: i.jobRoleId, company_id: i.companyId, basis: "posting" }, { onConflict: "job_role_id,company_id" });

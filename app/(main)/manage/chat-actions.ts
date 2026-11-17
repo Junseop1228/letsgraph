@@ -41,6 +41,17 @@ function readPdf(form: FormData): File | string {
   return f;
 }
 
+/**
+ * One AI call of the 경험 대화 (SAFE-04): signed in, a save of this kind still possible (BILL-01a), and today's AI calls
+ * not used up. `done` records the call once it succeeded. Without the account store (demo) nothing is checked.
+ */
+async function aiTurn(feature: "activity_save" | "episode_save") {
+  if (!supabaseEnabled()) return { ok: true as const, done: async () => {} };
+  const g = await gate(feature, "/manage?tab=chat", true, true);
+  if ("error" in g) return { ok: false as const, error: g.error, pay: g.pay };
+  return { ok: true as const, done: () => recordUse(g.db, g.uid, "ai_call") };
+}
+
 /** Next coach message. `activity` = the activity being worked on (stage 2), or null while settling one (stage 1). */
 export async function sendChatAction(
   history: ChatTurn[],
@@ -57,12 +68,11 @@ export async function sendChatAction(
     const asked = h.data.filter((x) => x.role === "assistant").length - 1; // the opening message is not scripted
     return { reply: script[Math.min(Math.max(0, asked), script.length - 1)], demo: true };
   }
-  if (supabaseEnabled()) {
-    const g = await gate(a.data ? "episode_save" : "activity_save", "/manage?tab=chat");
-    if ("error" in g) return { error: g.error, pay: g.pay };
-  }
+  const turn = await aiTurn(a.data ? "episode_save" : "activity_save");
+  if (!turn.ok) return { error: turn.error, pay: turn.pay };
   try {
     const out = await chatReply(h.data, a.data, t.data);
+    await turn.done();
     return { reply: out.reply, betterTheme: out.betterTheme ?? undefined };
   } catch (e) {
     logAiFailure("chat_reply", e);
@@ -75,9 +85,12 @@ export async function suggestEpisodesAction(activity: unknown): Promise<{ sugges
   const a = ActivityOutput.safeParse(activity);
   if (!a.success) return { suggestions: [] };
   if (!aiEnabled()) return { suggestions: [], demo: true };
-  if (supabaseEnabled() && "error" in (await gate("episode_save", "/manage?tab=chat"))) return { suggestions: [] };
+  const turn = await aiTurn("episode_save");
+  if (!turn.ok) return { suggestions: [] };
   try {
-    return { suggestions: await suggestEpisodes(a.data) };
+    const suggestions = await suggestEpisodes(a.data);
+    await turn.done();
+    return { suggestions };
   } catch (e) {
     logAiFailure("suggest_episodes", e);
     return { suggestions: [] };
@@ -96,12 +109,12 @@ export async function draftActivityAction(history: ChatTurn[]): Promise<{ draft?
       draft: { title: (said[0] ?? "새 활동").slice(0, 40), kind: "other", period: said[1]?.slice(0, 40), role: said[2]?.slice(0, 200), summary: said.join(" ").slice(0, 800) },
     };
   }
-  if (supabaseEnabled()) {
-    const g = await gate("activity_save", "/manage?tab=chat");
-    if ("error" in g) return { error: g.error, pay: g.pay };
-  }
+  const turn = await aiTurn("activity_save");
+  if (!turn.ok) return { error: turn.error, pay: turn.pay };
   try {
-    return { draft: await draftActivity(h.data) };
+    const draft = await draftActivity(h.data);
+    await turn.done();
+    return { draft };
   } catch (e) {
     logAiFailure("draft_activity", e);
     return { error: "활동 카드 초안을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요." };
@@ -114,10 +127,11 @@ export async function activityFromPdfAction(form: FormData): Promise<{ draft?: A
   if (typeof f === "string") return { error: f };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 PDF에서 활동을 정리해요. 지금은 활동을 글로 소개해 주세요." };
   if (!supabaseEnabled()) return { error: "로그인이 연결되면 PDF로 활동을 정리할 수 있어요. 지금은 글로 소개해 주세요." };
-  const g = await gate("activity_save", "/manage?tab=chat");
+  const g = await gate("activity_save", "/manage?tab=chat", true, true);
   if ("error" in g) return { error: g.error, pay: g.pay };
   try {
     const draft = await activityFromPdf(new Uint8Array(await f.arrayBuffer()));
+    await recordUse(g.db, g.uid, "ai_call");
     return { draft };
   } catch (e) {
     logAiFailure("activity_pdf", e);
@@ -132,11 +146,12 @@ export async function activityFromPdfAction(form: FormData): Promise<{ draft?: A
 export async function importActivitiesAction(_prev: { error?: string; pay?: boolean; ok?: string } | undefined, form: FormData): Promise<{ error?: string; pay?: boolean; ok?: string }> {
   const f = readPdf(form);
   if (typeof f === "string") return { error: f };
-  const g = await gate("activity_save", "/manage?tab=cards");
+  const g = await gate("activity_save", "/manage?tab=cards", true, true);
   if ("error" in g) return { error: g.error, pay: g.pay };
   let out;
   try {
     out = await extractActivities(new Uint8Array(await f.arrayBuffer()));
+    await recordUse(g.db, g.uid, "ai_call");
   } catch (e) {
     logAiFailure("import_activities", e);
     return { error: e instanceof AiUnavailable ? e.message : "PDF에서 활동을 정리하지 못했어요. 잠시 뒤 다시 시도해 주세요." };
@@ -209,12 +224,12 @@ export async function draftEpisodeAction(history: ChatTurn[], activity: unknown,
       },
     };
   }
-  if (supabaseEnabled()) {
-    const g = await gate("episode_save", "/manage?tab=chat");
-    if ("error" in g) return { error: g.error, pay: g.pay };
-  }
+  const turn = await aiTurn("episode_save");
+  if (!turn.ok) return { error: turn.error, pay: turn.pay };
   try {
-    return { draft: await draftEpisode(h.data, a.data, t.data) };
+    const draft = await draftEpisode(h.data, a.data, t.data);
+    await turn.done();
+    return { draft };
   } catch (e) {
     logAiFailure("draft_episode", e);
     return { error: "에피소드 초안을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요." };
@@ -265,10 +280,11 @@ export async function activityFromRepoAction(url: string): Promise<{ draft?: Act
   if ("error" in p) return { error: p.error };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요. 지금은 활동을 글로 소개해 주세요." };
   if (!supabaseEnabled()) return { error: "로그인이 연결되면 저장소로 활동을 정리할 수 있어요. 지금은 글로 소개해 주세요." };
-  const g = await gate("activity_save", "/manage?tab=chat");
+  const g = await gate("activity_save", "/manage?tab=chat", true, true);
   if ("error" in g) return { error: g.error, pay: g.pay };
   try {
     const draft = await activityFromRepo(await readRepo(p.link));
+    await recordUse(g.db, g.uid, "ai_call");
     return { draft };
   } catch (e) {
     if (e instanceof RepoReadError) return { error: e.message };
@@ -282,11 +298,12 @@ export async function importActivityFromRepoAction(_prev: { error?: string; pay?
   const p = parseActivityLink(String(form.get("url") ?? ""));
   if ("error" in p) return { error: p.error };
   if (!aiEnabled()) return { error: "AI 키가 연결되면 저장소에서 활동을 정리해요." };
-  const g = await gate("activity_save", "/manage?tab=cards");
+  const g = await gate("activity_save", "/manage?tab=cards", true, true);
   if ("error" in g) return { error: g.error, pay: g.pay };
   let a: ActivityOutput;
   try {
     a = await activityFromRepo(await readRepo(p.link));
+    await recordUse(g.db, g.uid, "ai_call");
   } catch (e) {
     if (e instanceof RepoReadError) return { error: e.message };
     logAiFailure("import_activity_repo", e);
