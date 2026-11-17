@@ -52,6 +52,31 @@ test.describe("explore", () => {
     await expect(page.getByRole("link", { name: /기업 상세 보기/ })).toBeVisible();
   });
 
+  test("FR-MAP-03 조건 바꾸기", async ({ page }) => {
+    await page.goto("/explore/map?job=quality");
+    await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
+    await page.getByRole("button", { name: /^조건 바꾸기/ }).click();
+    const panel = page.getByRole("dialog", { name: "조건 바꾸기" });
+    await expect(panel).toBeVisible();
+    const apply = panel.getByRole("button", { name: "그래프 바꾸기" });
+    await expect(apply).toBeDisabled();
+    await panel.getByRole("group", { name: "회사 성격" }).getByRole("button", { name: "탄탄한 중견" }).click();
+    await apply.click();
+    await expect(panel).toBeHidden();
+    const cookies = async () => (await page.context().cookies()).map((c) => `${c.name}=${c.value}`);
+    await expect.poll(cookies).toContain("lg_company_type=mid");
+    // the graph is drawn again with the new condition; the star I had on stays
+    await expect(page.getByRole("button", { name: /조건 바꾸기: 중견/ })).toBeVisible();
+    await expect(page.getByText(/조건을 (바꿨어요|조금 넓혀서 보여드려요)/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
+    await expect(page.locator("[aria-label='나의 취업 그래프'] [data-gn]")).not.toHaveCount(0);
+    // Esc closes the panel
+    await page.getByRole("button", { name: /조건 바꾸기: 중견/ }).click();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+  });
+
   test("FR-MAP-03 목록으로 보기", async ({ page }) => {
     await page.goto("/explore/map?job=quality");
     await page.getByRole("button", { name: "목록" }).click();

@@ -12,10 +12,11 @@ export const GROWING_MIN_REVENUE = 100;
 /** average yearly revenue growth over three fiscal years (0.15 = +15% a year) */
 export const GROWING_MIN_GROWTH = 0.15;
 
-export const COMPANY_TYPES: { id: CompanyType; label: string; rule: string }[] = [
-  { id: "large", label: "이름 있는 큰 회사", rule: "매출 1조 원 이상" },
-  { id: "mid", label: "탄탄한 중견", rule: "매출 1천억~1조 원" },
-  { id: "growing", label: "빠르게 크는 회사", rule: "최근 3년 매출이 해마다 15% 이상 성장" },
+/** short = the words on the graph's condition chip (step 5c) */
+export const COMPANY_TYPES: { id: CompanyType; label: string; short: string; rule: string }[] = [
+  { id: "large", label: "이름 있는 큰 회사", short: "큰 회사", rule: "매출 1조 원 이상" },
+  { id: "mid", label: "탄탄한 중견", short: "중견", rule: "매출 1천억~1조 원" },
+  { id: "growing", label: "빠르게 크는 회사", short: "성장 기업", rule: "최근 3년 매출이 해마다 15% 이상 성장" },
 ];
 
 export function isCompanyType(v: unknown): v is CompanyType {

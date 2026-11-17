@@ -17,3 +17,9 @@ Next.js (App Router) + TypeScript, Supabase (PostgreSQL, Auth, pgvector), shadcn
 - External data: OpenDART (show source and 기준 시점), no crawling of job platforms, no news article bodies.
 - Payments: Toss Payments test mode only; verify amount server-side against the stored order; confirm and grant are idempotent (see `specs/billing/spec.md`). Vendor docs: official developer center or the `@tosspayments/integration-guide-mcp` server.
 - Commands: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint`, `npm run tokens`.
+
+## Git workflow (team rule, 2026-11-17)
+- Never commit or push to `main` directly. One branch per piece of work (`feature/<topic>`, `fix/<topic>`), pushed to origin, opened as a pull request into `main`.
+- CI (lint, unit, build, typecheck, Playwright) runs on the PR; keep it green before asking for a merge.
+- Merges into `main` are done by a person on GitHub after the two team members agree. Agents do not merge.
+- Before starting a branch: `git switch main && git pull --ff-only`, then `git switch -c <branch>`.

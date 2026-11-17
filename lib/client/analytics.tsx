@@ -31,6 +31,7 @@ export function AnalyticsInit() {
 export type CoreAction =
   | "onboarding_done"
   | "graph_industry_open"
+  | "graph_conditions_change"
   | "company_open"
   | "posting_analyze"
   | "connection_view"
