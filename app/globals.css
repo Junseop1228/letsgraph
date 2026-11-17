@@ -8,6 +8,8 @@
 
 @theme inline {
   --font-sans: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  /* 말하는 사람 점의 점선 궤적 (components/manage/speaker-dot.tsx, DESIGN.md COL-8) */
+  --animate-speaker-trail: speaker-trail 950ms ease-out forwards;
 }
 
 @layer base {
@@ -44,4 +46,10 @@
 @utility figures {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+}
+
+@keyframes speaker-trail {
+  0% { opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; }
 }

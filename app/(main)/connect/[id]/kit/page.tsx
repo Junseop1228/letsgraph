@@ -17,7 +17,7 @@ import { KitActions } from "@/components/analysis/kit-actions";
 
 type Props = { params: Promise<{ id: string }> };
 
-// 지원 근거 키트 (specs/prompt-kit FR-PREM-03): the posting's conditions with the recommended cards, and the pack to copy.
+// 프롬프트 키트 (specs/prompt-kit FR-PREM-03): the posting's conditions with the recommended cards, and the pack to copy.
 async function KitContent({ params }: Props) {
   await requestTime(); // request-time render: uses today's date and the user's data
   const { id } = await params;
@@ -46,7 +46,7 @@ async function KitContent({ params }: Props) {
           <p className="flex items-center gap-2 text-caption text-text-secondary">
             {posting.companyName} · {posting.title} {posting.source === "demo" && <DemoBadge>데모용 예시 공고</DemoBadge>} {demo && <DemoBadge />}
           </p>
-          <h1 className="mt-1 text-heading-1">지원 근거 키트</h1>
+          <h1 className="mt-1 text-heading-1">프롬프트 키트</h1>
           <p className="mt-1 text-body text-text-secondary">공고 조건마다 근거가 될 내 활동·에피소드를 모았어요. 원하는 AI에 붙여넣고, 글은 내 방식대로 써요.</p>
         </div>
         <KitActions text={text} markdown={kitToMarkdown(kit)} filename={kit.title.replace(/\s+/g, "_")} />

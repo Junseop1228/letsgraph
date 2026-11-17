@@ -7,7 +7,7 @@
   "text-primary": "#eeeeee", "text-secondary": "#b4b4b4", "text-disabled": "#6e6e6e", "text-inverted": "#111111", "text-inverted-secondary": "#606060",
   "border": "#313131", "border-emphasized": "#6e6e6e", "border-strong": "#eeeeee",
   "accent": "#eeeeee", "accent-hover": "#b4b4b4", "on-accent": "#111111",
-  "ai": "#6e56cf", "ai-muted": "#291f43", "text-ai": "#baa7ff", "border-ai": "#56468b", "skeleton-ai": "#33255b",
+  "ai": "#6e56cf", "ai-muted": "#291f43", "text-ai": "#baa7ff", "border-ai": "#56468b", "skeleton-ai": "#33255b", "coach": "#e59a5c", "coach-muted": "#3a2412", "text-coach": "#ffb27a", "me": "#5cb98a", "me-muted": "#15301f", "text-me": "#7fd7a6",
   "success": "#30a46c", "success-muted": "#132d21", "text-success": "#3dd68c",
   "warning": "#ffc53d", "warning-muted": "#302008", "text-warning": "#ffca16",
   "error": "#e5484d", "error-muted": "#3b1219", "text-error": "#ff9592",

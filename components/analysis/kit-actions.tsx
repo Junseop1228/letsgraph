@@ -1,5 +1,5 @@
 "use client";
-// Prompt Kit 복사·내려받기 (specs/prompt-kit FR-PREM-03). PDF = the browser's print dialog on a print-only layout.
+// 프롬프트 키트 복사·내려받기 (specs/prompt-kit FR-PREM-03). PDF = the browser's print dialog on a print-only layout.
 import { useState } from "react";
 import { Copy, Download, Printer } from "lucide-react";
 import { btn } from "@/components/lg/ui";

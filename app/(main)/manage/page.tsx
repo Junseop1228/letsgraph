@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronDown, Layers, MessageSquare } from "lucide-react";
+import { ChevronUp, Layers, MessageSquare, Plus } from "lucide-react";
 import { userData } from "@/lib/data";
 import { btn, DemoBadge } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
@@ -21,19 +21,26 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 type SP = { tab?: string; ep?: string; act?: string; activity?: string; log?: string };
 
-/** 활동 카드 만들기 (PORT-03, PORT-06): on top of the board, folded once there are activities. PDF and GitHub on the left, chat on the right. */
+/** 활동 카드 만들기 (PORT-03, PORT-06): a dashed "add" tile on top of the board, open while there are no activities. PDF and GitHub on the left, chat on the right. */
 function CreateActivity({ open }: { open: boolean }) {
   return (
-    <details open={open} className="group mt-6 rounded-container bg-bg-sunken">
-      <summary className="flex min-h-row-height cursor-pointer list-none items-center justify-between gap-3 rounded-container px-5 py-3 hover:bg-overlay-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-        <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-heading-3">활동 카드 만들기</span>
-          <span className="text-support text-text-secondary">PDF나 GitHub 저장소로, 또는 AI와 대화로 만들어요</span>
+    <details open={open} className="group mt-6 rounded-container open:bg-bg-sunken">
+      {/* closed: a dashed "add" tile, like the "첫 에피소드 꺼내기" card at the end of a row; open: a header with 닫기 */}
+      <summary
+        className={cn(
+          "flex cursor-pointer list-none flex-col items-center gap-1 rounded-container border border-dashed border-border-emphasized px-5 py-6 text-center transition-colors motion-reduce:transition-none",
+          "hover:border-border-strong hover:bg-overlay-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+          "group-open:flex-row group-open:justify-between group-open:border-transparent group-open:py-3 group-open:text-left group-open:hover:bg-transparent",
+        )}
+      >
+        <span className="flex items-center gap-2 text-heading-3">
+          <Plus className="size-5 group-open:hidden" aria-hidden />
+          새 활동 카드 만들기
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-label text-text-secondary">
-          <span className="group-open:hidden">펼치기</span>
-          <span className="hidden group-open:inline">접기</span>
-          <ChevronDown className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+        <span className="text-support text-text-secondary group-open:hidden">PDF, GitHub 저장소, AI와 대화 중에 골라요</span>
+        <span className="hidden items-center gap-1 rounded-element px-2 py-1 text-label text-text-secondary hover:bg-overlay-hover group-open:flex">
+          닫기
+          <ChevronUp className="size-4" aria-hidden />
         </span>
       </summary>
       <div className="grid gap-4 border-t border-border px-5 py-5 md:grid-cols-5">
@@ -70,15 +77,14 @@ async function ManageContent({ searchParams }: { searchParams: Promise<SP> }) {
   const { repo, demo } = await userData();
   const [activities, episodes] = await Promise.all([repo.activities(), repo.experiences()]);
   return (
-    <div className="mx-auto max-w-content-max px-5 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="mx-auto max-w-content-max px-5 py-6">
+      {/* title and tabs share one row, so the chat window is in view without scrolling */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex items-center gap-3">
           <h1 className="text-heading-1">관리</h1>
-          <p className="mt-1 text-body-lg text-text-secondary">활동을 정하고 AI와 대화해 에피소드를 꺼내요. 카드로 모아 두면 공고와 이어 볼 수 있어요.</p>
+          {demo && <DemoBadge />}
         </div>
-        {demo && <DemoBadge />}
-      </div>
-      <nav aria-label="관리 메뉴" className="mt-6 flex justify-center gap-2">
+      <nav aria-label="관리 메뉴" className="flex gap-2">
         {TABS.map((t) => (
           <Link
             key={t.id}
@@ -94,6 +100,8 @@ async function ManageContent({ searchParams }: { searchParams: Promise<SP> }) {
           </Link>
         ))}
       </nav>
+      </div>
+      {tab === "cards" ? <p className="mt-2 text-body text-text-secondary">활동을 정하고 AI와 대화해 에피소드를 꺼내요. 카드로 모아 두면 공고와 이어 볼 수 있어요.</p> : null}
       {tab === "chat" ? (
         <ExperienceChat key={`${sp.activity ?? "new"}-${sp.log ?? ""}`} activities={activities} episodes={episodes} initialActivityId={sp.activity} initialLogId={sp.log} />
       ) : (

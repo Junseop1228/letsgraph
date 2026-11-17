@@ -42,7 +42,7 @@ async function AccountContent() {
           <div className="border-r border-border p-4"><p className="text-caption text-text-secondary">이번 달 남은 쿼터</p><p className="figures text-figure">{plan.remaining} / {plan.quota}</p></div>
           <div className="p-4"><p className="text-caption text-text-secondary">패스</p><p className="text-heading-3">{plan.passes.length ? plan.passes.map((p) => (p.type === "season" ? `시즌 (${p.expiresAt?.slice(0, 10)}까지)` : `건당 ${p.usesLeft}회`)).join(", ") : "없음"}</p></div>
         </div>
-        <p className="text-body text-text-secondary">쿼터는 공고 정리, 카드 만들기, 연결 결과처럼 AI가 정리하는 기능에 써요. Prompt Kit은 쿼터를 쓰지 않고, 실패한 요청은 세지 않아요.</p>
+        <p className="text-body text-text-secondary">쿼터는 공고 정리, 카드 만들기, 연결 결과처럼 AI가 정리하는 기능에 써요. 프롬프트 키트는 쿼터를 쓰지 않고, 실패한 요청은 세지 않아요.</p>
         <Link href="/billing" className={btn.primary}>패스로 쿼터 늘리기</Link>
         {demo && <p className="text-caption text-text-secondary">데모 수치예요. 로그인하면 내 이용 현황이 보여요.</p>}
       </section>

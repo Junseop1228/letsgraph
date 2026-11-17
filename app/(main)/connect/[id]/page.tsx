@@ -47,7 +47,7 @@ async function ConnectionContent({ params }: Props) {
         </div>
         {connection && premium && (
           <Link href={`/connect/${id}/kit`} className={btn.primary}>
-            지원 근거 키트 <ArrowRight className="size-4" aria-hidden />
+            프롬프트 키트 <ArrowRight className="size-4" aria-hidden />
           </Link>
         )}
       </div>

@@ -30,6 +30,12 @@ colors:
   text-ai: "#6550b9"
   border-ai: "#c2b5f5"
   skeleton-ai: "#ebe4ff"
+  coach: "#d9772f"
+  coach-muted: "#fff1e6"
+  text-coach: "#9a4a00"
+  me: "#3a9d66"
+  me-muted: "#e9f6ee"
+  text-me: "#1e6b45"
   success: "#30a46c"
   success-muted: "#e6f6eb"
   text-success: "#193b2d"
@@ -534,10 +540,11 @@ Alpha overlays (Radix grayA 3 / 5) tint whatever surface they sit on for hover a
 - **COL-1 — Every gray has one job.** A gray is chosen by role from the table, never by "a bit lighter". Verify: every gray in a diff maps to a token in this table. `[auto]` via @shadcn/lint `no-raw-colors`.
 - **COL-2 — Ink is scarce.** Solid ink (`accent`) marks the one primary action per region, the job node, saved companies and the focus data series. Selection uses gray (`bg-selected`), not ink. Verify: squint at a screen; at most one ink block per region besides text and the graph.
 - **COL-3 — Mid grays carry structure.** Use `bg-sunken` for side panels and the graph canvas, `bg-tonal` for secondary actions, badges and wells, `bg-selected` for current items, gray-9/10/8 for data and nodes. Verify: remove all borders in a screenshot; regions are still separable by gray value alone. `[judge]`
-- **COL-4 — Color only for meaning.** Hue appears only in status (`success`, `warning`, `error`, `info`), market movement (`data-up` red / `data-down` blue, Korean convention) and AI content (`ai` violet). Never decorative. Verify: every non-gray pixel answers "what does this mean?". `[assist]`
+- **COL-4 — Color only for meaning.** Hue appears only in status (`success`, `warning`, `error`, `info`), market movement (`data-up` red / `data-down` blue, Korean convention) AI content (`ai` violet) and, in the 경험 대화 only, who is speaking (COL-8). Never decorative. Verify: every non-gray pixel answers "what does this mean?". `[assist]`
 - **COL-5 — Color is never alone.** Status pairs color with an icon or word; AI pairs violet with a dashed edge and an "AI" label; up/down pairs color with ▲/▼ and a sign. Verify: in grayscale the meaning survives. `[assist]`
 - **COL-6 — Fill tokens are not text tokens.** `data-up`, `data-down`, `success`, `warning`, `error`, `info`, `ai` are fills and indicators; text uses `text-up`, `text-down`, `text-<intent>`. Verify: contrast script passes for every text pair. `[auto]`
 - **COL-7 — Contrast.** Text ≥ 4.5:1, control boundaries and meaningful graphics ≥ 3:1, in both modes. Verify: the contrast script (44 pairs) and `design.md lint` report no failures. `[auto]`
+- **COL-8 — Who is speaking (경험 대화, 2026-11-18).** In the 경험 대화 only, the speaker has a color: the coach is orange (coach, coach-muted bubble, 	ext-coach label) and the student is green (me, me-muted bubble, 	ext-me label). One dot left of the newest message jumps between them (components/manage/speaker-dot.tsx). This is speaker identity, not AI content: what the AI makes (drafts, summaries, suggestions) keeps i violet with its dashed edge and label. The 'AI 코치' / '나' labels stay, so color is never alone (COL-5); the dot is aria-hidden and has no jump with reduced motion. Values (light / dark): coach #D9772F / #E59A5C, coach-muted #FFF1E6 / #3A2412, text-coach #9A4A00 / #FFB27A, me #3A9D66 / #5CB98A, me-muted #E9F6EE / #15301F, text-me #1E6B45 / #7FD7A6. Verify: no coach or me color outside the 경험 대화. `[assist]`
 
 Smells: `[auto]` raw hex or Tailwind palette classes in components; `[auto]` text on a fill token; `[assist]` gray text on a colored fill (use `text-<intent>`); `[assist]` an opaque black hover block (use `overlay-hover`); `[judge]` three or more ink blocks competing in one region; `[judge]` violet used for anything not AI-made.
 

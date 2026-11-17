@@ -14,7 +14,7 @@ export default function BillingPage() {
     <div className="mx-auto max-w-content-max px-5 py-8">
       <h1 className="text-heading-1">패스</h1>
       <p className="mt-1 max-w-reading-max text-body-lg text-text-secondary">
-        연결 결과 전체와 Prompt Kit은 패스로 열려요. 무료로도 AI 기능(공고 정리, 카드 만들기, 연결 결과)을 합쳐 한 달에 {FREE_MONTHLY_QUOTA}번 쓸 수 있어요.
+        연결 결과 전체와 프롬프트 키트는 패스로 열려요. 무료로도 AI 기능(공고 정리, 카드 만들기, 연결 결과)을 합쳐 한 달에 {FREE_MONTHLY_QUOTA}번 쓸 수 있어요.
       </p>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {(Object.keys(PASS_CATALOG) as PassType[]).map((k) => {
