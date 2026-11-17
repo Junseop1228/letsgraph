@@ -132,7 +132,7 @@ export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
         : `직무 카드 ${jobs.length}장`;
 
   return (
-    <div className="grid min-h-[calc(100vh-var(--spacing-header-height))] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className="grid min-h-[calc(100dvh-var(--spacing-header-height)-var(--spacing-tab-bar-height))] sm:min-h-[calc(100dvh-var(--spacing-header-height))] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <section className="flex flex-col justify-center gap-3 border-b border-border bg-bg-sunken px-6 py-6 md:gap-4 md:border-b-0 md:border-r md:px-8 md:py-12">
         {/* step label instead of a bare page number (audit O-3) */}
         <p className="figures text-data-sm text-text-secondary">{step}</p>

@@ -37,14 +37,17 @@ export function AppHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-bg-page">
       <div className="mx-auto flex h-header-height max-w-content-max items-center gap-1 px-3 sm:gap-6 sm:px-5">
         <Logo />
-        <Suspense fallback={<MainNavFallback />}>
-          <MainNav />
-        </Suspense>
-        {hasEnvVars && (
-          <Suspense>
-            <AdminLink />
+        {/* below sm the tabs live in the bottom tab bar (components/mobile-tab-bar.tsx), so the header fits a phone */}
+        <div className="hidden items-center gap-6 sm:flex">
+          <Suspense fallback={<MainNavFallback />}>
+            <MainNav />
           </Suspense>
-        )}
+          {hasEnvVars && (
+            <Suspense>
+              <AdminLink />
+            </Suspense>
+          )}
+        </div>
         <div className="flex-1" />
         <Suspense>
           <HeaderSearch />

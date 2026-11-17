@@ -236,7 +236,7 @@ export function ExploreGraph(p: Props) {
   const cardKey = !sel ? `job:${cardJob}` : selectedId!;
 
   return (
-    <div aria-busy={pending} className="relative h-[calc(100dvh-var(--spacing-header-height))] min-h-[560px] overflow-hidden bg-graph-canvas">
+    <div aria-busy={pending} className="relative h-[calc(100dvh-var(--spacing-header-height)-var(--spacing-tab-bar-height))] min-h-[560px] overflow-hidden bg-graph-canvas sm:h-[calc(100dvh-var(--spacing-header-height))]">
       {/* the graph (or the list) fills the screen */}
       {view === "graph" ? (
         <div className="absolute inset-0">
