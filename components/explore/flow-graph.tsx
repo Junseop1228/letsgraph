@@ -26,7 +26,7 @@ import {
 } from "@xyflow/react";
 import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type ForceX, type ForceY, type Simulation, type SimulationNodeDatum } from "d3-force";
 import { BubbleSets, rect } from "bubblesets-js";
-import { RING, groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
+import { groupOf, type GLink, type GNode, type GraphData } from "@/lib/explore/graph";
 import { forceRectCollide, textWidth, type Box } from "@/lib/explore/physics";
 import { BriefcaseBusiness } from "lucide-react";
 import { IndustryIcon } from "@/components/explore/industry-icon";
@@ -42,7 +42,7 @@ type LineEdge = Edge<LineData, "line">;
 type PlaneEdge = Edge<PathData, "plane">;
 type GEdge = LineEdge | PlaneEdge;
 type SimNode = GNode & SimulationNodeDatum & { bx?: number; by?: number }; // bx/by = layout anchor before user moves
-type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"] };
+type SimLink = { source: SimNode; target: SimNode; kind: GLink["kind"]; dim?: boolean };
 
 type Props = {
   data: GraphData;
@@ -63,7 +63,7 @@ const radius = (g: GNode) => g.r * VSCALE;
 const LABEL_PX: Record<GNode["type"], number> = { center: 16, ind: 14, co: 13 };
 // Stars spread a little wider than graph.ts targets so labels fit (targets scaled around each star centre).
 const SCALE: Record<GNode["type"], number> = { center: 1, ind: 1.12, co: 1.3 };
-const DIST: Record<GLink["kind"], number> = { "job-ind": RING * 1.12, "ind-co": 118, "ind-co-est": 118 };
+// Link length = the distance between the two layout targets, so the springs keep the layout of lib/explore/graph.ts instead of pulling the fan in.
 const STR: Record<GLink["kind"], number> = { "job-ind": 0.25, "ind-co": 0.45, "ind-co-est": 0.45 };
 // Fit never zooms below this, so 13px labels stay >= 12px on screen (DESIGN: labels never below 12px); pinch/wheel can still go further.
 const FIT_MIN_ZOOM = 0.92;
@@ -198,7 +198,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
     simNodesRef.current = sn;
     const links: SimLink[] = data.links.flatMap((l) => {
       const s = byId.get(l.source), t = byId.get(l.target);
-      return s && t ? [{ source: s, target: t, kind: l.kind }] : [];
+      return s && t ? [{ source: s, target: t, kind: l.kind, dim: l.dim }] : [];
     });
     linksRef.current = links;
     linkWRef.current = new Map(data.links.map((l) => [`${l.source}>${l.target}`, l.w]));
@@ -229,11 +229,11 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
     sim
       .nodes(sn)
-      .force("link", forceLink<SimNode, SimLink>(links).distance((l) => DIST[l.kind]).strength((l) => STR[l.kind]))
-      .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -80)).distanceMax(220))
+      .force("link", forceLink<SimNode, SimLink>(links).distance((l) => Math.hypot(l.target.tx - l.source.tx, l.target.ty - l.source.ty) || 1).strength((l) => STR[l.kind]))
+      .force("charge", forceManyBody<SimNode>().strength((d) => (d.type === "center" ? -220 : d.type === "ind" ? -140 : -40)).distanceMax(220))
       .force("collide", forceRectCollide<SimNode>(footprint, 6, 0.6))
-      .force("x", (forceXRef.current = forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))))
-      .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.3 : 0.28))));
+      .force("x", (forceXRef.current = forceX<SimNode>((d) => d.tx).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.5 : 0.55))))
+      .force("y", (forceYRef.current = forceY<SimNode>((d) => d.ty).strength((d) => (d.type === "center" ? 0.6 : d.type === "ind" ? 0.5 : 0.55))));
     sim.alphaDecay(reduced ? 0.12 : 0.03);
     sim.on("tick", () => {
       for (const n of sn) posRef.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0, vx: n.vx ?? 0, vy: n.vy ?? 0 });
@@ -312,7 +312,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
 
   // hover / selection classes on top of the simulated positions
   const shown = useMemo(
-    () => nodes.map((n) => ({ ...n, className: cn(lit?.has(n.id) && "lit", n.id === selectedId && "sel") })),
+    () => nodes.map((n) => ({ ...n, className: cn(lit?.has(n.id) && "lit", n.id === selectedId && "sel", n.data.g.dim && "dim") })),
     [nodes, lit, selectedId],
   );
 
@@ -327,7 +327,7 @@ function Engine({ data, selectedId, onSelect, onBackground, companyIndustry, lab
         source: l.source.id,
         target: l.target.id,
         type: "line",
-        className: lit && lit.has(l.source.id) && lit.has(l.target.id) ? "lit" : undefined,
+        className: cn(lit && lit.has(l.source.id) && lit.has(l.target.id) && "lit", l.dim && "dim") || undefined,
         // one thin line for every link (D 2026-11-17, "실선을 쓰지 말자"): posting evidence is told in words on the cards
         data: { kind: l.kind, width: w, x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 },
         selectable: false,
