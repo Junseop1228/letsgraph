@@ -56,6 +56,11 @@
 /* gray plane behind an opened industry (DESIGN LAY-6: planes, not boxes) */
 .lg-flow .gplane { fill: var(--color-bg-tonal); fill-opacity: 0.75; stroke: var(--color-border); stroke-width: 1; }
 
+/* a star with an opened industry: its other industries and their lines step back (D 2026-11-17, option 나) */
+.lg-flow .react-flow__node.dim { opacity: 0.38; }
+.lg-flow .react-flow__node.dim.lit { opacity: 1; }
+.lg-flow .react-flow__edge.dim { opacity: 0.3; }
+
 /* hover / focus: dim everything else (motion only as feedback) */
 .lg-flow.hovering .react-flow__node:not(.lit) { opacity: 0.4; }
 .lg-flow.hovering .react-flow__edge:not(.lit):not(.on):not(.react-flow__edge-plane) { opacity: 0.15; }
