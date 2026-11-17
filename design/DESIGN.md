@@ -36,6 +36,10 @@ colors:
   me: "#3a9d66"
   me-muted: "#e9f6ee"
   text-me: "#1e6b45"
+  sun: "#d9772f"
+  sun-muted: "#fff1e6"
+  moon: "#0083ee"
+  moon-muted: "#e6f2fe"
   success: "#30a46c"
   success-muted: "#e6f6eb"
   text-success: "#193b2d"
@@ -545,12 +549,13 @@ Alpha overlays (Radix grayA 3 / 5) tint whatever surface they sit on for hover a
 - **COL-6 — Fill tokens are not text tokens.** `data-up`, `data-down`, `success`, `warning`, `error`, `info`, `ai` are fills and indicators; text uses `text-up`, `text-down`, `text-<intent>`. Verify: contrast script passes for every text pair. `[auto]`
 - **COL-7 — Contrast.** Text ≥ 4.5:1, control boundaries and meaningful graphics ≥ 3:1, in both modes. Verify: the contrast script (44 pairs) and `design.md lint` report no failures. `[auto]`
 - **COL-8 — Who is speaking (경험 대화, 2026-11-18).** In the 경험 대화 only, the speaker has a color: the coach is orange (coach, coach-muted bubble, 	ext-coach label) and the student is green (me, me-muted bubble, 	ext-me label). One dot left of the newest message jumps between them (components/manage/speaker-dot.tsx). This is speaker identity, not AI content: what the AI makes (drafts, summaries, suggestions) keeps i violet with its dashed edge and label. The 'AI 코치' / '나' labels stay, so color is never alone (COL-5); the dot is aria-hidden and has no jump with reduced motion. Values (light / dark): coach #D9772F / #E59A5C, coach-muted #FFF1E6 / #3A2412, text-coach #9A4A00 / #FFB27A, me #3A9D66 / #5CB98A, me-muted #E9F6EE / #15301F, text-me #1E6B45 / #7FD7A6. Verify: no coach or me color outside the 경험 대화. `[assist]`
+- **COL-9 — Theme toggle (2026-11-18).** The header button that switches light and dark is the one place the brand colors appear as an icon: a sun in `sun` orange (the coach orange of COL-8, #D9772F, 3.2:1 on the light page) while the page is light, a moon in `moon`, the logo blue (#0083EE, 4.9:1 on the dark page), while it is dark. The icon sits on the page background; `sun-muted` / `moon-muted` tint it only on hover (the orange on the pale orange fill would be 2.8:1). The label says what a click does ("다크 모드로 바꾸기" / "라이트 모드로 바꾸기"), so the color is never alone (COL-5). Verify: no `sun` or `moon` color outside components/header/theme-toggle.tsx. `[assist]`
 
 Smells: `[auto]` raw hex or Tailwind palette classes in components; `[auto]` text on a fill token; `[assist]` gray text on a colored fill (use `text-<intent>`); `[assist]` an opaque black hover block (use `overlay-hover`); `[judge]` three or more ink blocks competing in one region; `[judge]` violet used for anything not AI-made.
 
 Got it right: the page reads as white, two or three gray planes and ink; the eye lands on one ink action; numbers that rise or fall carry a sign and a color; AI content is recognisable at a glance without being loud.
 
-**Dark mode** (Radix grayDark; same jobs, values below). Ink and paper swap: page #111111, surface and sunken #191919, tonal #222222, tonal-hover #2A2A2A, selected #313131, pressed #3A3A3A, inverted #EEEEEE; overlay-hover #FFFFFF12, overlay-pressed #FFFFFF22; text-primary #EEEEEE, text-secondary #B4B4B4, text-disabled #6E6E6E, text-inverted #111111, text-inverted-secondary #606060; border #313131, border-emphasized #6E6E6E, border-strong #EEEEEE; accent #EEEEEE with on-accent #111111, accent-hover #B4B4B4; ai-muted #291F43, text-ai #BAA7FF, border-ai #56468B, skeleton-ai #33255B; success-muted #132D21 / text #3DD68C; warning-muted #302008 / text #FFCA16; error-muted #3B1219 / text #FF9592; info-muted #0D2847 / text #70B8FF; text-up #FF9592, text-down #70B8FF; data-1 #EEEEEE, data-2 #7B7B7B, data-3 #484848, data-track #2A2A2A; graph-canvas #191919, graph-job and graph-saved #EEEEEE, graph-node #7B7B7B, graph-node-dim #3A3A3A, graph-edge #606060, graph-orbit #3A3A3A, graph-division #B4B4B4, graph-grid #484848; skeleton #222222. Light is the default (projector demo); dark follows the system setting.
+**Dark mode** (Radix grayDark; same jobs, values below). Ink and paper swap: page #111111, surface and sunken #191919, tonal #222222, tonal-hover #2A2A2A, selected #313131, pressed #3A3A3A, inverted #EEEEEE; overlay-hover #FFFFFF12, overlay-pressed #FFFFFF22; text-primary #EEEEEE, text-secondary #B4B4B4, text-disabled #6E6E6E, text-inverted #111111, text-inverted-secondary #606060; border #313131, border-emphasized #6E6E6E, border-strong #EEEEEE; accent #EEEEEE with on-accent #111111, accent-hover #B4B4B4; ai-muted #291F43, text-ai #BAA7FF, border-ai #56468B, skeleton-ai #33255B; success-muted #132D21 / text #3DD68C; warning-muted #302008 / text #FFCA16; error-muted #3B1219 / text #FF9592; info-muted #0D2847 / text #70B8FF; text-up #FF9592, text-down #70B8FF; data-1 #EEEEEE, data-2 #7B7B7B, data-3 #484848, data-track #2A2A2A; graph-canvas #191919, graph-job and graph-saved #EEEEEE, graph-node #7B7B7B, graph-node-dim #3A3A3A, graph-edge #606060, graph-orbit #3A3A3A, graph-division #B4B4B4, graph-grid #484848; skeleton #222222. Light is the default (projector demo); the header sun/moon button (COL-9) switches to dark and back, and the choice is remembered in the browser.
 
 ## Typography
 
