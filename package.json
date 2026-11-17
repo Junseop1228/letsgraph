@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "tokens": "node scripts/design-tokens.mjs",
+    "eval:injection": "vitest run tests/evals",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "licenses": "node scripts/licenses.mjs",
