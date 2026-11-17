@@ -23,7 +23,7 @@ async function SuccessContent({ searchParams }: Props) {
         <div className="space-y-4">
           <CheckCircle2 className="size-8 text-success" aria-hidden />
           <h1 className="text-heading-1">{PASS_CATALOG[result.passType].name}를 받았어요</h1>
-          <p className="text-body-lg text-text-secondary">이제 연결 결과 전체와 Prompt Kit을 쓸 수 있어요.</p>
+          <p className="text-body-lg text-text-secondary">이제 연결 결과 전체와 프롬프트 키트를 쓸 수 있어요.</p>
           <div className="flex gap-2">
             <Link href="/postings" className={btn.primary}>분석으로</Link>
             <Link href="/account" className={btn.secondary}>이용 현황</Link>

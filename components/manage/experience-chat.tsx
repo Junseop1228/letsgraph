@@ -35,6 +35,7 @@ import { clearChatLogAction } from "@/app/(main)/manage/card-actions";
 import { btn, Kicker, TrustLabel } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 import { withRo } from "@/lib/manage/josa";
+import { SpeakerDot } from "@/components/manage/speaker-dot";
 
 type EpisodeDraft = NonNullable<Awaited<ReturnType<typeof draftEpisodeAction>>["draft"]>;
 type Props = { activities: Activity[]; episodes: Experience[]; initialActivityId?: string; initialLogId?: string };
@@ -365,20 +366,27 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
   }
 
   return (
-    <div className="mt-6 space-y-4">
+    <div className="mt-4 space-y-4">
       <Steps stage={activity ? 2 : 1} />
-      <div className="grid gap-px bg-border lg:h-170 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="grid gap-px bg-border lg:h-[calc(100dvh-14rem)] lg:max-h-180 lg:min-h-120 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section aria-label="AI 코치와 대화" className="flex h-130 min-h-0 flex-col bg-bg-page py-6 lg:h-full lg:pr-6">
-          <ol ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-2" aria-live="polite">
+          <ol ref={listRef} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pl-6 pr-2" aria-live="polite">
+            {turns.length ? <SpeakerDot listRef={listRef} index={turns.length - 1} speaker={turns[turns.length - 1].role === "assistant" ? "coach" : "me"} /> : null}
             {turns.map((t, i) => (
               <li key={i} className={cn("max-w-[85%]", t.role === "user" && "ml-auto")}>
-                <p className={cn("mb-1 text-caption", t.role === "assistant" ? "text-text-ai" : "text-right text-text-secondary")}>{t.role === "assistant" ? "AI 코치" : "나"}</p>
+                <p className={cn("mb-1 text-caption", t.role === "assistant" ? "text-text-coach" : "text-right text-text-me")}>{t.role === "assistant" ? "AI 코치" : "나"}</p>
                 {isFileTurn(t) ? (
-                  <FileBlock text={t.text} reading={pending && i === turns.length - 1} />
+                  <div data-bubble={i}>
+                    <FileBlock text={t.text} reading={pending && i === turns.length - 1} />
+                  </div>
                 ) : isRepoTurn(t) ? (
-                  <RepoBlock text={t.text} reading={pending && i === turns.length - 1} />
+                  <div data-bubble={i}>
+                    <RepoBlock text={t.text} reading={pending && i === turns.length - 1} />
+                  </div>
                 ) : (
-                  <p className={cn("whitespace-pre-line rounded-container px-4 py-3 text-body", t.role === "user" ? "bg-bg-tonal" : "border-l-[3px] border-ai bg-bg-page pl-4")}>{t.text}</p>
+                  <p data-bubble={i} className={cn("whitespace-pre-line rounded-container px-4 py-3 text-body", t.role === "user" ? "bg-me-muted" : "bg-coach-muted")}>
+                    {t.text}
+                  </p>
                 )}
               </li>
             ))}

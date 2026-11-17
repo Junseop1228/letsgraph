@@ -3,7 +3,7 @@ import { buildPromptKit, kitToMarkdown, kitToText } from "@/lib/kit/build";
 import { DEMO_ACTIVITIES, DEMO_ANALYSES, DEMO_CONNECTIONS, DEMO_EXPERIENCES, DEMO_POSTINGS, SEGMENTS, SEGMENT_DETAILS } from "@/lib/data/fixtures";
 import { ConnectionOutput, PostingAnalysisOutput } from "@/lib/contracts/activity";
 
-describe("FR-PREM-03 지원 근거 키트", () => {
+describe("FR-PREM-03 프롬프트 키트", () => {
   const posting = DEMO_POSTINGS[0];
   const kit = buildPromptKit({
     posting,
@@ -25,7 +25,7 @@ describe("FR-PREM-03 지원 근거 키트", () => {
     expect(text).toContain("[우대 사항] 교대 근무가 있는 사업장 근무 가능자 (근거 약함)");
     expect(text).toContain('- 추천: 에피소드 E1 "재고 폐기 줄이기"');
     expect(text).toContain("- 부족한 점: 품질·검사 데이터를 직접 다룬 경험은 아니에요.");
-    expect(kitToMarkdown(kit).startsWith("# CJ제일제당 품질관리 신입 지원 근거 키트")).toBe(true);
+    expect(kitToMarkdown(kit).startsWith("# CJ제일제당 품질관리 신입 프롬프트 키트")).toBe(true);
   });
   it("carries each recommended card once, and nothing about how to write", () => {
     expect([...text.matchAll(/^<에피소드 /gm)]).toHaveLength(2); // 재고 폐기 줄이기, 백엔드 장애 대응

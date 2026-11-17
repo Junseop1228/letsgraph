@@ -142,7 +142,7 @@ test.describe("analysis", () => {
 
   test("FR-PREM-03 Kit 열기", async ({ page }) => {
     await page.goto("/connect/demo-cj-quality/kit");
-    await expect(page.getByRole("heading", { name: "지원 근거 키트" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "프롬프트 키트" })).toBeVisible();
     await expect(page.locator("pre")).toContainText("<공고 출처=\"데모용 예시 공고\">");
     await expect(page.getByRole("button", { name: /복사/ })).toBeVisible();
   });

@@ -1,4 +1,4 @@
-// 지원 근거 키트 (specs/prompt-kit FR-PREM-03, 2026-11-17). Deterministic: no LLM call, only validated pieces.
+// 프롬프트 키트 (specs/prompt-kit FR-PREM-03, 2026-11-17). Deterministic: no LLM call, only validated pieces.
 // Not a writing guide: for each condition of the posting (핵심 역량, 자격 요건, 우대 사항) the recommended activity or
 // episode, how strongly it proves the condition, why, and what is missing; then the contents of those cards. The user
 // pastes it into their own AI and writes in their own way.
@@ -145,7 +145,7 @@ export function buildPromptKit(i: Input): PromptKit {
   return {
     id: `kit-${i.posting.id}`,
     postingId: i.posting.id,
-    title: `${i.analysis.companyName} ${i.analysis.title} 지원 근거 키트`,
+    title: `${i.analysis.companyName} ${i.analysis.title} 프롬프트 키트`,
     createdAt: now.toISOString(),
     sections,
   };

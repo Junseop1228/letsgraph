@@ -20,7 +20,7 @@ async function ConnectContent() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-heading-1">연결</h1>
-          <p className="mt-1 text-body-lg text-text-secondary">공고의 요구 역량과 내 경험 카드를 잇고, 자기소개서 코칭용 Prompt Kit을 받아요.</p>
+          <p className="mt-1 text-body-lg text-text-secondary">공고의 핵심 역량, 자격 요건, 우대 사항마다 근거가 될 내 경험을 찾고, 내 AI에 붙여넣을 프롬프트 키트로 가져가요.</p>
         </div>
         {demo && <DemoBadge />}
       </div>

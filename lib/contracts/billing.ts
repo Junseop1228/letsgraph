@@ -48,8 +48,8 @@ export const TERMINAL: PaymentStatus[] = ["granted", "canceled", "failed"];
  * PROPOSED placeholders until the team sets pricing (specs/billing OPEN). Change values here only.
  */
 export const PASS_CATALOG: Record<PassType, { name: string; price: number; days?: number; uses?: number; includes: string[] }> = {
-  season: { name: "시즌 패스", price: 9900, days: 30, includes: ["연결 결과 전체", "Prompt Kit 무제한"] },
-  single: { name: "건당 패스", price: 1900, uses: 1, includes: ["공고 1건의 연결 결과", "Prompt Kit 1회"] },
+  season: { name: "시즌 패스", price: 9900, days: 30, includes: ["연결 결과 전체", "프롬프트 키트 무제한"] },
+  single: { name: "건당 패스", price: 1900, uses: 1, includes: ["공고 1건의 연결 결과", "프롬프트 키트 1회"] },
 };
 
 /** PROPOSED placeholder: free monthly quota for LLM-cost features. */
