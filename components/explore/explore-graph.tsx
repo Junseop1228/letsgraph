@@ -6,7 +6,8 @@
 // sentences ("잡초 뽑기"), but the 실제 공고 / 추정 trust label always stays. Mobile: the card becomes a bottom sheet.
 import { reasonLine, type CompanyType } from "@/lib/explore/company-type";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowRight, BriefcaseBusiness, ChevronLeft, ChevronRight, EyeOff, Heart, List, Network, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { BusinessSegment, Company, Industry, JobLink, JobRole } from "@/lib/contracts/domain";
@@ -15,7 +16,9 @@ import { withExtras } from "@/lib/explore/stars";
 import { formatEokShort } from "@/lib/format";
 import { readLikedJobs, useIdList, useWatched } from "@/lib/client/local-state";
 import { FlowGraph } from "@/components/explore/flow-graph";
-import { DECK_AGAIN_PATH } from "@/lib/onboarding";
+import { DECK_AGAIN_PATH, saveCompanyType, saveIndustryChoice } from "@/lib/onboarding";
+import { jobsOutsideChoice, relatedIndustries, relaxNotes } from "@/lib/explore/conditions";
+import { ConditionButton, ConditionPanel } from "@/components/explore/condition-control";
 import { IndustryIcon } from "@/components/explore/industry-icon";
 import { useLiquidGlass, type Lens } from "@/components/explore/use-liquid-glass";
 import { track } from "@/lib/client/analytics";
@@ -34,6 +37,8 @@ type Props = {
   initialJob: string;
   /** onboarding company-type card (D 2026-11-17 step 5b); null = any */
   companyType?: CompanyType | null;
+  /** industries picked on the onboarding card or the condition panel (cookie lg_industries); null = each job's closest */
+  chosenIndustries?: string[] | null;
   /** industries shown unfiltered because no company of that type was there (relax-and-tell) */
   relaxed?: string[];
   /** place of each top company in its industry's list on the graph (lib/explore/load.ts) */
@@ -88,12 +93,21 @@ export function ExploreGraph(p: Props) {
   const [view, setView] = useState<"graph" | "list">("graph");
   const [vertical, setVertical] = useState(false);
   const [wide, setWide] = useState(true);
+  const [condOpen, setCondOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const applied = useRef(false);
 
+  // liked jobs are read once per primary job: a condition change (router.refresh) brings new props but keeps the stars I turned on
   useEffect(() => {
     const liked = readLikedJobs().filter((j) => roleById.has(j) && linkedJobs.has(j));
     const list = [p.initialJob, ...liked.filter((j) => j !== p.initialJob)].slice(0, 5);
     setMyJobs(list);
     setOn(list);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.initialJob]);
+
+  useEffect(() => {
     const narrow = window.matchMedia("(max-width: 767px)");
     const lg = window.matchMedia("(min-width: 1024px)");
     const upd = () => {
@@ -107,7 +121,7 @@ export function ExploreGraph(p: Props) {
       narrow.removeEventListener("change", upd);
       lg.removeEventListener("change", upd);
     };
-  }, [p.initialJob, roleById, linkedJobs]);
+  }, []);
 
   const stars = on.map((j) => roleById.get(j)).filter((r): r is JobRole => !!r);
   const links = useMemo(
@@ -129,6 +143,40 @@ export function ExploreGraph(p: Props) {
 
   const indName = (id: string) => p.industries.find((i) => i.id === id)?.name ?? id;
   const linksOf = (job: string) => links.filter((l) => l.jobRoleId === job);
+
+  // ---- conditions (D 2026-11-17 step 5c): same cookies as the onboarding deck; the server re-selects the companies
+  const chosen = p.chosenIndustries ?? [];
+  const indChoices = useMemo(() => {
+    const all = p.industries.map((i) => ({ id: i.id, name: i.name, count: p.industryTotals[i.id] ?? 0 }));
+    const rel = relatedIndustries(myJobs, all);
+    return [...rel, ...all.filter((i) => chosen.includes(i.id) && !rel.some((r) => r.id === i.id))];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.industries, p.industryTotals, myJobs.join(","), chosen.join(",")]);
+  // relax-and-tell only for what the stars I have on show now
+  const shownInds = new Set(links.filter((l) => on.includes(l.jobRoleId)).map((l) => companyIndustry[l.companyId]));
+  const notes = relaxNotes({
+    relaxedIndustries: (p.relaxed ?? []).filter((id) => shownInds.has(id)).map(indName),
+    outsideJobs: jobsOutsideChoice(on, p.industryTotals, chosen).map((j) => roleById.get(j)?.name ?? j),
+    type: p.companyType ?? null,
+  });
+  const closeCond = useCallback(() => setCondOpen(false), []);
+  function applyConditions(inds: string[], type: CompanyType | null) {
+    saveIndustryChoice(inds);
+    saveCompanyType(type);
+    track("graph_conditions_change", { industries: inds.length, type: type ?? "any" });
+    setCondOpen(false);
+    setSel(null);
+    setExpanded(null);
+    applied.current = true;
+    startTransition(() => router.refresh());
+  }
+  // after the new graph arrives, say whether the conditions had to be relaxed
+  useEffect(() => {
+    if (pending || !applied.current) return;
+    applied.current = false;
+    toast(notes.length ? "조건을 조금 넓혀서 보여드려요" : "조건을 바꿨어요");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending]);
   function addCompany(c: Company) {
     keep([c]);
     added.add(c.id);
@@ -188,7 +236,7 @@ export function ExploreGraph(p: Props) {
   const cardKey = !sel ? `job:${cardJob}` : selectedId!;
 
   return (
-    <div className="relative h-[calc(100dvh-var(--spacing-header-height))] min-h-[560px] overflow-hidden bg-graph-canvas">
+    <div aria-busy={pending} className="relative h-[calc(100dvh-var(--spacing-header-height))] min-h-[560px] overflow-hidden bg-graph-canvas">
       {/* the graph (or the list) fills the screen */}
       {view === "graph" ? (
         <div className="absolute inset-0">
@@ -222,6 +270,14 @@ export function ExploreGraph(p: Props) {
           <Plus className="size-4" aria-hidden />
           <span aria-hidden className="hidden lg:inline">직무 더 고르기</span>
         </Link>
+        <ConditionButton
+          industryCount={chosen.length}
+          type={p.companyType ?? null}
+          relaxed={notes.length > 0}
+          open={condOpen}
+          pending={pending}
+          onClick={() => setCondOpen((o) => !o)}
+        />
         <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
         <div role="group" aria-label="보기 방식" className="flex shrink-0 gap-0.5">
           <button type="button" aria-pressed={view === "graph"} aria-label="그래프" onClick={() => setView("graph")} className={cn("flex h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-label lg:px-3", view === "graph" ? "lg-seg-on text-text-primary" : "text-text-secondary hover:text-text-primary")}>
@@ -234,6 +290,8 @@ export function ExploreGraph(p: Props) {
           </button>
         </div>
       </div>
+
+      {condOpen && <ConditionPanel industries={indChoices} chosen={chosen} type={p.companyType ?? null} notes={notes} onApply={applyConditions} onClose={closeCond} />}
 
       {/* how to read the graph: one glass line instead of a boxed legend */}
       {view === "graph" && (

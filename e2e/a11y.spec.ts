@@ -26,6 +26,17 @@ const PAGES = [
   "/auth/error?error=otp_expired",
 ];
 
+// the 탐색 condition panel (step 5c) floats over the graph only when opened
+test("a11y /explore/map 조건 패널", async ({ page }) => {
+  await page.goto("/explore/map?job=quality");
+  await page.getByRole("button", { name: /^조건 바꾸기/ }).click();
+  await expect(page.getByRole("dialog", { name: "조건 바꾸기" })).toBeVisible();
+  const r = await new AxeBuilder({ page }).include("#graph-conditions").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  const bad = r.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  for (const v of r.violations) console.log(`[${v.impact}] condition panel ${v.id}: ${v.help} (${v.nodes.length}) ${v.nodes[0]?.target.join(" ")}`);
+  expect(bad.map((v) => `${v.id} x${v.nodes.length}`)).toEqual([]);
+});
+
 for (const path of PAGES) {
   test(`a11y ${path}`, async ({ page }) => {
     await page.goto(path);

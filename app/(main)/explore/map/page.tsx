@@ -23,9 +23,11 @@ async function GraphContent({ searchParams }: Props) {
 
   // every job card can become a star, so the slice covers all jobs (top N per industry keeps it small);
   // the onboarding choices narrow every star: industries (none = each job's closest) and company type (none = any)
+  // the condition panel on the graph (step 5c) writes the same cookies and refreshes this page
   const companyType = readCompanyType(get);
+  const chosenIndustries = readIndustryChoice(get);
   const [roles, { repo: user }] = await Promise.all([repo.jobRoles(), userData()]);
-  const g = await loadGraph(repo, roles.map((r) => r.id), readIndustryChoice(get), companyType);
+  const g = await loadGraph(repo, roles.map((r) => r.id), chosenIndustries, companyType);
   return (
     <ExploreGraph
       roles={roles}
@@ -37,6 +39,7 @@ async function GraphContent({ searchParams }: Props) {
       watchedInitial={await user.watchedCompanyIds()}
       initialJob={job.id}
       companyType={companyType}
+      chosenIndustries={chosenIndustries}
       relaxed={g.relaxed}
       ranks={g.ranks}
     />

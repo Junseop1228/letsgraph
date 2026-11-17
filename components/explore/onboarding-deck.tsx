@@ -2,16 +2,17 @@
 // 직무 카드 온보딩 (specs/explore FR-DISC-01; D 2026-11-17 onboarding card flow + job taxonomy):
 // 직군 칩 카드 -> 고른 직군의 직무 카드 넘기기 (drag right = 관심 있어요, left = 관심 없어요; buttons and arrow keys
 // do the same) -> 산업 칩 카드 (고른 직무와 이어진 산업만) -> 나의 취업 그래프. The first liked job opens the graph.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { Check, Undo2, X } from "lucide-react";
+import { Chip } from "@/components/lg/chip";
+import { relatedIndustries } from "@/lib/explore/conditions";
 import type { JobFamily, JobRole } from "@/lib/contracts/domain";
 import { savePrimaryJob } from "@/lib/client/local-state";
 import { markOnboarded, saveCompanyType, saveIndustryChoice } from "@/lib/onboarding";
 import { COMPANY_TYPES, type CompanyType } from "@/lib/explore/company-type";
 import { cn } from "@/lib/utils";
-import { JOB_INDUSTRY } from "@/lib/reference/job-industry";
 import { track } from "@/lib/client/analytics";
 import { btn } from "@/components/lg/ui";
 
@@ -25,21 +26,9 @@ type Props = {
   industries: { id: string; name: string; count: number }[];
 };
 
-/** industry chips shown at most on the industry card */
-const MAX_INDUSTRY_CHIPS = 12;
-
 /** Arrow keys swipe only when the user is not typing or inside a dialog (e.g. the Ctrl+K search). */
 function isTyping(t: EventTarget | null) {
   return t instanceof HTMLElement && !!t.closest("input, textarea, select, [contenteditable=true], [role=dialog]");
-}
-
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" aria-pressed={on} onClick={onClick} className={on ? btn.primary : btn.outline}>
-      {on && <Check className="size-4" aria-hidden />}
-      {children}
-    </button>
-  );
 }
 
 export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
@@ -60,14 +49,8 @@ export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
   const done = stage === "jobs" && i >= jobs.length;
   const pickIndustry = done && liked.length > 0;
 
-  // industries related to any liked job (strongest relevance first, then the ones with more companies)
-  const related = useMemo(() => {
-    const rel = (id: string) => Math.max(0, ...liked.map((j) => JOB_INDUSTRY[j]?.[id] ?? 0));
-    return industries
-      .filter((ind) => rel(ind.id) > 0)
-      .sort((a, b) => rel(b.id) - rel(a.id) || b.count - a.count)
-      .slice(0, MAX_INDUSTRY_CHIPS);
-  }, [liked, industries]);
+  // industries related to any liked job (strongest relevance first, then the ones with more companies); same list as the graph's condition panel
+  const related = useMemo(() => relatedIndustries(liked, industries), [liked, industries]);
 
   // Shown once = seen: from now on "/", "/explore" and the 탐색 tab open the graph (specs/explore FR-DISC-01).
   useEffect(() => markOnboarded(), []);
