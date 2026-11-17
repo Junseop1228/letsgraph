@@ -2,7 +2,8 @@
 // single source for the state table in the spec and for the DB check constraint.
 import { z } from "zod";
 
-export const PassType = z.enum(["season", "single"]);
+/** Season pass only (2026-11-18: the single pass was dropped). Old 'single' rows may remain in the DB and are ignored. */
+export const PassType = z.enum(["season"]);
 export type PassType = z.infer<typeof PassType>;
 
 export const PaymentStatus = z.enum([
@@ -47,17 +48,19 @@ export const TERMINAL: PaymentStatus[] = ["granted", "canceled", "failed"];
  * Pass catalogue.
  * PROPOSED placeholders until the team sets pricing (specs/billing OPEN). Change values here only.
  */
-export const PASS_CATALOG: Record<PassType, { name: string; price: number; days?: number; uses?: number; includes: string[] }> = {
-  season: { name: "시즌 패스", price: 9900, days: 30, includes: ["연결 결과 전체", "프롬프트 키트 무제한"] },
-  single: { name: "건당 패스", price: 1900, uses: 1, includes: ["공고 1건의 연결 결과", "프롬프트 키트 1회"] },
+export const PASS_CATALOG: Record<PassType, { name: string; price: number; days: number; includes: string[] }> = {
+  season: { name: "시즌 패스", price: 9900, days: 30, includes: ["에피소드·활동 무제한 저장", "연결 결과 전체", "프롬프트 키트 무제한"] },
 };
 
-/** PROPOSED placeholder: free monthly quota for LLM-cost features. */
-export const FREE_MONTHLY_QUOTA = 3;
-/** PROPOSED placeholder: season-pass monthly quota. */
-export const SEASON_MONTHLY_QUOTA = 30;
+/**
+ * 무료 한도 (specs/billing BILL-01, 2026-11-18). A signed-in free user may save this many activities and episodes in
+ * total, once (not monthly; deleting does not give them back). 공고 등록 is unlimited; 연결 and the 프롬프트 키트 need
+ * the season pass; the pass removes every limit. PROPOSED numbers: change them here only.
+ */
+export const FREE_LIMITS = { activity_save: 3, episode_save: 3 } as const;
 
-export const QuotaFeature = z.enum(["posting_analysis", "experience_extraction", "connection", "prompt_kit"]);
+/** What quota_usage records. activity_save / episode_save count the free limits; the others are kept for usage stats. */
+export const QuotaFeature = z.enum(["posting_analysis", "experience_extraction", "connection", "prompt_kit", "activity_save", "episode_save"]);
 export type QuotaFeature = z.infer<typeof QuotaFeature>;
 
 /** Toss Payments success redirect query (successUrl?paymentKey=&orderId=&amount=) */

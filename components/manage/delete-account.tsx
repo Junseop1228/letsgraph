@@ -4,7 +4,7 @@ import { deleteAccountAction } from "@/app/(main)/manage/account-actions";
 import { btn, Kicker } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 
-const WIPED = ["관심 정보와 관심 기업", "올린 공고와 공고 정리", "경험 카드와 경험 대화", "연결 결과와 프롬프트 키트", "남은 패스와 쿼터"];
+const WIPED = ["관심 정보와 관심 기업", "올린 공고와 공고 정리", "경험 카드와 경험 대화", "연결 결과와 프롬프트 키트", "남은 패스와 이용 기록"];
 
 /** 회원 탈퇴 (specs/account FR-ACCT-05): shows what is deleted, asks for a typed confirmation. */
 export function DeleteAccount() {

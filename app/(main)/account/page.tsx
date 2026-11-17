@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { catalog, supabaseEnabled, userData } from "@/lib/data";
-import { FREE_MONTHLY_QUOTA } from "@/lib/contracts/billing";
+import { FREE_LIMITS } from "@/lib/contracts/billing";
+import type { PlanState } from "@/lib/billing/server";
 import { DemoBadge, Kicker, btn } from "@/components/lg/ui";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { WatchedList } from "@/components/manage/watched-list";
@@ -14,7 +15,7 @@ export const metadata = { title: "내 계정 · letsGraph" };
 async function AccountContent() {
   const { repo, demo } = await userData();
   const cat = await catalog();
-  let plan = { plan: "free", used: 1, quota: FREE_MONTHLY_QUOTA, remaining: FREE_MONTHLY_QUOTA - 1, passes: [] as { type: string; expiresAt: string | null; usesLeft: number | null }[] };
+  let plan: PlanState = { plan: "free", used: { activity_save: 1, episode_save: 1 }, remaining: { activity_save: FREE_LIMITS.activity_save - 1, episode_save: FREE_LIMITS.episode_save - 1 }, passes: [] };
   let who: { email: string; google: boolean } | null = null;
   if (!demo && supabaseEnabled()) {
     const { createClient } = await import("@/lib/supabase/server");
@@ -39,11 +40,22 @@ async function AccountContent() {
         <Kicker>이용 현황</Kicker>
         <div className="grid grid-cols-3 overflow-hidden rounded-container border border-border">
           <div className="border-r border-border p-4"><p className="text-caption text-text-secondary">이용 등급</p><p className="text-heading-2">{plan.plan === "premium" ? "프리미엄" : "무료"}</p></div>
-          <div className="border-r border-border p-4"><p className="text-caption text-text-secondary">이번 달 남은 쿼터</p><p className="figures text-figure">{plan.remaining} / {plan.quota}</p></div>
-          <div className="p-4"><p className="text-caption text-text-secondary">패스</p><p className="text-heading-3">{plan.passes.length ? plan.passes.map((p) => (p.type === "season" ? `시즌 (${p.expiresAt?.slice(0, 10)}까지)` : `건당 ${p.usesLeft}회`)).join(", ") : "없음"}</p></div>
+          <div className="border-r border-border p-4">
+            <p className="text-caption text-text-secondary">무료로 남은 저장</p>
+            {plan.plan === "premium" ? (
+              <p className="text-heading-2">무제한</p>
+            ) : (
+              <p className="text-label-strong">
+                활동 <span className="figures">{plan.remaining.activity_save} / {FREE_LIMITS.activity_save}</span>
+                <br />
+                에피소드 <span className="figures">{plan.remaining.episode_save} / {FREE_LIMITS.episode_save}</span>
+              </p>
+            )}
+          </div>
+          <div className="p-4"><p className="text-caption text-text-secondary">시즌 패스</p><p className="text-heading-3">{plan.passes.filter((p) => p.type === "season").map((p) => `${p.expiresAt?.slice(0, 10)}까지`).join(", ") || "없음"}</p></div>
         </div>
-        <p className="text-body text-text-secondary">쿼터는 공고 정리, 카드 만들기, 연결 결과처럼 AI가 정리하는 기능에 써요. 프롬프트 키트는 쿼터를 쓰지 않고, 실패한 요청은 세지 않아요.</p>
-        <Link href="/billing" className={btn.primary}>패스로 쿼터 늘리기</Link>
+        <p className="text-body text-text-secondary">공고 등록은 무제한이에요. 무료로는 활동과 에피소드를 각각 {FREE_LIMITS.activity_save}개까지 저장할 수 있고, 지워도 다시 채워지지 않아요. 연결 결과와 프롬프트 키트는 시즌 패스로 열리고, 패스가 있으면 모두 무제한이에요.</p>
+        {plan.plan === "premium" ? null : <Link href="/billing" className={btn.primary}>시즌 패스 보기</Link>}
         {demo && <p className="text-caption text-text-secondary">데모 수치예요. 로그인하면 내 이용 현황이 보여요.</p>}
       </section>
 

@@ -1,6 +1,7 @@
 "use client";
 // PDF upload form for server actions (공고 정리, 경험 카드). Tells the user the file goes to an AI before upload (NFR-EXT-05).
 import { useActionState } from "react";
+import Link from "next/link";
 import { FileUp } from "lucide-react";
 import type { ActionState } from "@/app/(main)/postings/actions";
 import { btn } from "@/components/lg/ui";
@@ -32,6 +33,7 @@ export function PdfUpload({ action, label, hint, submit }: Props) {
         </button>
         {state?.error && <p role="alert" className={cn("text-label text-text-error")}>{state.error}</p>}
         {state?.ok && <p role="status" className="text-label text-text-success">{state.ok}</p>}
+        {(state as { pay?: boolean } | undefined)?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>시즌 패스 보기</Link> : null}
       </div>
     </form>
   );
