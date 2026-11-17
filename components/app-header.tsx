@@ -6,6 +6,7 @@ import { AccountLink, AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
 import { HeaderSearch } from "@/components/search/header-search";
 import { HeaderNotifications } from "@/components/header/header-notifications";
+import { AdminLink } from "@/components/header/admin-link";
 
 function Logo() {
   return (
@@ -38,6 +39,11 @@ export function AppHeader() {
         <Suspense fallback={<MainNavFallback />}>
           <MainNav />
         </Suspense>
+        {hasEnvVars && (
+          <Suspense>
+            <AdminLink />
+          </Suspense>
+        )}
         <div className="flex-1" />
         <Suspense>
           <HeaderSearch />
