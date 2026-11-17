@@ -5,7 +5,7 @@
 // Claude's call under D 2026-11-17 20:02: about 0.007 USD each on gemini-3.5-flash-lite).
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DartClient } from "@/lib/dart/client";
-import { analyzeCompany } from "@/lib/dart/analyze";
+import { analyzeCompany, refreshUpdates } from "@/lib/dart/analyze";
 import { aiEnabled } from "@/lib/ai/tasks";
 
 const DAILY_CAP = 300;
@@ -44,6 +44,8 @@ async function run(companyId: string): Promise<BuildResult> {
   const { data: row } = await db.from("collector_runs").insert({ source: "segments-view", note: companyId }).select("id").single();
   const dart = DartClient.fromEnv();
   const r = await analyzeCompany(db, dart, companyId);
+  // B3 with it: the company's recent filings, tagged to the new segments (3 DART calls + one small AI call)
+  if (r.status === "ok") await refreshUpdates(db, dart, companyId).catch(() => null);
   if (row)
     await db
       .from("collector_runs")

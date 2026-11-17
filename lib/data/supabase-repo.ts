@@ -20,6 +20,7 @@ import {
 } from "@/lib/contracts/domain";
 import { Activity, ConnectionOutput, Experience, JobPosting, PostingAnalysisOutput } from "@/lib/contracts/activity";
 import { z } from "zod";
+import { dartViewerUrl } from "@/lib/dart/updates";
 
 type Row = Record<string, unknown>;
 type JobLinkRow = { job_role_id: string; company_id: string; basis: "posting" | "estimated" };
@@ -65,7 +66,7 @@ async function updatesFor(companyId: string, segmentId?: string) {
   if (segmentId) q = q.eq("segment_id", segmentId);
   const { data } = await q;
   return (data ?? []).map((u) =>
-    CompanyUpdate.parse({ tag: u.tag, title: u.title, date: u.date, kind: u.kind, sourceLabel: u.source_label }),
+    CompanyUpdate.parse({ tag: u.tag, title: u.title, date: u.date, kind: u.kind, sourceLabel: u.source_label, ...(u.rcept_no ? { url: dartViewerUrl(u.rcept_no) } : {}) }),
   );
 }
 
@@ -228,16 +229,18 @@ export const supabaseCatalog: CatalogRepo = {
       newsQuery: data.news_query ?? "",
     });
   },
-  async recentUpdates(limit) {
-    const { data } = await pub()
+  async recentUpdates(limit, companyIds) {
+    let q = pub()
       .from("company_updates")
-      .select("company_id, tag, title, date, kind, source_label, companies(name)")
+      .select("company_id, tag, title, date, kind, source_label, rcept_no, companies(name)")
       .order("date", { ascending: false })
       .limit(limit);
+    if (companyIds) q = q.in("company_id", companyIds.length ? companyIds : ["-"]);
+    const { data } = await q;
     return (data ?? []).map((u) => ({
       companyId: String(u.company_id),
       companyName: String((u.companies as { name?: string } | null)?.name ?? u.company_id),
-      update: CompanyUpdate.parse({ tag: u.tag, title: u.title, date: u.date, kind: u.kind, sourceLabel: u.source_label }),
+      update: CompanyUpdate.parse({ tag: u.tag, title: u.title, date: u.date, kind: u.kind, sourceLabel: u.source_label, ...(u.rcept_no ? { url: dartViewerUrl(u.rcept_no) } : {}) }),
     }));
   },
 };

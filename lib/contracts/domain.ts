@@ -95,6 +95,8 @@ export const CompanyUpdate = z.object({
   date: z.string(),
   kind: z.enum(["disclosure", "ir", "release"]),
   sourceLabel: z.string(),
+  /** DART viewer page of the filing (outbound link, B3); hand-made demo items have none */
+  url: z.string().optional(),
 });
 export type CompanyUpdate = z.infer<typeof CompanyUpdate>;
 
