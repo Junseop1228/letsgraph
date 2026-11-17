@@ -12,6 +12,9 @@ import { SEGMENTS_PROMPT_VERSION } from "@/lib/ai/prompts/segments";
 import { JOBS } from "@/lib/reference/jobs";
 import { JOB_INDUSTRY } from "@/lib/reference/job-industry";
 import { PER_INDUSTRY } from "@/lib/explore/stars";
+import { pickFilings, toUpdateRows, UPDATES_DAYS } from "@/lib/dart/updates";
+import { tagUpdates } from "@/lib/ai/updates";
+import { UPDATES_PROMPT_VERSION } from "@/lib/ai/prompts/updates";
 
 /**
  * Token budget (D 2026-11-17 20:02, Claude's call): about 30k characters of the chapter per company (parts on
@@ -123,6 +126,87 @@ export async function coreSet(db: SupabaseClient): Promise<string[]> {
   const { data: posted } = await db.from("job_postings").select("company_id").not("company_id", "is", null).limit(1000);
   for (const r of posted ?? []) if (r.company_id) ids.add(r.company_id);
   return [...ids];
+}
+
+const ymd = (d: Date) => d.toISOString().slice(0, 10).replaceAll("-", "");
+
+/**
+ * B3: the company's recent filings (정기·주요사항·거래소 공시, last UPDATES_DAYS days) -> company_updates with a segment
+ * tag. Replaces the company's earlier DART rows (rows with a 접수번호); hand-made demo companies are left alone.
+ * 3 DART calls and, with two or more segments, one small AI call.
+ */
+export async function refreshUpdates(db: SupabaseClient, dart: DartClient, companyId: string): Promise<AnalyzeResult & { updates?: number }> {
+  const { data: co } = await db.from("companies").select("id,name,corp_code").eq("id", companyId).maybeSingle();
+  if (!co?.corp_code) return { companyId, status: "failed", reason: "no DART code" };
+  const { data: segs } = await db.from("business_segments").select("id,name,short_name,summary,ai_generated,source_rcept_no").eq("company_id", companyId);
+  if ((segs ?? []).some((s) => !s.ai_generated || !s.source_rcept_no)) return { companyId, status: "skipped", reason: "hand-made data" };
+
+  const end = new Date();
+  const bgn = new Date(end.getTime() - UPDATES_DAYS * 24 * 3600 * 1000);
+  const filings = [];
+  try {
+    for (const t of ["A", "B", "I"] as const) filings.push(...((await dart.filingsOfType(co.corp_code, t, ymd(bgn), ymd(end)))?.list ?? []));
+  } catch (e) {
+    return { companyId, status: "failed", reason: `filings: ${String((e as Error).message ?? e).slice(0, 120)}` };
+  }
+  const picked = pickFilings(filings);
+  const segments = (segs ?? []).map((s) => ({ id: s.id as string, name: s.name as string, shortName: s.short_name as string, summary: (s.summary as string) ?? "" }));
+
+  let tags: (string | null)[] = picked.map(() => null);
+  let usage: Usage | undefined;
+  if (picked.length && segments.length >= 1) {
+    try {
+      const r = await tagUpdates({ company: co.name, segments, titles: picked.map((p) => p.title) });
+      tags = r.tags;
+      usage = r.usage;
+    } catch {
+      /* no tags: every filing is shown as 전사 */
+    }
+  }
+  const rows = toUpdateRows(companyId, picked, segments, tags);
+  const del = await db.from("company_updates").delete().eq("company_id", companyId).not("rcept_no", "is", null);
+  if (del.error) return { companyId, status: "failed", reason: `db: ${del.error.message}`, usage };
+  if (rows.length) {
+    const ins = await db.from("company_updates").insert(rows);
+    if (ins.error) return { companyId, status: "failed", reason: `db: ${ins.error.message}`, usage };
+  }
+  return { companyId, status: "ok", updates: rows.length, usage };
+}
+
+/** B3 for many companies, a few at a time, with the same spend guard as the B1/B2 batch. */
+export async function refreshUpdatesMany(db: SupabaseClient, dart: DartClient, ids: string[], o: { concurrency?: number; budgetUsd: number }): Promise<BatchResult> {
+  const { data: run } = await db.from("collector_runs").insert({ source: "updates", note: `${UPDATES_PROMPT_VERSION} · ${ids.length} companies` }).select("id").single();
+  const results: AnalyzeResult[] = [];
+  let spent = 0;
+  let stopped = false;
+  let next = 0;
+  const worker = async () => {
+    while (next < ids.length) {
+      if (spent >= o.budgetUsd) {
+        stopped = true;
+        return;
+      }
+      const id = ids[next++];
+      const r = await refreshUpdates(db, dart, id);
+      if (r.usage) spent += usd(r.usage);
+      results.push(r);
+      if (r.status === "failed" && run) await db.from("collector_failures").insert({ run_id: run.id, target: id, reason: r.reason ?? "failed" });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, o.concurrency ?? 3) }, worker));
+  if (run)
+    await db
+      .from("collector_runs")
+      .update({
+        finished_at: new Date().toISOString(),
+        ok_count: results.filter((r) => r.status === "ok").length,
+        fail_count: results.filter((r) => r.status === "failed").length,
+        calls_used: dart.callsUsed,
+        deferred: stopped,
+        note: `${UPDATES_PROMPT_VERSION} · ${ids.length} companies · USD ${spent.toFixed(3)}`,
+      })
+      .eq("id", run.id);
+  return { runId: run?.id ?? null, results, spentUsd: Number(spent.toFixed(4)), stoppedForBudget: stopped, promptVersion: UPDATES_PROMPT_VERSION };
 }
 
 export type BatchResult = { runId: number | null; results: AnalyzeResult[]; spentUsd: number; stoppedForBudget: boolean; promptVersion: string };

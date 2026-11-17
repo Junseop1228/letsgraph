@@ -152,6 +152,15 @@ export class DartClient {
     return null;
   }
 
+  /** Recent filings of one company of one disclosure type (B3, lib/dart/updates.ts): A 정기, B 주요사항, I 거래소. One call. */
+  filingsOfType(corpCode: string, type: "A" | "B" | "I", bgnDe: string, endDe: string) {
+    return this.json(
+      "list.json",
+      { corp_code: corpCode, bgn_de: bgnDe, end_de: endDe, pblntf_ty: type, last_reprt_at: "Y", page_count: "100" },
+      DartFilingList,
+    );
+  }
+
   /** 공시서류원본파일: the filing as a zip of XML documents (B1/B2 input, lib/dart/document.ts). One call. */
   async document(rceptNo: string): Promise<Uint8Array> {
     const res = await this.raw("document.xml", { rcept_no: rceptNo });

@@ -1,6 +1,6 @@
 "use client";
 // 알림함 (specs/explore FR-DISC-04, teammate spec header): bell with unread count; items = recent filings of my saved companies.
-// The server sends filings of every company with a detail page; the bell keeps the saved ones, newest first (audit C-2).
+// The bell asks /api/catalog/updates for the saved companies whenever the saved list changes (audit C-2), newest first.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
@@ -12,9 +12,22 @@ export type Note = { id: string; companyId: string; tag: string; title: string; 
 const KEY = "lg:seen-notes";
 const SHOWN = 3;
 
-export function NotificationBell({ notes, watchedInitial, demo }: { notes: Note[]; watchedInitial: string[]; demo: boolean }) {
+export function NotificationBell({ watchedInitial, demo }: { watchedInitial: string[]; demo: boolean }) {
   const watched = useWatched(watchedInitial);
   const [seen, setSeen] = useState<string[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const ids = watched.ids.slice(0, 50).join(",");
+  useEffect(() => {
+    if (!ids) return;
+    let live = true;
+    fetch(`/api/catalog/updates?ids=${encodeURIComponent(ids)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((n: Note[]) => live && setNotes(n))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ids]);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- read browser storage after hydration
