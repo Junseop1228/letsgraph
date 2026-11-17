@@ -65,3 +65,18 @@ export function decideEvidence(submittedUrl: string | null | undefined, sources:
   }
   return null;
 }
+
+/** What to do with a new posting before any paid search (POST-07, 2026-11-18). */
+export type CheckPlan = "direct" | "known" | "search" | "skip";
+
+/**
+ * - direct: the posting came from a job-board address, which is evidence by itself (free)
+ * - known: this (job, company) is already confirmed by earlier evidence: no search, the paid web search is never repeated
+ * - search: not confirmed yet, so one web search
+ * - skip: not confirmed and no AI key
+ */
+export function planEvidenceCheck(o: { jobBoardUrl: boolean; confirmed: boolean; aiOn: boolean }): CheckPlan {
+  if (o.jobBoardUrl) return "direct";
+  if (o.confirmed) return "known";
+  return o.aiOn ? "search" : "skip";
+}

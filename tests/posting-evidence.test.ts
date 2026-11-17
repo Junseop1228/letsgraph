@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideEvidence, domainOf, isJobBoard, isNotAPosting } from "@/lib/posting/evidence-check";
+import { decideEvidence, domainOf, isJobBoard, isNotAPosting, planEvidenceCheck } from "@/lib/posting/evidence-check";
 
 describe("POST-07 공고 근거 판단", () => {
   it("normalises URLs and hosts to a domain", () => {
@@ -26,5 +26,19 @@ describe("POST-07 공고 근거 판단", () => {
   });
   it("keeps the submitted URL when the search confirms its site", () => {
     expect(decideEvidence("https://recruit.cj.net/jobs/123", [{ domain: "recruit.cj.net", kind: "official" }])).toEqual({ method: "submitted_url", domain: "recruit.cj.net", url: "https://recruit.cj.net/jobs/123" });
+  });
+});
+
+describe("POST-07 검색 전에 기존 확인부터 (2026-11-18)", () => {
+  it("an already confirmed (job, company) never pays for a web search again", () => {
+    expect(planEvidenceCheck({ jobBoardUrl: false, confirmed: true, aiOn: true })).toBe("known");
+  });
+  it("searches only for a pair not confirmed yet", () => {
+    expect(planEvidenceCheck({ jobBoardUrl: false, confirmed: false, aiOn: true })).toBe("search");
+    expect(planEvidenceCheck({ jobBoardUrl: false, confirmed: false, aiOn: false })).toBe("skip");
+  });
+  it("a job-board address stays free evidence, confirmed or not", () => {
+    expect(planEvidenceCheck({ jobBoardUrl: true, confirmed: false, aiOn: true })).toBe("direct");
+    expect(planEvidenceCheck({ jobBoardUrl: true, confirmed: true, aiOn: false })).toBe("direct");
   });
 });
