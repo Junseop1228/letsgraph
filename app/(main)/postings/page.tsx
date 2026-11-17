@@ -1,3 +1,4 @@
+import { LoginPrompt } from "@/components/lg/login-prompt";
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -22,7 +23,8 @@ async function PostingsContent({ searchParams }: Props) {
   await connection(); // request-time render: uses today's date and the user's data
   const { view, month } = await searchParams;
   const list = view === "list";
-  const { repo, demo } = await userData();
+  const { repo, demo, guest } = await userData();
+  if (guest) return <LoginPrompt next="/postings" title="로그인하면 내 공고가 여기에 모여요" text="공고를 올리면 AI가 주요 업무와 자격 요건을 정리하고 마감일을 달력에 모아 줘요. 로그인하면 공고 정리는 무제한이에요." />;
   const postings = await repo.postings();
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">

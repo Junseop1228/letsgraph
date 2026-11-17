@@ -1,3 +1,4 @@
+import { LoginPrompt } from "@/components/lg/login-prompt";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronUp, Layers, MessageSquare, Plus } from "lucide-react";
@@ -74,7 +75,8 @@ function CreateActivity({ open }: { open: boolean }) {
 async function ManageContent({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const tab: Tab = sp.tab === "cards" ? "cards" : "chat";
-  const { repo, demo } = await userData();
+  const { repo, demo, guest } = await userData();
+  if (guest) return <LoginPrompt next="/manage" title="로그인하면 경험 카드를 만들 수 있어요" text="AI 코치와 대화하며 활동과 에피소드를 꺼내고 카드로 모아요. 무료로 활동과 에피소드를 각각 3개까지 저장할 수 있어요." />;
   const [activities, episodes] = await Promise.all([repo.activities(), repo.experiences()]);
   return (
     <div className="mx-auto max-w-content-max px-5 py-6">

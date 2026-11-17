@@ -1,3 +1,4 @@
+import { LoginPrompt } from "@/components/lg/login-prompt";
 import Link from "next/link";
 import { Suspense } from "react";
 import { catalog, supabaseEnabled, userData } from "@/lib/data";
@@ -13,7 +14,8 @@ export const metadata = { title: "내 계정 · letsGraph" };
 
 // 내 계정 (header profile): 이용 현황 (FR-ACCT-04), 관심 기업 (FR-DISC-03), 회원 탈퇴 (FR-ACCT-05).
 async function AccountContent() {
-  const { repo, demo } = await userData();
+  const { repo, demo, guest } = await userData();
+  if (guest) return <LoginPrompt next="/account" title="로그인이 필요해요" text="로그인하면 이용 현황, 시즌 패스, 관심 기업을 볼 수 있어요." />;
   const cat = await catalog();
   let plan: PlanState = { plan: "free", used: { activity_save: 1, episode_save: 1 }, remaining: { activity_save: FREE_LIMITS.activity_save - 1, episode_save: FREE_LIMITS.episode_save - 1 }, passes: [] };
   let who: { email: string; google: boolean } | null = null;
