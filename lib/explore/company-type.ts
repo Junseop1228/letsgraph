@@ -40,6 +40,8 @@ export function matchesType(c: Pick<Company, "revenue" | "revenueGrowth">, t: Co
  */
 export function reasonLine(o: {
   basis: "posting" | "estimated";
+  /** confirmed postings behind a 'posting' link (POST-07) */
+  postings?: number;
   jobName: string;
   industryName: string;
   rank: number | null;
@@ -48,7 +50,7 @@ export function reasonLine(o: {
   relaxed: boolean;
 }): string {
   const parts: string[] = [];
-  if (o.basis === "posting") parts.push(`${o.jobName} 실제 공고가 확인된 회사`);
+  if (o.basis === "posting") parts.push(o.postings ? `${o.jobName} 공고 ${o.postings}건으로 확인된 회사` : `${o.jobName} 실제 공고가 확인된 회사`);
   const filtered = o.type && !o.relaxed;
   if (o.rank) parts.push(filtered ? `${o.industryName} ${companyTypeLabel(o.type!)} 중 매출 ${o.rank}위` : `${o.industryName} 매출 ${o.rank}위`);
   else if (o.basis !== "posting") parts.push(`${o.jobName} 관련 산업인 ${o.industryName}`);

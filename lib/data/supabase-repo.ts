@@ -154,7 +154,25 @@ export const supabaseCatalog: CatalogRepo = {
       out.push(...((data ?? []) as JobLinkRow[]));
       if (!data || data.length < 1000) break;
     }
-    return out.map((l) => ({ jobRoleId: l.job_role_id, companyId: l.company_id, basis: l.basis }));
+    // evidence behind 'posting' links (POST-07): job_link_evidence has RLS without policies, so it is read with the
+    // server key; only counts and the latest check date leave the server, never source sites or URLs
+    const ev = new Map<string, { count: number; lastSeen: string }>();
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const { data } = await createAdminClient().from("job_link_evidence").select("job_role_id,company_id,checked_at").limit(5000);
+      for (const r of data ?? []) {
+        const k = `${r.job_role_id}|${r.company_id}`;
+        const cur = ev.get(k);
+        const at = String(r.checked_at).slice(0, 10);
+        ev.set(k, { count: (cur?.count ?? 0) + 1, lastSeen: cur && cur.lastSeen > at ? cur.lastSeen : at });
+      }
+    } catch {
+      /* no server key: links without evidence detail */
+    }
+    return out.map((l) => {
+      const e = l.basis === "posting" ? ev.get(`${l.job_role_id}|${l.company_id}`) : undefined;
+      return { jobRoleId: l.job_role_id, companyId: l.company_id, basis: l.basis, ...(e ? { evidence: e } : {}) };
+    });
   },
   async segmentsFor(companyIds) {
     const out: Record<string, BusinessSegment[]> = Object.fromEntries(companyIds.map((id) => [id, []]));

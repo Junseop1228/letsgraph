@@ -346,6 +346,7 @@ export function ExploreGraph(p: Props) {
               c={coById.get(sel.co)!}
               job={roleById.get(sel.job)!}
               basis={linksOf(sel.job).find((l) => l.companyId === sel.co)?.basis ?? "estimated"}
+              evidence={linksOf(sel.job).find((l) => l.companyId === sel.co)?.evidence}
               segs={p.segmentsByCompany[sel.co] ?? []}
               saved={watched.has(sel.co)}
               onToggle={() => toggleWatch(sel.co)}
@@ -353,6 +354,7 @@ export function ExploreGraph(p: Props) {
               backLabel={indName(companyIndustry[sel.co])}
               reason={reasonLine({
                 basis: linksOf(sel.job).find((l) => l.companyId === sel.co)?.basis ?? "estimated",
+                postings: linksOf(sel.job).find((l) => l.companyId === sel.co)?.evidence?.count,
                 jobName: roleById.get(sel.job)!.name,
                 industryName: indName(companyIndustry[sel.co]),
                 rank: p.ranks?.[sel.co] ?? null,
@@ -570,7 +572,7 @@ function IndustryCard({ job, ind, indName, links, total, coById, otherJobs, save
   );
 }
 
-function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, reason, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; onHide: () => void; backLabel: string; reason: string; onBack: () => void }) {
+function CompanyCard({ c, job, basis, evidence, segs, saved, onToggle, onHide, backLabel, reason, onBack }: { c: Company; job: JobRole; basis: "posting" | "estimated"; evidence?: { count: number; lastSeen: string }; segs: BusinessSegment[]; saved: boolean; onToggle: () => void; onHide: () => void; backLabel: string; reason: string; onBack: () => void }) {
   const withJob = segs.filter((s) => s.jobRoleIds.includes(job.id));
   return (
     <>
@@ -582,6 +584,8 @@ function CompanyCard({ c, job, basis, segs, saved, onToggle, onHide, backLabel, 
         </p>
         {/* one reason line per company (D 2026-11-17 onboarding card flow) */}
         {reason && <p className="mt-1 text-body text-text-secondary">{reason}</p>}
+        {/* POST-07: when the posting was last confirmed (sources stay on the server) */}
+        {evidence && <p className="mt-1 text-caption text-text-secondary">최근 확인 {evidence.lastSeen.replaceAll("-", ".")}</p>}
       </header>
       <div>
         <p className="text-caption text-text-secondary">{c.fiscalYear ?? "최근"} 매출</p>
