@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DartClient } from "@/lib/dart/client";
 import { collectUniverse } from "@/lib/dart/universe";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const token = process.env.SEED_TOKEN;
