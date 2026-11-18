@@ -26,7 +26,7 @@ export function PostingUrlForm({ action }: Props) {
             autoComplete="off"
             placeholder="https://"
             aria-describedby="posting-url-hint"
-            className="h-control-md min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-text-secondary"
+            className="h-control-md w-0 min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-text-secondary"
           />
         </div>
         <button type="submit" disabled={pending} className={btn.primary}>

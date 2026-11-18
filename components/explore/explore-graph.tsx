@@ -495,7 +495,7 @@ function AddCompany({ onAdd }: { onAdd: (c: Company) => void }) {
       <label className="flex h-10 items-center gap-2 rounded-full bg-overlay-hover px-3 text-label">
         <Search className="size-4 shrink-0 text-text-secondary" aria-hidden />
         <span className="sr-only">그래프에 넣을 기업 찾기</span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="기업을 찾아 그래프에 넣기" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-text-secondary" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="기업을 찾아 그래프에 넣기" className="w-0 min-w-0 flex-1 bg-transparent outline-none placeholder:text-text-secondary" />
       </label>
       {shown.length > 0 && (
         <ul>

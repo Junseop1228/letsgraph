@@ -467,7 +467,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={activity ? "답을 적어 주세요" : "활동을 소개해 주세요 (예: 카페 아르바이트, 2024년 6월부터)"}
-              className="h-control-md min-w-0 flex-1 rounded-element border border-border-emphasized bg-bg-surface px-3 text-body outline-none focus:border-accent"
+              className="h-control-md w-0 min-w-0 flex-1 rounded-element border border-border-emphasized bg-bg-surface px-3 text-body outline-none focus:border-accent"
             />
             <button type="submit" disabled={pending} className={btn.primary} aria-label="보내기">
               <Send className="size-4" aria-hidden />
