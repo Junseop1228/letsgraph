@@ -29,16 +29,36 @@ test.describe("explore", () => {
     await expect(page.getByRole("heading", { name: "품질관리" })).toBeVisible();
   });
 
-  test("FR-DISC-01 처음 한 번만 자동으로", async ({ page }) => {
+  test("FR-DISC-01 카드를 끝낼 때까지 탐색 탭에", async ({ page }) => {
+    const card = page.locator("article[aria-label$=' 카드']");
+    const onboarded = async () => (await page.context().cookies()).some((c) => c.name === "lg_onboarded");
     await page.goto("/");
     await expect(page).toHaveURL(/\/explore$/);
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
-    await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "lg_onboarded")).toBe(true);
+    // leave mid-way: the 탐색 tab brings the deck back where it was (same session), not the graph
+    await page.getByRole("group", { name: "직군" }).getByRole("button", { name: "생산·품질" }).click();
+    await page.getByRole("button", { name: "직무 카드 넘기기" }).click();
+    const first = (await card.getAttribute("aria-label")) ?? "";
+    await page.getByRole("button", { name: "관심 없어요" }).click();
+    await expect(card).not.toHaveAttribute("aria-label", first);
+    const second = (await card.getAttribute("aria-label")) ?? "";
+    await page.getByRole("link", { name: "공고", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/postings/);
+    await page.getByRole("link", { name: "탐색", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/explore$/);
+    await expect(card).toHaveAttribute("aria-label", second);
+    expect(await onboarded()).toBe(false);
+    await page.goto("/explore/map");
+    await expect(page).toHaveURL(/\/explore$/);
+    // skipping ends the deck: from now on "/" and the 탐색 tab open the graph
+    await page.getByRole("button", { name: "건너뛰고 직무 맵 보기" }).click();
+    await expect(page).toHaveURL(/\/explore\/map\?job=/);
+    await expect.poll(onboarded).toBe(true);
     await page.goto("/");
     await expect(page).toHaveURL(/\/explore\/map$/);
     await page.goto("/explore");
     await expect(page).toHaveURL(/\/explore\/map$/);
-    await expect(page.getByRole("link", { name: "탐색" }).first()).toHaveAttribute("href", "/explore/map");
+    await expect(page.getByRole("link", { name: "탐색", exact: true }).first()).toHaveAttribute("href", "/explore");
     await page.getByRole("link", { name: "직무 더 고르기" }).click();
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
   });
