@@ -5,7 +5,7 @@ import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { createOrderAction } from "@/app/(main)/billing/actions";
 import { btn } from "@/components/lg/ui";
 
-export function CheckoutButton({ passType, label, enabled, primary = true }: { passType: "season"; label: string; enabled: boolean; primary?: boolean }) {
+export function CheckoutButton({ passType, label, enabled, primary = true }: { passType: "month" | "season"; label: string; enabled: boolean; primary?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 

@@ -5,7 +5,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { supabaseEnabled } from "@/lib/data";
 import { aiEnabled } from "@/lib/ai/tasks";
-import { access, dailyAccess, isLimited, planFromPasses, seoulDayStart, type GatedFeature, type Plan } from "@/lib/billing/state";
+import { access, dailyAccess, isLimited, planFromPasses, postingDaily, seoulDayStart, type GatedFeature, type Plan } from "@/lib/billing/state";
 
 type Gate =
   | { error: string; pay?: true }
@@ -32,6 +32,12 @@ export async function gate(feature: GatedFeature, next = "/postings", needsAi = 
   const plan = planFromPasses((passes ?? []).map((p) => ({ type: String(p.pass_type), expiresAt: p.expires_at as string | null })));
   const a = access(plan, feature, used);
   if (!a.ok) return { error: a.message, pay: true }; // EX-04 / EX-05: offer the season pass
+  if (feature === "posting_analysis") {
+    // 공고 등록 하루 상한 (BM 제안서): counted from the postings analysed today
+    const { count } = await db.from("quota_usage").select("id", { count: "exact", head: true }).eq("feature", "posting_analysis").gte("created_at", seoulDayStart());
+    const d = postingDaily(count ?? 0);
+    if (!d.ok) return { error: d.message };
+  }
   if (daily) {
     const { count } = await db.from("quota_usage").select("id", { count: "exact", head: true }).eq("feature", "ai_call").gte("created_at", seoulDayStart());
     const d = dailyAccess(plan, count ?? 0);

@@ -39,7 +39,7 @@ export function RepoImport() {
           {state.ok}
         </p>
       ) : null}
-      {state?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>시즌 패스 보기</Link> : null}
+      {state?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>패스 보기</Link> : null}
     </form>
   );
 }

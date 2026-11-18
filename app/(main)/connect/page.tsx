@@ -11,7 +11,7 @@ export const metadata = { title: "연결 · letsGraph" };
 // 연결 탭 (teammate spec 4): pick a posting, then 매칭 화면 -> 키트.
 async function ConnectContent() {
   const { repo, demo, guest } = await userData();
-  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 시즌 패스로 쓸 수 있어요." />;
+  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 패스로 쓸 수 있어요." />;
   const postings = await repo.postings();
   const rows = await Promise.all(
     postings.map(async (p) => ({ p, analysis: await repo.postingAnalysis(p.id), connection: await repo.connection(p.id) })),

@@ -2,8 +2,11 @@
 // single source for the state table in the spec and for the DB check constraint.
 import { z } from "zod";
 
-/** Season pass only (2026-11-18: the single pass was dropped). Old 'single' rows may remain in the DB and are ignored. */
-export const PassType = z.enum(["season"]);
+/**
+ * Passes (BM 제안서 2026-11-18): the 30일 패스 and the 시즌 패스 (90일). One payment, never renewed on its own.
+ * Old 'single' rows may remain in the DB and are ignored.
+ */
+export const PassType = z.enum(["month", "season"]);
 export type PassType = z.infer<typeof PassType>;
 
 export const PaymentStatus = z.enum([
@@ -48,9 +51,20 @@ export const TERMINAL: PaymentStatus[] = ["granted", "canceled", "failed"];
  * Pass catalogue.
  * PROPOSED placeholders until the team sets pricing (specs/billing OPEN). Change values here only.
  */
-export const PASS_CATALOG: Record<PassType, { name: string; price: number; days: number; includes: string[] }> = {
-  season: { name: "시즌 패스", price: 9900, days: 30, includes: ["에피소드·활동 무제한 저장", "연결 결과 전체", "프롬프트 키트 무제한"] },
+export const PASS_CATALOG: Record<PassType, { name: string; price: number; days: number; note: string; best?: boolean; includes: string[] }> = {
+  month: { name: "30일 패스", price: 9900, days: 30, note: "급할 때 한 달만", includes: ["공고–경험 연결 · 프롬프트 키트 무제한", "경험 카드 저장 무제한", "AI 사용 하루 100회"] },
+  season: { name: "시즌 패스", price: 19900, days: 90, note: "공채 한 시즌", best: true, includes: ["30일 패스의 모든 기능", "한 달로 나누면 약 6,600원", "30일 패스 세 번보다 9,800원 저렴"] },
 };
+
+/** 환불 (BM 제안서): shown on the pass page and in the user manual. Refunds are processed by the operators. */
+export const REFUND_POLICY = [
+  "한 번만 결제되고 자동으로 다시 결제되지 않아요.",
+  "결제 후 7일 안에 패스 기능을 쓰지 않았다면 전액 환불해요.",
+  "그 밖에는 남은 날수만큼 환불해요. 7일이 지나면 10%를 공제해요.",
+] as const;
+
+/** 공고 등록 하루 상한 (BM 제안서): postings analysed per person per Korean day, for everyone. */
+export const POSTING_DAILY_LIMIT = 30;
 
 /**
  * 무료 한도 (specs/billing BILL-01, 2026-11-18). A signed-in free user may save this many activities and episodes in
@@ -65,7 +79,7 @@ export const FREE_LIMITS = { activity_save: 3, episode_save: 3 } as const;
  * reading a PDF or a repository) per day, Korean time. Keeps a chat without saves from running up the AI bill.
  * PROPOSED numbers: change them here only.
  */
-export const DAILY_AI_LIMITS = { free: 40, premium: 200 } as const;
+export const DAILY_AI_LIMITS = { free: 40, premium: 100 } as const;
 
 export const QuotaFeature = z.enum(["posting_analysis", "experience_extraction", "connection", "prompt_kit", "activity_save", "episode_save", "ai_call"]);
 export type QuotaFeature = z.infer<typeof QuotaFeature>;
