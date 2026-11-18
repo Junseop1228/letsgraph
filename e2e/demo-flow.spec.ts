@@ -223,6 +223,7 @@ test.describe("billing", () => {
     test.skip(Boolean(process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY), "Toss test keys are set in .env.local: checkout is enabled");
     await page.goto("/billing");
     await expect(page.getByRole("button", { name: "시즌 패스 결제하기" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "30일 패스 결제하기" })).toBeDisabled();
   });
 
   test("FR-ACCT-03 결제 취소·실패 (E1)", async ({ page }) => {

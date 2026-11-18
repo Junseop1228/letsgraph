@@ -22,7 +22,7 @@ async function ConnectionContent({ params }: Props) {
   await requestTime(); // request-time render: uses today's date and the user's data
   const { id } = await params;
   const { repo, demo, guest } = await userData();
-  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 시즌 패스로 쓸 수 있어요." />;
+  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 패스로 쓸 수 있어요." />;
   const posting = await repo.posting(id);
   if (!posting) notFound();
   const [analysis, experiences, connection, activities] = await Promise.all([repo.postingAnalysis(id), repo.experiences(), repo.connection(id), repo.activities()]);
@@ -63,7 +63,7 @@ async function ConnectionContent({ params }: Props) {
       {!connection ? (
         <div className="mt-8 space-y-3 rounded-container bg-bg-sunken p-6">
           <p className="text-heading-3">아직 연결 결과가 없어요</p>
-          <p className="text-body text-text-secondary">공고의 핵심 역량, 자격 요건, 우대 사항마다 근거가 될 내 활동·에피소드를 AI가 추천해요. 시즌 패스로 쓸 수 있어요.</p>
+          <p className="text-body text-text-secondary">공고의 핵심 역량, 자격 요건, 우대 사항마다 근거가 될 내 활동·에피소드를 AI가 추천해요. 패스로 쓸 수 있어요.</p>
           <ActionButton action={connectAction.bind(null, id)} label="지원 근거 찾기" pendingLabel="근거 찾는 중…" />
         </div>
       ) : !premium ? (

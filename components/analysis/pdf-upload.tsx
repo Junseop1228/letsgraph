@@ -33,7 +33,7 @@ export function PdfUpload({ action, label, hint, submit }: Props) {
         </button>
         {state?.error && <p role="alert" className={cn("text-label text-text-error")}>{state.error}</p>}
         {state?.ok && <p role="status" className="text-label text-text-success">{state.ok}</p>}
-        {(state as { pay?: boolean } | undefined)?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>시즌 패스 보기</Link> : null}
+        {(state as { pay?: boolean } | undefined)?.pay ? <Link href="/billing" className={cn(btn.secondary, btn.sm)}>패스 보기</Link> : null}
       </div>
     </form>
   );

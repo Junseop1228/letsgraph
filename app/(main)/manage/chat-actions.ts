@@ -170,7 +170,7 @@ export async function importActivitiesAction(_prev: { error?: string; pay?: bool
   await recordUse(g.db, g.uid, "activity_save", rows.length);
   revalidatePath("/manage");
   if (rows.length < all.length) {
-    return { ok: `PDF에서 활동 ${all.length}개를 찾았는데, 무료로는 ${rows.length}개까지만 저장했어요. 시즌 패스가 있으면 모두 저장할 수 있어요.`, pay: true };
+    return { ok: `PDF에서 활동 ${all.length}개를 찾았는데, 무료로는 ${rows.length}개까지만 저장했어요. 패스가 있으면 모두 저장할 수 있어요.`, pay: true };
   }
   return { ok: `활동 카드 ${rows.length}개를 만들었어요. 활동 줄 끝에서 에피소드를 꺼내 보세요. 원본 파일은 저장하지 않아요.` };
 }

@@ -2,6 +2,7 @@
 import {
   DAILY_AI_LIMITS,
   FREE_LIMITS,
+  POSTING_DAILY_LIMIT,
   TRANSITIONS,
   type PaymentEvent,
   type PaymentStatus,
@@ -53,8 +54,8 @@ export function freeRemaining(f: LimitedFeature, usedEver: number): number {
 }
 
 const LIMIT_MESSAGE: Record<LimitedFeature, string> = {
-  activity_save: `무료로 저장할 수 있는 활동 ${FREE_LIMITS.activity_save}개를 다 썼어요. 시즌 패스가 있으면 무제한으로 저장할 수 있어요.`,
-  episode_save: `무료로 저장할 수 있는 에피소드 ${FREE_LIMITS.episode_save}개를 다 썼어요. 시즌 패스가 있으면 무제한으로 꺼낼 수 있어요.`,
+  activity_save: `무료로 저장할 수 있는 활동 ${FREE_LIMITS.activity_save}개를 다 썼어요. 패스가 있으면 무제한으로 저장할 수 있어요.`,
+  episode_save: `무료로 저장할 수 있는 에피소드 ${FREE_LIMITS.episode_save}개를 다 썼어요. 패스가 있으면 무제한으로 꺼낼 수 있어요.`,
 };
 
 /**
@@ -64,14 +65,22 @@ const LIMIT_MESSAGE: Record<LimitedFeature, string> = {
  */
 export function access(plan: Plan, feature: GatedFeature, usedEver = 0): Access {
   if (plan === "premium" || feature === "posting_analysis") return { ok: true, remaining: null };
-  if (feature === "connection") return { ok: false, reason: "pass", message: "연결 결과와 프롬프트 키트는 시즌 패스가 있으면 쓸 수 있어요." };
+  if (feature === "connection") return { ok: false, reason: "pass", message: "연결 결과와 프롬프트 키트는 패스가 있으면 쓸 수 있어요." };
   const remaining = freeRemaining(feature, usedEver);
   return remaining > 0 ? { ok: true, remaining } : { ok: false, reason: "limit", message: LIMIT_MESSAGE[feature] };
 }
 
-/** Plan from passes: an active season pass makes the user premium. Other pass types (the old single pass) count for nothing. */
+const PASSES = new Set(["month", "season"]);
+
+/** Plan from passes: an active 30일 or 시즌 패스 makes the user premium. The old single pass counts for nothing. */
 export function planFromPasses(passes: { type: string; expiresAt?: string | null }[], now: Date = new Date()): Plan {
-  return passes.some((p) => p.type === "season" && !!p.expiresAt && new Date(p.expiresAt) > now) ? "premium" : "free";
+  return passes.some((p) => PASSES.has(p.type) && !!p.expiresAt && new Date(p.expiresAt) > now) ? "premium" : "free";
+}
+
+/** 공고 등록 하루 상한 (BM 제안서): one more posting today? The same for free users and pass holders. */
+export function postingDaily(usedToday: number): { ok: true; left: number } | { ok: false; message: string } {
+  const left = Math.max(0, POSTING_DAILY_LIMIT - Math.max(0, usedToday));
+  return left > 0 ? { ok: true, left } : { ok: false, message: `오늘은 공고를 ${POSTING_DAILY_LIMIT}건 정리했어요. 내일 다시 넣을 수 있어요.` };
 }
 
 /** Start of today in Korean time (UTC+9, no daylight saving), as an ISO timestamp in UTC. */
@@ -85,6 +94,6 @@ export function dailyAccess(plan: Plan, usedToday: number): { ok: true; left: nu
   const left = Math.max(0, DAILY_AI_LIMITS[plan] - Math.max(0, usedToday));
   if (left > 0) return { ok: true, left };
   return plan === "free"
-    ? { ok: false, pay: true, message: `오늘은 AI 코치를 많이 썼어요. 내일 다시 이어 갈 수 있어요. 시즌 패스가 있으면 하루 ${DAILY_AI_LIMITS.premium}번까지 쓸 수 있어요.` }
+    ? { ok: false, pay: true, message: `오늘은 AI 코치를 많이 썼어요. 내일 다시 이어 갈 수 있어요. 패스가 있으면 하루 ${DAILY_AI_LIMITS.premium}번까지 쓸 수 있어요.` }
     : { ok: false, pay: false, message: "오늘은 AI 코치를 많이 썼어요. 내일 다시 이어 갈 수 있어요." };
 }

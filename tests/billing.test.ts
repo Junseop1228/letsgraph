@@ -1,7 +1,8 @@
 // Scenario names follow specs/billing/spec.md.
 import { describe, expect, it } from "vitest";
 import { PaymentStatus, TRANSITIONS, TossSuccessQuery } from "@/lib/contracts/billing";
-import { access, amountMatches, dailyAccess, freeRemaining, newOrderId, planFromPasses, seoulDayStart, transition } from "@/lib/billing/state";
+import { access, amountMatches, dailyAccess, freeRemaining, newOrderId, planFromPasses, postingDaily, seoulDayStart, transition } from "@/lib/billing/state";
+import { PASS_CATALOG } from "@/lib/contracts/billing";
 
 describe("FR-ACCT-03 패스 구매", () => {
   it("정상 결제: created -> pending -> confirming -> paid -> granted", () => {
@@ -86,10 +87,26 @@ describe("SAFE-04 하루 AI 상한", () => {
     expect(seoulDayStart(new Date("2026-11-18T14:59:00Z"))).toBe("2026-11-17T15:00:00.000Z"); // 23:59 KST on the 18th
     expect(seoulDayStart(new Date("2026-11-18T15:00:00Z"))).toBe("2026-11-18T15:00:00.000Z"); // 00:00 KST on the 19th
   });
-  it("free users get 40 calls a day and are offered the pass; pass holders get 200", () => {
+  it("free users get 40 calls a day and are offered the pass; pass holders get 100 (BM)", () => {
     expect(dailyAccess("free", 39)).toEqual({ ok: true, left: 1 });
     expect(dailyAccess("free", 40)).toMatchObject({ ok: false, pay: true });
-    expect(dailyAccess("premium", 199)).toEqual({ ok: true, left: 1 });
-    expect(dailyAccess("premium", 200)).toMatchObject({ ok: false, pay: false });
+    expect(dailyAccess("premium", 99)).toEqual({ ok: true, left: 1 });
+    expect(dailyAccess("premium", 100)).toMatchObject({ ok: false, pay: false });
+  });
+});
+
+describe("BILL-01b BM 제안서의 패스와 상한 (2026-11-18)", () => {
+  it("two passes: 30일 9,900원 and 시즌 90일 19,900원 (recommended)", () => {
+    expect(PASS_CATALOG.month).toMatchObject({ name: "30일 패스", price: 9900, days: 30 });
+    expect(PASS_CATALOG.season).toMatchObject({ name: "시즌 패스", price: 19900, days: 90, best: true });
+  });
+  it("either pass makes the user premium while it lasts", () => {
+    const now = new Date("2026-11-18T00:00:00Z");
+    expect(planFromPasses([{ type: "month", expiresAt: "2026-12-10T00:00:00Z" }], now)).toBe("premium");
+    expect(planFromPasses([{ type: "month", expiresAt: "2026-11-10T00:00:00Z" }], now)).toBe("free");
+  });
+  it("postings: 30 a day for everyone", () => {
+    expect(postingDaily(29)).toEqual({ ok: true, left: 1 });
+    expect(postingDaily(30)).toMatchObject({ ok: false });
   });
 });

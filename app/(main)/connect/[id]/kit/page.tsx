@@ -15,6 +15,7 @@ import { Crumbs, DemoBadge, Kicker, TrustLabel, btn } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
 import { KitActions } from "@/components/analysis/kit-actions";
+import { EssayQuestions } from "@/components/analysis/essay-questions";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -23,7 +24,7 @@ async function KitContent({ params }: Props) {
   await requestTime(); // request-time render: uses today's date and the user's data
   const { id } = await params;
   const { repo, demo, guest } = await userData();
-  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 시즌 패스로 쓸 수 있어요." />;
+  if (guest) return <LoginPrompt next="/connect" title="로그인하면 공고와 내 경험을 이어 볼 수 있어요" text="공고 조건마다 근거가 될 내 활동과 에피소드를 찾고, 프롬프트 키트로 가져가요. 패스로 쓸 수 있어요." />;
   const posting = await repo.posting(id);
   if (!posting) notFound();
   const [analysis, connection, experiences, activities] = await Promise.all([repo.postingAnalysis(id), repo.connection(id), repo.experiences(), repo.activities()]);
@@ -37,6 +38,9 @@ async function KitContent({ params }: Props) {
   const evidence = evidenceOf(connection, analysis, experiences, activities);
   const notice = careerNotice(careerRequirement(analysis, posting.title));
   const stale = isStale(connection.basis, cardsKey(experiences, activities));
+  // ② 문항과 글자 수 (BM 2026-11-18): the questions the user saved, and whether the episodes changed since matching
+  const questions = posting.questions ?? [];
+  const questionsStale = questions.some((q) => !!q.basis && isStale(q.basis, cardsKey(experiences)));
 
   return (
     <div className="mx-auto max-w-content-max px-5 py-8">
@@ -66,6 +70,7 @@ async function KitContent({ params }: Props) {
 
       <div className="mt-6 grid gap-px bg-border lg:grid-cols-12">
         <section className="space-y-5 bg-bg-page py-6 lg:col-span-5 lg:pr-6 print:hidden" aria-labelledby="report-title">
+          <EssayQuestions postingId={posting.id} saved={questions} episodes={experiences.map((e) => ({ id: e.id, title: e.title }))} stale={questionsStale} />
           <Kicker right={<TrustLabel p={{ kind: "ai", text: "AI 추천" }} />}>
             <span id="report-title">조건별 추천</span>
           </Kicker>
