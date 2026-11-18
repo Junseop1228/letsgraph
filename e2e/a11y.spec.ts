@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 const PAGES = [
+  "/",
   "/explore",
   "/explore/map?job=quality",
   "/company/cj",

@@ -62,7 +62,7 @@ export function CompanyJobsImporter({ jobs: jobOptions }: Props) {
         <p className="text-body text-text-secondary">회사 채용 사이트의 직무 소개 주소를 넣으면, 직무를 읽어 우리 직무와 맞춰 보여 줘요. 확인하고 저장하면 회사와 직무가 이어져요.</p>
         <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); readPage(); }}>
           <label htmlFor="page-url" className="sr-only">직무 소개 페이지 주소</label>
-          <input id="page-url" type="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.example.com/career/job/introduce" className={cn(field, "min-w-0 flex-1")} />
+          <input id="page-url" type="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.example.com/career/job/introduce" className={cn(field, "w-0 min-w-0 flex-1")} />
           <button type="submit" disabled={pending || !url.trim()} className={btn.primary}>{pending && !read ? "읽는 중…" : "읽기"}</button>
         </form>
       </div>

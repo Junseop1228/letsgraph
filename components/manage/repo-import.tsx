@@ -23,7 +23,7 @@ export function RepoImport() {
           autoComplete="off"
           required
           placeholder="https://github.com/계정/저장소"
-          className="h-control-md min-w-0 flex-1 rounded-element border border-border-emphasized bg-bg-surface px-3 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-control-md w-0 min-w-0 flex-1 rounded-element border border-border-emphasized bg-bg-surface px-3 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <button type="submit" disabled={pending} className={btn.primary}>
           {pending ? "저장소 읽는 중…" : "활동 카드 만들기"}

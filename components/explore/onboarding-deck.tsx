@@ -10,7 +10,7 @@ import { Chip } from "@/components/lg/chip";
 import { relatedIndustries } from "@/lib/explore/conditions";
 import type { JobFamily, JobRole } from "@/lib/contracts/domain";
 import { savePrimaryJob } from "@/lib/client/local-state";
-import { markOnboarded, saveCompanyType, saveIndustryChoice } from "@/lib/onboarding";
+import { clearDeckProgress, markOnboarded, saveCompanyType, saveDeckProgress, saveIndustryChoice, type DeckProgress } from "@/lib/onboarding";
 import { COMPANY_TYPES, type CompanyType } from "@/lib/explore/company-type";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/client/analytics";
@@ -24,22 +24,38 @@ type Props = {
   jobs: Job[];
   /** industries with reviewed companies */
   industries: { id: string; name: string; count: number }[];
+  /** an unfinished deck from this browser session (cookie lg_deck): the visitor continues where they left */
+  resume?: DeckProgress | null;
 };
+
+/** A saved deck checked against today's lists; whatever no longer fits starts that part over. */
+function restoreDeck(p: DeckProgress | null | undefined, families: JobFamily[], allJobs: Job[], industries: Props["industries"]): DeckProgress {
+  const fresh: DeckProgress = { stage: "family", fams: [], i: 0, liked: [], history: [], inds: [], typeStep: false };
+  if (!p) return fresh;
+  const fams = p.fams.filter((f) => families.some((x) => x.id === f));
+  if (p.stage === "family") return { ...fresh, fams };
+  const jobs = fams.length ? allJobs.filter((j) => fams.includes(j.groupId)) : allJobs;
+  const i = Math.min(p.i, p.history.length, jobs.length);
+  const liked = p.liked.filter((id) => jobs.slice(0, i).some((j) => j.id === id));
+  const inds = p.inds.filter((id) => industries.some((x) => x.id === id));
+  return { stage: "jobs", fams, i, liked, history: p.history.slice(0, i), inds, typeStep: p.typeStep && liked.length > 0 && i >= jobs.length };
+}
 
 /** Arrow keys swipe only when the user is not typing or inside a dialog (e.g. the Ctrl+K search). */
 function isTyping(t: EventTarget | null) {
   return t instanceof HTMLElement && !!t.closest("input, textarea, select, [contenteditable=true], [role=dialog]");
 }
 
-export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
+export function OnboardingDeck({ families, jobs: allJobs, industries, resume }: Props) {
   const router = useRouter();
-  const [stage, setStage] = useState<"family" | "jobs">("family");
-  const [fams, setFams] = useState<string[]>([]);
-  const [i, setI] = useState(0);
-  const [liked, setLiked] = useState<string[]>([]);
-  const [history, setHistory] = useState<boolean[]>([]); // one entry per decided card, for 되돌리기 (audit O-2)
-  const [inds, setInds] = useState<string[]>([]);
-  const [typeStep, setTypeStep] = useState(false); // company-type card after the industry card (step 5b)
+  const [start] = useState(() => restoreDeck(resume, families, allJobs, industries));
+  const [stage, setStage] = useState<"family" | "jobs">(start.stage);
+  const [fams, setFams] = useState<string[]>(start.fams);
+  const [i, setI] = useState(start.i);
+  const [liked, setLiked] = useState<string[]>(start.liked);
+  const [history, setHistory] = useState<boolean[]>(start.history); // one entry per decided card, for 되돌리기 (audit O-2)
+  const [inds, setInds] = useState<string[]>(start.inds);
+  const [typeStep, setTypeStep] = useState(start.typeStep); // company-type card after the industry card (step 5b)
   const busy = useRef(false);
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-240, 240], [-8, 8]);
@@ -52,8 +68,9 @@ export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
   // industries related to any liked job (strongest relevance first, then the ones with more companies); same list as the graph's condition panel
   const related = useMemo(() => relatedIndustries(liked, industries), [liked, industries]);
 
-  // Shown once = seen: from now on "/", "/explore" and the 탐색 tab open the graph (specs/explore FR-DISC-01).
-  useEffect(() => markOnboarded(), []);
+  // Leaving mid-way (e.g. to the 공고 tab) and coming back continues the deck in this session; only finishing or
+  // skipping it makes "/" and the 탐색 tab open the graph (goMap, D 2026-11-18, specs/explore FR-DISC-01).
+  useEffect(() => saveDeckProgress({ stage, fams, i, liked, history, inds, typeStep }), [stage, fams, i, liked, history, inds, typeStep]);
 
   function toggle(list: string[], id: string) {
     return list.includes(id) ? list.filter((v) => v !== id) : [...list, id];
@@ -116,6 +133,8 @@ export function OnboardingDeck({ families, jobs: allJobs, industries }: Props) {
     saveCompanyType(type);
     savePrimaryJob(jobId, liked);
     track("onboarding_done", { job: jobId, liked: liked.length, industries: chosen.length, type: type ?? "any" });
+    markOnboarded();
+    clearDeckProgress();
     router.push(`/explore/map?job=${encodeURIComponent(jobId)}`);
   }
 

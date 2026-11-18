@@ -1,13 +1,18 @@
 import { updateSession } from "@/lib/supabase/proxy";
 import { NextResponse, type NextRequest } from "next/server";
-import { MAP_PATH, hasOnboarded } from "@/lib/onboarding";
+import { EXPLORE_PATH, MAP_PATH, hasOnboarded } from "@/lib/onboarding";
 
 export async function proxy(request: NextRequest) {
-  // Card deck once per browser (specs/explore FR-DISC-01): "/" and a bare "/explore" send a returning visitor
-  // straight to the graph. "/explore?..." (the job bar's "직무 더 고르기", ?bye=1) is an explicit visit and keeps the deck.
+  // Card deck until it is finished or skipped (specs/explore FR-DISC-01, D 2026-11-18): "/" and a bare "/explore"
+  // (the 탐색 tab) open the graph only for a visitor who ended the deck; a bare "/explore/map" sends the others back to
+  // the deck. "/explore?..." (the job bar's "직무 더 고르기", ?bye=1) and "/explore/map?job=..." are explicit visits.
   const { pathname, search } = request.nextUrl;
-  if ((pathname === "/" || (pathname === "/explore" && !search)) && hasOnboarded((n) => request.cookies.get(n)?.value)) {
+  const onboarded = hasOnboarded((n) => request.cookies.get(n)?.value);
+  if (onboarded && (pathname === "/" || (pathname === EXPLORE_PATH && !search))) {
     return NextResponse.redirect(new URL(MAP_PATH, request.url));
+  }
+  if (!onboarded && pathname === MAP_PATH && !search) {
+    return NextResponse.redirect(new URL(EXPLORE_PATH, request.url));
   }
   return await updateSession(request);
 }
