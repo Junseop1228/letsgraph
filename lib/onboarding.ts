@@ -12,7 +12,7 @@ export const COMPANY_TYPE_COOKIE = "lg_company_type";
 export const MAP_PATH = "/explore/map";
 /** The job bar's "직무 더 고르기" opens the deck on purpose; any query on /explore skips the redirect. */
 export const DECK_AGAIN_PATH = "/explore?more=1";
-/** The 탐색 tab and "/": the deck until it is finished or skipped, the graph after that (proxy.ts). */
+/** The 탐색 tab: the deck until it is finished or skipped, the graph after that (proxy.ts). "/" is the first screen. */
 export const EXPLORE_PATH = "/explore";
 /** Progress of an unfinished deck, kept for this browser session only. */
 export const DECK_COOKIE = "lg_deck";

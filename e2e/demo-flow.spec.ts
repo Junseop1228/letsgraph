@@ -32,7 +32,10 @@ test.describe("explore", () => {
   test("FR-DISC-01 카드를 끝낼 때까지 탐색 탭에", async ({ page }) => {
     const card = page.locator("article[aria-label$=' 카드']");
     const onboarded = async () => (await page.context().cookies()).some((c) => c.name === "lg_onboarded");
+    // first screen: what letsGraph does, one button into the cards
     await page.goto("/");
+    await expect(page.getByRole("heading", { name: "직무를 고르면, 회사가 돈 버는 길이 보여요" })).toBeVisible();
+    await page.getByRole("link", { name: "직무 고르러 가기" }).click();
     await expect(page).toHaveURL(/\/explore$/);
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
     // leave mid-way: the 탐색 tab brings the deck back where it was (same session), not the graph
