@@ -463,6 +463,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
             <label className="sr-only" htmlFor="chat-input">메시지</label>
             <input
               id="chat-input"
+              autoComplete="off"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={activity ? "답을 적어 주세요" : "활동을 소개해 주세요 (예: 카페 아르바이트, 2024년 6월부터)"}

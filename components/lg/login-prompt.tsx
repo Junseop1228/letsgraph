@@ -6,13 +6,21 @@ import { btn } from "@/components/lg/ui";
 
 export function LoginPrompt({ title, text, next }: { title: string; text: string; next: string }) {
   const q = `?next=${encodeURIComponent(next)}`;
+  // one sentence per line, each balanced: a centred paragraph that wraps mid-phrase is hard to read (design pass 2026-11-18)
+  const lines = text.split(/(?<=[.?!])\s+/);
   return (
     <div className="mx-auto max-w-reading-max px-5 py-16">
       <section className="space-y-4 rounded-container bg-bg-sunken p-8 text-center" aria-labelledby="login-prompt-title">
-        <h1 id="login-prompt-title" className="text-heading-2 break-keep">
+        <h1 id="login-prompt-title" className="text-heading-2 break-keep text-balance">
           {title}
         </h1>
-        <p className="text-body text-text-secondary break-keep">{text}</p>
+        <p className="text-body text-text-secondary break-keep">
+          {lines.map((l, i) => (
+            <span key={l} className="block text-balance">
+              {l}{i < lines.length - 1 ? " " : ""}
+            </span>
+          ))}
+        </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Link href={`/auth/login${q}`} className={btn.primary}>
             <LogIn className="size-4" aria-hidden />
