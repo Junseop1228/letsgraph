@@ -34,7 +34,14 @@ test.describe("explore", () => {
     const onboarded = async () => (await page.context().cookies()).some((c) => c.name === "lg_onboarded");
     // first screen: what letsGraph does, one button into the cards
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "직무를 고르면, 회사가 돈 버는 길이 보여요" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "직무를 고르면 갈 회사가 보이고, 내 경험은 자소서 재료가 돼요" })).toBeVisible();
+    // the example graph is a toy: an industry opens with a click (or Enter) and the open one closes again
+    const food = page.getByRole("button", { name: "식품 산업 접기" });
+    await expect(food).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "자동차 산업 열기" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "자동차 산업 접기" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "식품 산업 열기" })).toHaveAttribute("aria-pressed", "false");
     await page.getByRole("link", { name: "직무 고르러 가기" }).click();
     await expect(page).toHaveURL(/\/explore$/);
     await expect(page.getByRole("heading", { name: "어떤 일이 궁금하세요?" })).toBeVisible();
