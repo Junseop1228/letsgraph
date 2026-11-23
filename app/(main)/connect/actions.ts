@@ -2,8 +2,11 @@
 // 연결 결과 만들기 (specs/connection FR-PREM-02). Premium feature, quota-charged, AI output validated before storing.
 import { revalidatePath } from "next/cache";
 import { supabaseEnabled, userData } from "@/lib/data";
-import { AI_MODEL, aiEnabled, AiUnavailable, connect, extractQuestions, matchQuestions } from "@/lib/ai/tasks";
-import { EssayQuestion, PostingAnalysisOutput } from "@/lib/contracts/activity";
+import { AI_MODEL, aiEnabled, AiUnavailable, connect, extractQuestions, matchQuestions, suggestCardFits } from "@/lib/ai/tasks";
+import { EssayQuestion, EPISODE_THEME_LABEL, PostingAnalysisOutput, type ConnectionOutput } from "@/lib/contracts/activity";
+import { applySuggestion, openConditions, type CardSuggestion } from "@/lib/connect/suggest";
+import { toConnectionFields } from "@/lib/connect/evidence";
+import { gate, recordUse } from "@/lib/billing/gate";
 import { z } from "zod";
 import { currentPlan } from "@/lib/billing/server";
 import type { ActionState } from "@/app/(main)/postings/actions";
@@ -166,4 +169,100 @@ export async function setQuestionEpisodeAction(postingId: string, questionId: st
   if (!parsed.success || !(await storeQuestions(g.db, postingId, parsed.data))) return { error: "저장하지 못했어요." };
   revalidatePath(`/connect/${postingId}/kit`);
   return { ok: choice === "auto" ? "AI 추천으로 되돌렸어요." : "에피소드를 바꿨어요." };
+}
+
+/**
+ * 새 카드 맞춤 제안 (specs/connection FR-PREM-02b): right after a card is saved, the open conditions of the user's
+ * connected postings that this card proves better. Pass holders only (connections are a pass feature); one AI call,
+ * counted against today's AI calls (SAFE-04). Free users and users without connections get nothing, quietly.
+ */
+export async function suggestForCardAction(cardType: "activity" | "episode", cardId: string): Promise<{ suggestions: CardSuggestion[]; error?: string }> {
+  if (!supabaseEnabled() || !aiEnabled()) return { suggestions: [] };
+  const g = await gate("connection", "/manage?tab=chat", true, true);
+  if ("error" in g) return { suggestions: [] };
+  const { repo } = await userData();
+  const [episodes, activities, { data: conns }, { data: postings }] = await Promise.all([
+    repo.experiences(),
+    repo.activities(),
+    g.db.from("connections").select("posting_id, output"),
+    g.db.from("job_postings").select("id, company_name, title"),
+  ]);
+  const card =
+    cardType === "activity"
+      ? activities.find((x) => x.id === cardId)
+      : episodes.find((x) => x.id === cardId);
+  if (!card) return { suggestions: [] };
+  const label = new Map((postings ?? []).map((p) => [p.id as string, `${p.company_name} · ${p.title}`]));
+  const open = openConditions(
+    (conns ?? [])
+      .filter((c) => label.has(c.posting_id as string))
+      .map((c) => ({ postingId: c.posting_id as string, posting: label.get(c.posting_id as string)!, evidence: (c.output as ConnectionOutput | null)?.evidence })),
+  );
+  if (!open.length) return { suggestions: [] };
+  const payload =
+    cardType === "activity"
+      ? (() => {
+          const x = card as (typeof activities)[number];
+          return { type: "activity", title: x.title, period: x.period, role: x.role, dataset: x.dataset, summary: x.summary };
+        })()
+      : (() => {
+          const x = card as (typeof episodes)[number];
+          return {
+            type: "episode",
+            title: x.title,
+            theme: x.theme ? EPISODE_THEME_LABEL[x.theme] : undefined,
+            activity: (x.activityId ? activities.find((y) => y.id === x.activityId) : undefined)?.title,
+            situation: x.situation,
+            role: x.role,
+            action: x.action,
+            result: x.result,
+            learning: x.learning,
+          };
+        })();
+  try {
+    const suggestions = await suggestCardFits(payload, open);
+    await recordUse(g.db, g.uid, "ai_call");
+    return { suggestions };
+  } catch (e) {
+    logAiFailure("card_suggestions", e);
+    return { suggestions: [], error: e instanceof AiUnavailable ? e.message : undefined };
+  }
+}
+
+/** 근거로 넣기 (FR-PREM-02b): replaces the evidence of that one condition with the card; the rest of the result stays. */
+export async function applyCardSuggestionAction(i: {
+  postingId: string;
+  index: number;
+  requirement: string;
+  cardType: "activity" | "episode";
+  cardId: string;
+  strength: "strong" | "medium" | "weak";
+  reason: string;
+}): Promise<{ ok?: string; error?: string }> {
+  if (!supabaseEnabled()) return { error: "데모에서는 넣을 수 없어요." };
+  const g = await gate("connection", "/connect", false);
+  if ("error" in g) return { error: g.error };
+  if (!["strong", "medium", "weak"].includes(i.strength) || !["activity", "episode"].includes(i.cardType)) return { error: "제안 내용이 올바르지 않아요." };
+  const { repo } = await userData();
+  const [{ data: row }, episodes, activities] = await Promise.all([
+    g.db.from("connections").select("output").eq("posting_id", String(i.postingId)).maybeSingle(), // RLS: own rows only
+    repo.experiences(),
+    repo.activities(),
+  ]);
+  const out = row?.output as ConnectionOutput | undefined;
+  const ev = out?.evidence;
+  if (!out || !ev || !ev[i.index] || ev[i.index].requirement !== i.requirement) return { error: "공고의 지원 근거가 바뀌었어요. 지원 근거를 다시 찾아 주세요." };
+  const card = i.cardType === "activity" ? activities.find((x) => x.id === i.cardId) : episodes.find((x) => x.id === i.cardId);
+  if (!card) return { error: "카드를 찾지 못했어요." };
+  const evidence = applySuggestion(ev, i.index, { cardType: i.cardType, cardId: i.cardId, cardTitle: card.title, strength: i.strength, reason: String(i.reason) });
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const { error } = await createAdminClient()
+    .from("connections")
+    .update({ output: { ...out, evidence, ...toConnectionFields(evidence) } })
+    .eq("posting_id", String(i.postingId))
+    .eq("user_id", g.uid);
+  if (error) return { error: "넣지 못했어요. 잠시 뒤 다시 시도해 주세요." };
+  revalidatePath(`/connect/${i.postingId}`);
+  revalidatePath(`/connect/${i.postingId}/kit`);
+  return { ok: "지원 근거에 넣었어요." };
 }
