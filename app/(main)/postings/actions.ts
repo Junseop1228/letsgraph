@@ -1,6 +1,8 @@
 "use server";
 // Server actions for the analysis tab (specs/posting, specs/portfolio, specs/billing BILL-01).
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { supabaseEnabled } from "@/lib/data";
 import { after } from "next/server";
 import { gate } from "@/lib/billing/gate";
 import { AI_MODEL, AiUnavailable, analyzePosting, PostingNotFound, type PostingSource } from "@/lib/ai/tasks";
@@ -117,3 +119,23 @@ export async function analyzePostingTextAction(_prev: ActionState, form: FormDat
   return analyzeAndSave(g.db, g.uid, { kind: "text", text: input.data });
 }
 
+/**
+ * 공고 삭제 (specs/posting POST-08): the signed-in user's own posting (RLS "own rows"). Its AI summary and its
+ * connection go with it (on delete cascade); the user's activity and episode cards stay. Shared job evidence made from
+ * it stays too: it no longer points to the user. Today's posting count is not given back.
+ */
+export async function deletePostingAction(id: string): Promise<{ ok?: string; error?: string }> {
+  const pid = String(id ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(pid)) return { error: "지울 공고를 찾지 못했어요." };
+  if (!supabaseEnabled()) return { error: "데모 공고는 지울 수 없어요." };
+  const { createClient } = await import("@/lib/supabase/server");
+  const db = await createClient();
+  const { data: claims } = await db.auth.getClaims();
+  if (!claims?.claims?.sub) return { error: "로그인하면 공고를 지울 수 있어요." };
+  const { data, error } = await db.from("job_postings").delete().eq("id", pid).select("id");
+  if (error) return { error: "공고를 지우지 못했어요. 잠시 뒤 다시 시도해 주세요." };
+  if (!data?.length) return { error: "지울 공고를 찾지 못했어요." };
+  revalidatePath("/postings");
+  revalidatePath("/connect");
+  return { ok: "공고를 지웠어요." };
+}
