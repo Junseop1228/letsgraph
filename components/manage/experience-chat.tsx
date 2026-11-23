@@ -36,6 +36,7 @@ import { btn, Kicker, TrustLabel } from "@/components/lg/ui";
 import { cn } from "@/lib/utils";
 import { withRo } from "@/lib/manage/josa";
 import { SpeakerDot } from "@/components/manage/speaker-dot";
+import { CardSuggestions } from "@/components/connect/card-suggestions";
 
 type EpisodeDraft = NonNullable<Awaited<ReturnType<typeof draftEpisodeAction>>["draft"]>;
 type Props = { activities: Activity[]; episodes: Experience[]; initialActivityId?: string; initialLogId?: string };
@@ -187,6 +188,8 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
   const [logs, setLogs] = useState<Log[]>([]);
   const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
+  /** the card just saved: its 맞춤 제안 (FR-PREM-02b) show at the top of the side panel */
+  const [saved, setSaved] = useState<{ type: "activity" | "episode"; id: string } | null>(null);
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const requested = useRef(new Set<string>());
@@ -339,6 +342,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
       setActivities((list) => [...list, r.activity!]);
       pickActivity(r.activity);
       setNote(r.ok ?? null);
+      setSaved({ type: "activity", id: r.activity.id });
     });
   }
 
@@ -356,6 +360,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
       const r = (await saveEpisodeAction(episodeDraft, activity.id, turns)) as { ok?: string; error?: string; id?: string };
       setNote(r.ok ?? r.error ?? null);
       if (r.ok) {
+        if (r.id) setSaved({ type: "episode", id: r.id });
         setLogs((l) => [...l, { key: r.id ?? `saved-${Date.now()}`, activityId: activity.id, title: episodeDraft.title, theme: episodeDraft.theme, turns }]);
         setEpisodeDraft(null);
         setTheme(null);
@@ -482,6 +487,7 @@ export function ExperienceChat({ activities: initial, episodes, initialActivityI
         </section>
 
         <aside className="space-y-6 bg-bg-sunken p-5 lg:min-h-0 lg:overflow-y-auto">
+          {saved ? <CardSuggestions key={saved.id} cardType={saved.type} cardId={saved.id} onClose={() => setSaved(null)} /> : null}
           {!activity ? (
             <>
               {activities.length > 0 && (
