@@ -11,6 +11,7 @@ import { Crumbs, DemoBadge, Kicker, TrustLabel, btn } from "@/components/lg/ui";
 import { CareerNotice } from "@/components/analysis/notices";
 import { careerNotice, careerRequirement } from "@/lib/posting/career";
 import { PageSkeleton } from "@/components/lg/page-skeleton";
+import { DeletePosting } from "@/components/postings/delete-posting";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -48,7 +49,12 @@ async function PostingContent({ params }: Props) {
             <span className="px-3 py-1.5"><span className="text-text-secondary">상태</span> {POSTING_STATUS_LABEL[posting.status]}</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-start gap-2">
+          {posting.source !== "demo" && (
+            <div className="max-w-80">
+              <DeletePosting id={posting.id} />
+            </div>
+          )}
           {job && <Link href={`/explore/map?job=${job.id}`} className={btn.secondary}>직무 맵에서 보기</Link>}
           <Link href={`/connect/${posting.id}`} className={btn.primary}>
             내 경험과 연결 보기 <ArrowRight className="size-4" aria-hidden />
